@@ -1,6 +1,6 @@
 # Nexo — initial runnable foundation
 Objective: begin the agreed demo incrementally; this unit only boots the application, not financial workflows.
-Branch: feat/initial-foundation | Delivery: auto-chain, feature-branch-chain; no publishing | Runner: PHPUnit through Composer.
+Branch: feat/initial-foundation | Delivery: auto-chain, feature-branch-chain; follow user-requested issue/PR/main workflow | Runner: PHPUnit through Composer.
 
 ## Specs
 S1. User authorization: «dale empeiza con el proyecto a construirlo».
@@ -10,12 +10,18 @@ S4. User workflow: «y la manera de trabajr que quiero que es que cuadno sea hag
 
 Implementation assumptions: use Laravel 13 (official minimum PHP 8.3; local PHP 8.5.12), SQLite for later local persistence, PHPUnit, no frontend build dependency yet. The first page identifies Nexo and the fictional demo without fabricated operational balances. Auth, members, fees, CSV, reconciliation and hosting are subsequent units, not claimed implemented here. No money operations or database migrations in this unit.
 
+S5. User continuation: «continua».
+
 ## Tasks
 - T1 [S1,S3] route: parent inline (dependent bootstrap, no independent writer units); done; scaffold framework and resolve dependencies; commit: c2a2a3d5304efba06a9c679c43b0a0db53b6e666. Risk: item 5 (initial dependencies and local runtime).
 - T2 [S1-S3] route: parent inline; done; add tested Spanish demo entry page and local setup documentation; commit: c2a2a3d5304efba06a9c679c43b0a0db53b6e666.
 - T3 [S1-S3] route: independent gentle-ai-verify for item 5, native review explicitly left unreviewed by user for c2a2a3d only; done; clean installation/HTTP/full tests independently verified; commit: c2a2a3d5304efba06a9c679c43b0a0db53b6e666.
 
 - T4 [S4] route: parent inline (single documentation write); done; document issue-first branches/PRs, version and release rules; commit: c2a2a3d5304efba06a9c679c43b0a0db53b6e666.
+
+- T5 [S4,S5] route: parent GitHub tools; done; destination/policy verified, issue created and read back; evidence: https://github.com/Dani1lopez/nexo/issues/1.
+- T6 [S4,S5] route: parent GitHub tools; in_progress; push foundation branch and open linked PR after issue prerequisites; evidence: pending.
+- T7 [S4,S5] route: parent GitHub tools; pending; verify required checks and integrate only if permitted and passing; evidence: pending.
 
 ## Log
 L1. User request: «dale empeiza con el proyecto a construirlo».
@@ -31,3 +37,5 @@ L10. B1 limited independent recheck mwie7282-3-d0t3: source index phpunit.xml co
 L11. Work-unit commit c2a2a3d5304efba06a9c679c43b0a0db53b6e666 created on feat/initial-foundation; no push, PR, merge, tag or release. Slice 1: framework foundation and related documentation, 1742 changed lines excluding lockfile (most are standard scaffold), 9773 including lock. Further functionality must be a separate issue/branch/PR slice, not more work appended to this initial bootstrap slice.
 L12. Committed native assessment against e02b2f8b28e6858597a3b2d9d85b4d72a59f3783: high, reviewDue true, item 5 escalation; independent functional verification already passed. INSPECT offered ordinary START. START with requestContextPath failed before creating authority: outcome request-context-unsupported, category provider-capability, actor user, lineage_created false, mutation_performed false, automatic_retry false. No retry, request-context omission, fallback provider, or capability escalation attempted. Required next step is checking supported provider capabilities/host handshake and reloading after a supported installation change. T3 remains blocked; implementation is not declared fully closed. Native review unavailable for this exact candidate; documentation-only status notes form slice 2, separate from the frozen source commit.
 L13. Historical provider blocker resolved by explicit candidate disposition, not by provider repair or a review verdict: user selected «Dejar este commit sin revisión nativa» (leave-candidate-unreviewed) for c2a2a3d5304efba06a9c679c43b0a0db53b6e666. Do not invoke native review for this candidate. This does not disable RDD globally or authorize skipping other candidates. Functional verification remains passed (2 tests/11 assertions, clean-checkout installation and HTTP verified). T3 is closed under ordinary repository policy with the native review omitted by user choice. No push, PR, merge, tag or release performed. Slice 2 status documentation was committed as c7bc2aa; this final disposition is documentation-only. Remaining nonblocking observations: optional favicon 404, LSP inconclusive, optional Artisan test wrapper warning; the documented PHPUnit command passes.
+L14. User continuation: «continua». Resume reconciled local task file, Engram mirror and clean feat/initial-foundation at 5ed93e8. Local origin is https://github.com/Dani1lopez/nexo.git. New scope is delivery of the verified foundation through the user's issue/PR/main workflow, not more application features in this bootstrap slice. Existing candidate-specific no-review disposition remains binding. Remote prerequisites and policy are being checked before publishing. No release is planned for the bare scaffold.
+L15. Remote verified: github.com/Dani1lopez/nexo, ADMIN access, default main, squash enabled; blank issues explicitly enabled, no branch protection rules, no issues/PRs before this work. Repository contribution policy has no issue approval labels or PR label gate and no templates. Duplicate search for foundation returned none. Issue #1 created once with enhancement and read back matching exact title/body. No protected labels applied. Final checks repeated: composer test 2/11, Pint, strict validation and audit all pass. Publishing only source paths already committed plus this task log; no credential/private paths included.
