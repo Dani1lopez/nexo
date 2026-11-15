@@ -1,0 +1,34 @@
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# Local agent metadata
+.atl/
+.pi/
+.codegraph/
+
+# Dependencies and generated output
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+
+# Local databases and runtime files
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+/storage/*.key
+/storage/logs/*
+
+# Editor and operating system files
+.DS_Store
+.idea/
+.vscode/
