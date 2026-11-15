@@ -2,7 +2,31 @@
 
 Tesorería para asociaciones: cuotas claras, conciliación de movimientos y cuentas comprensibles para el siguiente equipo.
 
-> Estado: planificación. La aplicación todavía no está implementada. La primera versión será una demo con datos ficticios, no un servicio preparado para gestionar dinero real.
+> Estado: base ejecutable. Hay una página inicial y una comprobación de arranque; los módulos de tesorería todavía no están implementados. La primera versión será una demo con datos ficticios, no un servicio preparado para gestionar dinero real.
+
+## Ejecutar en local
+
+Requisitos: PHP 8.3 o superior, Composer 2 y extensiones habituales de Laravel (incluidas DOM, mbstring, XML y PDO SQLite). La instalación se ha comprobado con PHP 8.5.12. Composer comprueba los requisitos exactos del archivo de bloqueo.
+
+```sh
+composer install
+composer test
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+Abre http://127.0.0.1:8000. La ruta `/up` devuelve HTTP 200 cuando Laravel arranca. Detén el servidor con Ctrl+C. Este servidor es solo para desarrollo local.
+
+Esta entrega no requiere archivo de entorno, clave de aplicación, base de datos ni Node.js: la página pública no usa sesiones ni realiza escrituras. No hay cuentas, formularios ni operaciones económicas. SQLite queda como opción para el siguiente módulo; todavía no se crea ni migra ninguna base de datos.
+
+Para comprobar formato y dependencias:
+
+```sh
+vendor/bin/pint --test
+composer validate --strict
+composer audit
+```
+
+`composer test` ejecuta PHPUnit directamente. `php artisan test` puede mostrar una advertencia de phpdotenv por la ausencia deliberada del archivo de entorno. No uses datos ni credenciales reales.
 
 ## Primera versión
 
@@ -26,7 +50,13 @@ No se garantiza cumplimiento fiscal, contable o legal. No se publicarán datos p
 
 ## Dirección técnica
 
-Base propuesta: PHP y Laravel, con Blade, HTML, CSS y JavaScript. La base de datos, las versiones y el alojamiento gratuito siguen pendientes de verificación. No hay instrucciones de instalación todavía.
+Base inicial: PHP 8.3+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite será la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
+
+La estructura y la configuración inicial proceden de `laravel/laravel` v13.11.0 (MIT); se conserva su licencia en `LICENSE.framework.md`. La aplicación no tiene todavía una licencia de reutilización concedida.
+
+## Desarrollo y versiones
+
+El flujo de issues, ramas, pull requests hacia `main` y releases está en [CONTRIBUTING.md](CONTRIBUTING.md). Los cambios de cada versión se registran en [CHANGELOG.md](CHANGELOG.md). La base actual todavía no es una release `v0.1.0`.
 
 ## Objetivo de entrega
 
