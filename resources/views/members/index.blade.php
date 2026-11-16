@@ -1,19 +1,21 @@
-@extends('layouts.access')
+@extends('layouts.app')
 @section('title', 'Socios')
 @section('content')
-    <nav aria-label="Navegación"><a href="/dashboard">Volver al panel</a></nav>
-    <h1>Socios</h1>
-    <p>Datos exclusivamente ficticios.</p>
-    @can('edit-treasury')
-        <p><a href="/members/create">Nuevo socio</a></p>
-    @endcan
+    <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="mb-0">Socios</h1>
+        @can('edit-treasury')
+            <a href="/members/create" class="btn mt-0">Nuevo socio</a>
+        @endcan
+    </div>
+    <p class="notice">Datos exclusivamente ficticios.</p>
     <nav aria-label="Filtrar por estado" class="filters">
         @foreach (['activos' => 'Activos', 'bajas' => 'Bajas', 'todos' => 'Todos'] as $key => $label)
             <a href="/members?estado={{ $key }}" @if ($filter === $key) aria-current="page" @endif>{{ $label }}</a>
         @endforeach
     </nav>
     @forelse ($members as $member)
-        <article class="member">
+        <article class="entry">
             <h2>{{ $member->name }}</h2>
             <dl>
                 <dt>Correo</dt><dd>{{ $member->email }}</dd>
@@ -21,12 +23,14 @@
                 <dt>Estado</dt><dd>{{ $member->status === 'active' ? 'Activo' : 'De baja' }}</dd>
             </dl>
             @can('edit-treasury')
-                <a href="/members/{{ $member->id }}/edit">Editar {{ $member->name }}</a>
-                @if ($member->status === 'active')
-                    <form method="post" action="/members/{{ $member->id }}/deactivate">@csrf<button type="submit">Dar de baja a {{ $member->name }}</button></form>
-                @else
-                    <form method="post" action="/members/{{ $member->id }}/reactivate">@csrf<button type="submit">Reactivar a {{ $member->name }}</button></form>
-                @endif
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <a href="/members/{{ $member->id }}/edit" class="btn btn-secondary btn-sm">Editar {{ $member->name }}</a>
+                    @if ($member->status === 'active')
+                        <form method="post" action="/members/{{ $member->id }}/deactivate">@csrf<button type="submit" class="btn-danger btn-sm">Dar de baja a {{ $member->name }}</button></form>
+                    @else
+                        <form method="post" action="/members/{{ $member->id }}/reactivate">@csrf<button type="submit" class="btn-secondary btn-sm">Reactivar a {{ $member->name }}</button></form>
+                    @endif
+                </div>
             @endcan
         </article>
     @empty

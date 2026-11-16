@@ -1,15 +1,16 @@
-@extends('layouts.access')
+@extends('layouts.app')
 @php($editing = $feeYear->exists)
 @section('title', $editing ? 'Cambiar importe' : 'Fijar cuota anual')
+@section('narrow', true)
 @section('content')
-    <nav aria-label="Navegación"><a href="{{ $editing ? '/fees/'.$feeYear->id : '/fees' }}">Volver</a></nav>
+    <nav aria-label="Navegación" class="back-link"><a href="{{ $editing ? '/fees/'.$feeYear->id : '/fees' }}">Volver</a></nav>
     <h1>{{ $editing ? 'Cambiar el importe de '.$feeYear->year : 'Fijar cuota de un año' }}</h1>
-    <p>Usa solo importes ficticios. Al fijar un año se asigna la cuota a los socios activos con alta hasta el fin de ese año.</p>
+    <p class="notice">Usa solo importes ficticios. Al fijar un año se asigna la cuota a los socios activos con alta hasta el fin de ese año.</p>
     @if ($editing && $feeYear->hasActivePayments())
-        <p class="notice">Este año tiene pagos vigentes, así que el importe no se puede cambiar hasta anularlos.</p>
+        <p class="alert alert-info">Este año tiene pagos vigentes, así que el importe no se puede cambiar hasta anularlos.</p>
     @endif
     @if ($errors->any())
-        <div class="error" role="alert">
+        <div class="alert-error" role="alert">
             <ul>
                 @foreach ($errors->all() as $message)
                     <li>{{ $message }}</li>

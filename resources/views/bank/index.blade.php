@@ -1,18 +1,18 @@
-@extends('layouts.access')
+@extends('layouts.app')
 @section('title', 'Movimientos bancarios')
 @section('content')
-    <nav aria-label="Navegación"><a href="/dashboard">Volver al panel</a></nav>
+    <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
     <h1>Movimientos bancarios</h1>
-    <p>Importes en euros, con datos exclusivamente ficticios.</p>
+    <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
 
     @if ($errors->any())
-        <div class="error" role="alert"><ul>@foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
+        <div class="alert-error" role="alert"><ul>@foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
     @endif
 
     @if (session('import_report'))
         @php($report = session('import_report'))
-        <section class="member" role="status" aria-label="Resultado de la importación">
-            <h2>Resultado de la importación</h2>
+        <section class="alert alert-ok" role="status" aria-label="Resultado de la importación">
+            <h2 class="mt-0 text-lg">Resultado de la importación</h2>
             <dl>
                 <dt>Importados</dt><dd>{{ $report['imported'] }}</dd>
                 <dt>Duplicados omitidos</dt><dd>{{ $report['duplicates'] }}</dd>
@@ -29,9 +29,9 @@
     @endif
 
     @can('edit-treasury')
-        <form method="post" action="/bank/imports" enctype="multipart/form-data">
+        <form method="post" action="/bank/imports" enctype="multipart/form-data" class="form-block">
             @csrf
-            <label for="file">Archivo CSV con las columnas fecha, importe y concepto</label>
+            <label for="file" class="mt-0">Archivo CSV con las columnas fecha, importe y concepto</label>
             <input id="file" name="file" type="file" accept=".csv,.txt" required>
             <p class="notice">Fechas dd/mm/aaaa o aaaa-mm-dd; importes como 10,50 o -10.50. El archivo no se guarda: solo se conservan los movimientos y el registro de la importación. No subas extractos reales.</p>
             <button type="submit">Importar extracto</button>
@@ -40,8 +40,8 @@
 
     <h2>Importaciones</h2>
     @forelse ($imports as $import)
-        <article class="member">
-            <h3>{{ $import->created_at->format('d/m/Y H:i') }} · {{ $import->user->email }}</h3>
+        <article class="entry">
+            <h3 class="mt-0">{{ $import->created_at->format('d/m/Y H:i') }} · {{ $import->user->email }}</h3>
             <dl>
                 <dt>Importados</dt><dd>{{ $import->imported_count }}</dd>
                 <dt>Duplicados</dt><dd>{{ $import->duplicate_count }}</dd>
@@ -54,8 +54,8 @@
 
     <h2>Movimientos</h2>
     @forelse ($movements as $movement)
-        <article class="member">
-            <h3>{{ $movement->concept }}</h3>
+        <article class="entry">
+            <h3 class="mt-0">{{ $movement->concept }}</h3>
             <dl>
                 <dt>Fecha</dt><dd>{{ $movement->occurred_on->format('d/m/Y') }}</dd>
                 <dt>Importe</dt><dd>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>

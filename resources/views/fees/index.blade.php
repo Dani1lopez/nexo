@@ -1,14 +1,16 @@
-@extends('layouts.access')
+@extends('layouts.app')
 @section('title', 'Cuotas anuales')
 @section('content')
-    <nav aria-label="Navegación"><a href="/dashboard">Volver al panel</a></nav>
-    <h1>Cuotas anuales</h1>
-    <p>Importes en euros, con datos exclusivamente ficticios.</p>
-    @can('edit-treasury')
-        <p><a href="/fees/create">Fijar cuota de un año</a></p>
-    @endcan
+    <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="mb-0">Cuotas anuales</h1>
+        @can('edit-treasury')
+            <a href="/fees/create" class="btn mt-0">Fijar cuota de un año</a>
+        @endcan
+    </div>
+    <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
     @forelse ($years as $feeYear)
-        <article class="member">
+        <article class="entry">
             <h2><a href="/fees/{{ $feeYear->id }}">Cuota de {{ $feeYear->year }}</a></h2>
             <dl>
                 <dt>Importe</dt><dd>{{ \App\Modules\Fees\Support\Money::format($feeYear->amount_cents) }}</dd>
