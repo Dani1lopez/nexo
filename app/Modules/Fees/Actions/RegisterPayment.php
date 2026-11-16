@@ -10,11 +10,11 @@ use Illuminate\Validation\ValidationException;
 
 class RegisterPayment
 {
-    public function handle(Due $due, int $amountCents, string $paidOn, string $method, ?string $note, string $submissionKey): Payment
+    public function handle(Due $due, int $amountCents, string $paidOn, string $method, ?string $note, string $submissionKey, ?int $bankMovementId = null): Payment
     {
         // The pending amount is read inside the transaction (immediate on SQLite)
         // so two simultaneous payments cannot together exceed the due.
-        return DB::transaction(function () use ($due, $amountCents, $paidOn, $method, $note, $submissionKey): Payment {
+        return DB::transaction(function () use ($due, $amountCents, $paidOn, $method, $note, $submissionKey, $bankMovementId): Payment {
             // The same form submitted again (double click, reload, back button) is not a new payment.
             $existing = Payment::query()->where('submission_key', $submissionKey)->first();
             if ($existing !== null) {
@@ -37,6 +37,7 @@ class RegisterPayment
 
             return Payment::forceCreate([
                 'due_id' => $due->id,
+                'bank_movement_id' => $bankMovementId,
                 'amount_cents' => $amountCents,
                 'paid_on' => $paidOn,
                 'method' => $method,
