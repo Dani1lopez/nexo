@@ -26,6 +26,7 @@ class PaymentRequest extends FormRequest
             'paid_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'method' => ['required', Rule::in(array_keys(Payment::METHODS))],
             'note' => ['nullable', 'string', 'max:255'],
+            'submission_key' => ['required', 'uuid'],
         ];
     }
 
@@ -42,6 +43,8 @@ class PaymentRequest extends FormRequest
             'method.required' => 'Indica la forma de pago.',
             'method.in' => 'La forma de pago no es válida.',
             'note.max' => 'La nota no puede superar los 255 caracteres.',
+            'submission_key.required' => 'El formulario ha caducado. Recarga la página e inténtalo de nuevo.',
+            'submission_key.uuid' => 'El formulario ha caducado. Recarga la página e inténtalo de nuevo.',
         ];
     }
 

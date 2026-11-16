@@ -51,6 +51,7 @@
                 @if ($due->pendingCents() > 0)
                     <form method="post" action="/dues/{{ $due->id }}/payments">
                         @csrf
+                        <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                         <p class="notice">No escribas datos personales reales en la nota.</p>
                         <label for="pay-amount-{{ $due->id }}">Importe del pago en euros ({{ $due->member->name }})</label>
                         <input id="pay-amount-{{ $due->id }}" name="amount" type="text" inputmode="decimal" autocomplete="off" required>

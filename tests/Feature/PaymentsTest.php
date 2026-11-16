@@ -10,6 +10,7 @@ use App\Modules\Fees\Models\FeeYear;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Members\Models\Member;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Support\Str;
 use Tests\Support\AuthTestCase;
 
 class PaymentsTest extends AuthTestCase
@@ -35,7 +36,7 @@ class PaymentsTest extends AuthTestCase
     /** @return array<string, string> */
     private function payment(string $amount = '10', array $overrides = []): array
     {
-        return array_merge(['amount' => $amount, 'paid_on' => '2026-03-01', 'method' => 'bank', 'note' => ''], $overrides);
+        return array_merge(['amount' => $amount, 'paid_on' => '2026-03-01', 'method' => 'bank', 'note' => '', 'submission_key' => (string) Str::uuid()], $overrides);
     }
 
     private function pay(Due $due, string $amount = '10', array $overrides = []): void
@@ -253,5 +254,68 @@ class PaymentsTest extends AuthTestCase
         $this->post("/payments/{$payment->id}/void", ['reason' => 'x'])->assertStatus(419);
         $this->assertDatabaseCount('payments', 1);
         $this->assertNull($payment->fresh()->voided_at);
+    }
+
+    public function test_submitting_the_same_form_twice_registers_the_payment_only_once(): void
+    {
+        $due = $this->setUpDue(3000);
+        $this->actingAs($this->treasury());
+        $form = $this->payment('10');
+
+        $this->post("/dues/{$due->id}/payments", $form)->assertRedirect("/fees/{$due->fee_year_id}")->assertSessionHasNoErrors();
+        $this->post("/dues/{$due->id}/payments", $form)->assertRedirect("/fees/{$due->fee_year_id}")->assertSessionHasNoErrors();
+
+        $this->assertSame(1, Payment::count());
+        $this->get("/fees/{$due->fee_year_id}")->assertSee('Pagado: 10,00 €');
+    }
+
+    public function test_two_separate_forms_with_the_same_data_are_two_payments(): void
+    {
+        $due = $this->setUpDue(3000);
+        $this->actingAs($this->treasury());
+
+        $this->pay($due, '10');
+        $this->pay($due, '10');
+
+        $this->assertSame(2, Payment::count());
+    }
+
+    public function test_a_resubmitted_key_cannot_be_reused_on_another_due(): void
+    {
+        $due = $this->setUpDue(3000);
+        $other = $this->setUpDue(3000, 2027);
+        $this->actingAs($this->treasury());
+        $form = $this->payment('10');
+
+        $this->post("/dues/{$due->id}/payments", $form);
+        $this->from("/fees/{$other->fee_year_id}")->post("/dues/{$other->id}/payments", $form)->assertSessionHasErrors('submission_key');
+
+        $this->assertSame(1, Payment::count());
+        $this->assertSame($due->id, Payment::first()->due_id);
+    }
+
+    public function test_the_submission_key_is_required_and_must_be_a_uuid(): void
+    {
+        $due = $this->setUpDue();
+        $this->actingAs($this->treasury());
+
+        foreach ([null, '', 'abc', str_repeat('a', 300)] as $key) {
+            $form = $this->payment('10');
+            $key === null ? $form = array_diff_key($form, ['submission_key' => 1]) : $form['submission_key'] = $key;
+            $this->from("/fees/{$due->fee_year_id}")->post("/dues/{$due->id}/payments", $form)->assertSessionHasErrors('submission_key');
+        }
+        $this->assertSame(0, Payment::count());
+    }
+
+    public function test_the_payment_form_carries_a_fresh_submission_key_each_time(): void
+    {
+        $due = $this->setUpDue();
+        $this->actingAs($this->treasury());
+
+        preg_match_all('/name="submission_key" value="([0-9a-f-]{36})"/', $this->get("/fees/{$due->fee_year_id}")->getContent(), $first);
+        preg_match_all('/name="submission_key" value="([0-9a-f-]{36})"/', $this->get("/fees/{$due->fee_year_id}")->getContent(), $second);
+
+        $this->assertNotEmpty($first[1]);
+        $this->assertNotSame($first[1][0], $second[1][0]);
     }
 }

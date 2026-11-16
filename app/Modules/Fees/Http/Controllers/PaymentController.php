@@ -15,7 +15,7 @@ class PaymentController extends Controller
 {
     public function store(PaymentRequest $request, Due $due, RegisterPayment $register): RedirectResponse
     {
-        $register->handle($due, $request->amountCents(), $request->validated('paid_on'), $request->validated('method'), $request->validated('note'));
+        $register->handle($due, $request->amountCents(), $request->validated('paid_on'), $request->validated('method'), $request->validated('note'), $request->validated('submission_key'));
 
         return redirect("/fees/{$due->fee_year_id}");
     }
