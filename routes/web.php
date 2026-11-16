@@ -1,9 +1,23 @@
 <?php
 
 use App\Modules\Access\Http\Controllers\SessionController;
+use App\Modules\Members\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [SessionController::class, 'create'])->name('login');
 Route::post('/login', [SessionController::class, 'store']);
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::view('/dashboard', 'dashboard')->middleware(['auth', 'can:view-treasury'])->name('dashboard');
+
+Route::middleware(['auth', 'can:view-treasury'])->prefix('members')->name('members.')->group(function (): void {
+    Route::get('/', [MemberController::class, 'index'])->name('index');
+
+    Route::middleware('can:edit-treasury')->group(function (): void {
+        Route::get('/create', [MemberController::class, 'create'])->name('create');
+        Route::post('/', [MemberController::class, 'store'])->name('store');
+        Route::get('/{member}/edit', [MemberController::class, 'edit'])->name('edit');
+        Route::put('/{member}', [MemberController::class, 'update'])->name('update');
+        Route::post('/{member}/deactivate', [MemberController::class, 'deactivate'])->name('deactivate');
+        Route::post('/{member}/reactivate', [MemberController::class, 'reactivate'])->name('reactivate');
+    });
+});

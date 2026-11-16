@@ -10,3 +10,8 @@ button { margin-top: 1.5rem; min-height: 44px; padding: .7rem 1.2rem; border: 0;
 :focus-visible { outline: 3px solid #ad6500; outline-offset: 3px; }
 .error { padding: .8rem; border-left: 4px solid #a32727; background: #fff0f0; }
 dd { margin: .25rem 0 1rem; overflow-wrap: anywhere; }
+.filters { display: flex; gap: 1rem; margin: 1rem 0; }
+.filters a[aria-current="page"] { text-decoration: none; color: #18312e; border-bottom: 3px solid #125d4e; }
+.member { margin: 1.25rem 0; padding-top: 1rem; border-top: 1px solid #c8d7d1; }
+.member h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+.error ul { margin: 0; padding-left: 1.2rem; }
