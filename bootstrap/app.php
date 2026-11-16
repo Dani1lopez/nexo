@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
+        web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
@@ -15,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Stateful web routes will be added with the authenticated workflows.
+        // Laravel's web group supplies sessions and request-forgery protection.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Use the framework's default exception handling.
