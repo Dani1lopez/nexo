@@ -14,6 +14,9 @@
             <a href="/members?estado={{ $key }}" @if ($filter === $key) aria-current="page" @endif>{{ $label }}</a>
         @endforeach
     </nav>
+    @if ($members->isNotEmpty())
+    <div class="board">
+    @endif
     @forelse ($members as $member)
         <article class="entry">
             <h2>{{ $member->name }}</h2>
@@ -36,4 +39,7 @@
     @empty
         <p>No hay socios que mostrar con este filtro.</p>
     @endforelse
+    @if ($members->isNotEmpty())
+    </div>
+    @endif
 @endsection

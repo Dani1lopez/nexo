@@ -283,16 +283,139 @@
         @apply mx-auto w-full flex-1 px-4 pt-6 pb-4;
     }
 
+    .form-page {
+        @apply mx-auto my-8 w-[calc(100%-2rem)] flex-1 self-start rounded-control border border-rule bg-surface p-6 sm:p-8;
+    }
+
     .entry {
         @apply my-3 rounded-control border border-rule bg-surface px-5 py-4;
+    }
+
+    /* Facts of one record on a single running line instead of a stacked list. */
+    .entry dl {
+        @apply block;
+    }
+
+    .entry dt,
+    .entry dd {
+        @apply inline;
+    }
+
+    .entry dd {
+        @apply mr-6 ml-1.5;
+    }
+
+    /* A board joins many short rows into one table-like surface, like a departures panel. */
+    .board {
+        @apply my-4 overflow-hidden rounded-control border border-rule bg-surface;
+    }
+
+    .board > .entry {
+        @apply my-0 rounded-none border-0 border-b border-rule;
+    }
+
+    .board > .entry:last-child {
+        @apply border-b-0;
+    }
+
+    .movement {
+        @apply grid grid-cols-[1fr_auto] items-center gap-x-4;
+    }
+
+    .movement h3 {
+        @apply col-start-1 row-start-1 mb-0 break-words text-2xl/tight;
+    }
+
+    .movement dl {
+        @apply contents;
+    }
+
+    .movement dt {
+        @apply sr-only;
+    }
+
+    .movement dd {
+        @apply col-start-1 row-start-2 m-0 text-base text-muted;
+    }
+
+    .movement dd.amount {
+        @apply col-start-2 row-span-2 row-start-1 font-display text-3xl/none font-semibold whitespace-nowrap text-ink;
+    }
+
+    .movement dd.amount-out {
+        @apply text-danger;
+    }
+
+    .movement dd.amount-in {
+        @apply text-ok;
     }
 
     .entry h2 {
         @apply mt-0 mb-1 text-3xl;
     }
 
-    .entry dl {
-        @apply my-1;
+    /* Home: the route of the money as a line map, vertical on phones and horizontal from sm up. */
+    .map {
+        @apply relative my-10 grid list-none gap-8 pl-0 sm:grid-cols-4 sm:gap-4;
+    }
+
+    /* On phones each stop draws its own segment down to the next one; the last one has none. */
+    .map::before {
+        display: none;
+    }
+
+    .map li::after {
+        content: '';
+        @apply absolute top-8 -bottom-8 left-3 w-2;
+        background: var(--stop);
+    }
+
+    .map li:last-child::after {
+        display: none;
+    }
+
+    .map li {
+        @apply relative flex flex-col pl-14 sm:pt-14 sm:pl-0;
+    }
+
+    .map li::before {
+        content: '';
+        @apply absolute top-0 left-0 size-8 rounded-full border-[6px] bg-surface;
+        border-color: var(--stop);
+    }
+
+    .map strong {
+        @apply font-display text-3xl/none font-bold;
+        color: var(--stop);
+    }
+
+    .map span {
+        @apply mt-1 text-base text-muted;
+    }
+
+    .map .stop-next {
+        --stop: var(--color-muted);
+    }
+
+    .map .stop-next::before {
+        @apply border-dashed;
+    }
+
+    @media (min-width: 40rem) {
+        .map li::after {
+            display: none;
+        }
+
+        .map::before {
+            @apply absolute top-3 right-[calc(25%-1rem)] left-4 block h-2 rounded-full;
+            background: linear-gradient(
+                to right,
+                var(--color-line-socios),
+                var(--color-line-cuotas),
+                var(--color-line-movimientos),
+                var(--color-muted)
+            );
+        }
     }
 
     .filters {
@@ -313,8 +436,16 @@
 
     /* One destination per line, each in its own line colour. */
     .link-card {
-        @apply flex min-h-28 items-end rounded-control p-4 font-display text-3xl/none font-bold text-white no-underline hover:text-white;
+        @apply flex min-h-36 flex-col justify-end gap-1 rounded-control p-4 text-white no-underline hover:text-white;
         background: var(--card);
+    }
+
+    .link-card strong {
+        @apply font-display text-3xl/none font-bold;
+    }
+
+    .link-card span {
+        @apply text-base/snug font-normal;
     }
 
     .link-card:hover {

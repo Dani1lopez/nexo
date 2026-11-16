@@ -9,8 +9,8 @@
     </dl>
     <p class="alert alert-info">Este panel es de consulta. Las operaciones económicas todavía no están disponibles.</p>
     <div class="link-grid">
-        <a class="link-card" href="/members">Ver socios</a>
-        <a class="link-card" href="/fees">Cuotas anuales</a>
-        <a class="link-card" href="/bank">Movimientos bancarios</a>
+        <a class="link-card" href="/members"><strong>Ver socios</strong><span>Altas, bajas y datos de contacto.</span></a>
+        <a class="link-card" href="/fees"><strong>Cuotas anuales</strong><span>Quién ha pagado y quién debe.</span></a>
+        <a class="link-card" href="/bank"><strong>Movimientos bancarios</strong><span>El extracto del banco, importado en CSV.</span></a>
     </div>
 @endsection

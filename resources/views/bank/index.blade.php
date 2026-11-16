@@ -39,6 +39,9 @@
     @endcan
 
     <h2>Importaciones</h2>
+    @if ($imports->isNotEmpty())
+    <div class="board">
+    @endif
     @forelse ($imports as $import)
         <article class="entry">
             <h3 class="mt-0">{{ $import->created_at->format('d/m/Y H:i') }} · {{ $import->user->email }}</h3>
@@ -51,19 +54,28 @@
     @empty
         <p>Todavía no se ha importado ningún extracto.</p>
     @endforelse
+    @if ($imports->isNotEmpty())
+    </div>
+    @endif
 
     <h2>Movimientos</h2>
+    @if ($movements->isNotEmpty())
+    <div class="board">
+    @endif
     @forelse ($movements as $movement)
-        <article class="entry">
+        <article class="entry movement">
             <h3 class="mt-0">{{ $movement->concept }}</h3>
             <dl>
                 <dt>Fecha</dt><dd>{{ $movement->occurred_on->format('d/m/Y') }}</dd>
-                <dt>Importe</dt><dd>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>
+                <dt>Importe</dt><dd @class(['amount', 'amount-out' => $movement->amount_cents < 0, 'amount-in' => $movement->amount_cents > 0])>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>
             </dl>
         </article>
     @empty
         <p>No hay movimientos importados.</p>
     @endforelse
+    @if ($movements->isNotEmpty())
+    </div>
+    @endif
     <nav aria-label="Páginas de movimientos" class="filters">
         @if ($movements->previousPageUrl())<a href="{{ $movements->previousPageUrl() }}">Más recientes</a>@endif
         @if ($movements->nextPageUrl())<a href="{{ $movements->nextPageUrl() }}">Más antiguos</a>@endif

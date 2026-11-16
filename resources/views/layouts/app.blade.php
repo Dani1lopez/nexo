@@ -41,7 +41,7 @@
             </nav>
         @endauth
     @endif
-    <main id="contenido" tabindex="-1" class="sheet @hasSection('narrow') max-w-narrow @else max-w-page @endif">
+    <main id="contenido" tabindex="-1" class="@hasSection('narrow') form-page max-w-narrow @else sheet max-w-page @endif">
         @yield('content')
     </main>
     <footer class="site-footer">

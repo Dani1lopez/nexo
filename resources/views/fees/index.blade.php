@@ -9,6 +9,9 @@
         @endcan
     </div>
     <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
+    @if ($years->isNotEmpty())
+    <div class="board">
+    @endif
     @forelse ($years as $feeYear)
         <article class="entry">
             <h2><a href="/fees/{{ $feeYear->id }}">Cuota de {{ $feeYear->year }}</a></h2>
@@ -20,4 +23,7 @@
     @empty
         <p>Todavía no se ha fijado ninguna cuota.</p>
     @endforelse
+    @if ($years->isNotEmpty())
+    </div>
+    @endif
 @endsection
