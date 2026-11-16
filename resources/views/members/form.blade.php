@@ -1,12 +1,13 @@
-@extends('layouts.access')
+@extends('layouts.app')
 @php($editing = $member->exists)
 @section('title', $editing ? 'Editar socio' : 'Nuevo socio')
+@section('narrow', true)
 @section('content')
-    <nav aria-label="Navegación"><a href="/members">Volver a socios</a></nav>
+    <nav aria-label="Navegación" class="back-link"><a href="/members">Volver a socios</a></nav>
     <h1>{{ $editing ? 'Editar socio' : 'Nuevo socio' }}</h1>
-    <p>Usa solo datos ficticios.</p>
+    <p class="notice">Usa solo datos ficticios.</p>
     @if ($errors->any())
-        <div class="error" role="alert">
+        <div class="alert alert-error" role="alert">
             <ul>
                 @foreach ($errors->all() as $message)
                     <li>{{ $message }}</li>

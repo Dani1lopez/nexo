@@ -41,7 +41,7 @@ class MemberController extends Controller
     {
         Member::create($request->validated());
 
-        return redirect('/members');
+        return redirect('/members')->with('status', 'Socio creado.');
     }
 
     public function edit(Member $member): View
@@ -53,20 +53,20 @@ class MemberController extends Controller
     {
         $member->update($request->validated());
 
-        return redirect('/members');
+        return redirect('/members')->with('status', 'Cambios guardados.');
     }
 
     public function deactivate(Member $member): RedirectResponse
     {
         $member->forceFill(['status' => Member::INACTIVE])->save();
 
-        return redirect('/members');
+        return redirect('/members')->with('status', 'Socio dado de baja.');
     }
 
     public function reactivate(Member $member): RedirectResponse
     {
         $member->forceFill(['status' => Member::ACTIVE])->save();
 
-        return redirect('/members');
+        return redirect('/members')->with('status', 'Socio reactivado.');
     }
 }
