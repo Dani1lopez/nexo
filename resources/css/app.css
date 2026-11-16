@@ -1,0 +1,227 @@
+@import 'tailwindcss';
+
+@source '../views';
+
+/*
+ * Design tokens. Colours, type and spacing live here and nowhere else:
+ * views use the generated utilities (bg-brand, text-muted, max-w-page...), never hex values.
+ */
+@theme {
+    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+    --color-ink: #18312e;
+    --color-muted: #4a625c;
+    --color-canvas: #edf4ef;
+    --color-surface: #ffffff;
+    --color-line: #c8d7d1;
+    --color-brand: #125d4e;
+    --color-brand-strong: #0d4a3e;
+    --color-brand-soft: #dcece5;
+    --color-focus: #ad6500;
+    --color-danger: #a32727;
+    --color-danger-strong: #7f1d1d;
+    --color-danger-soft: #fff0f0;
+    --color-warn: #7a4600;
+    --color-warn-soft: #fff4df;
+    --color-ok: #1b6b3a;
+    --color-ok-soft: #e4f4ea;
+
+    --container-page: 64rem;
+    --container-narrow: 28rem;
+    --radius-card: 1rem;
+    --shadow-card: 0 8px 30px rgb(24 49 46 / 0.09);
+}
+
+@layer base {
+    html {
+        color-scheme: light;
+    }
+
+    body {
+        @apply bg-canvas font-sans text-ink antialiased;
+    }
+
+    a {
+        @apply font-semibold text-brand underline underline-offset-2 hover:text-brand-strong;
+    }
+
+    :focus-visible {
+        @apply outline-3 outline-offset-3 outline-focus;
+    }
+
+    h1 {
+        @apply mb-2 text-2xl font-bold tracking-tight;
+    }
+
+    h2 {
+        @apply mt-8 mb-2 text-xl font-bold;
+    }
+
+    h3 {
+        @apply mt-4 mb-1 text-base font-bold;
+    }
+
+    p {
+        @apply my-2;
+    }
+
+    label {
+        @apply mt-4 mb-1 block font-semibold;
+    }
+
+    input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+    select {
+        @apply block min-h-11 w-full rounded-md border border-muted bg-surface px-3 py-2 text-base;
+    }
+
+    input[type='file'] {
+        @apply file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-semibold file:text-brand-strong;
+    }
+
+    dl {
+        @apply my-3 grid grid-cols-1 gap-x-6 gap-y-0.5 sm:grid-cols-[max-content_1fr];
+    }
+
+    dt {
+        @apply font-semibold text-muted;
+    }
+
+    dd {
+        @apply mb-2 break-words sm:mb-0;
+    }
+
+    ul {
+        @apply my-2 list-disc pl-6;
+    }
+}
+
+@layer components {
+    /* Buttons: native buttons and links that act as buttons share one look. */
+    button,
+    .btn {
+        @apply mt-5 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-transparent bg-brand px-5 py-2 text-base font-bold text-white no-underline hover:bg-brand-strong hover:text-white disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .btn-secondary {
+        @apply border-brand bg-surface text-brand hover:bg-brand-soft hover:text-brand-strong;
+    }
+
+    .btn-danger {
+        @apply border-danger bg-surface text-danger hover:bg-danger-soft hover:text-danger-strong;
+    }
+
+    .btn-sm {
+        @apply mt-0 min-h-9 px-3 py-1 text-sm;
+    }
+
+    /* Page frame */
+    .skip-link {
+        @apply absolute left-4 top-0 z-50 -translate-y-full rounded-b-md bg-brand-strong px-4 py-2 text-white no-underline focus:translate-y-0 focus:text-white;
+    }
+
+    .site-header {
+        @apply bg-brand text-white;
+    }
+
+    .brand {
+        @apply mr-2 text-xl font-extrabold tracking-tight text-white no-underline hover:text-white;
+    }
+
+    .nav-link {
+        @apply rounded-md px-3 py-2 text-white no-underline hover:bg-brand-strong hover:text-white aria-[current=page]:bg-surface aria-[current=page]:text-brand;
+    }
+
+    .site-header .btn-secondary {
+        @apply border-white bg-transparent text-white hover:bg-brand-strong hover:text-white;
+    }
+
+    .panel {
+        @apply rounded-card bg-surface p-5 shadow-card sm:p-8;
+    }
+
+    .site-footer {
+        @apply px-4 py-6 text-center text-sm text-muted;
+    }
+
+    .back-link {
+        @apply mb-3 text-sm;
+    }
+
+    /* Content */
+    .entry {
+        @apply my-5 border-t border-line pt-4;
+    }
+
+    .entry h2 {
+        @apply mt-0 text-lg;
+    }
+
+    .filters {
+        @apply my-4 flex flex-wrap gap-2;
+    }
+
+    .filters a {
+        @apply rounded-full border border-line px-4 py-1.5 text-sm text-ink no-underline hover:bg-brand-soft aria-[current=page]:border-brand aria-[current=page]:bg-brand-soft;
+    }
+
+    .link-grid {
+        @apply my-4 grid gap-4 sm:grid-cols-3;
+    }
+
+    .link-card {
+        @apply block rounded-card border border-line bg-surface p-5 text-ink no-underline hover:border-brand hover:bg-brand-soft hover:text-brand-strong;
+    }
+
+    .form-block {
+        @apply mt-4 rounded-md border border-line bg-canvas p-4;
+    }
+
+    .notice {
+        @apply text-sm text-muted;
+    }
+
+    .alert {
+        @apply my-4 rounded-md border-l-4 p-3;
+    }
+
+    .alert ul {
+        @apply my-0;
+    }
+
+    .alert-error,
+    .error {
+        @apply my-4 rounded-md border-l-4 border-danger bg-danger-soft p-3 text-danger-strong;
+    }
+
+    .error ul {
+        @apply my-0;
+    }
+
+    .alert-ok {
+        @apply border-ok bg-ok-soft text-ink;
+    }
+
+    .alert-info {
+        @apply border-brand bg-brand-soft text-ink;
+    }
+
+    .badge {
+        @apply inline-block rounded-full px-3 py-0.5 text-sm font-bold;
+    }
+
+    .badge-pending {
+        @apply bg-warn-soft text-warn;
+    }
+
+    .badge-partial {
+        @apply bg-brand-soft text-brand-strong;
+    }
+
+    .badge-paid {
+        @apply bg-ok-soft text-ok;
+    }
+
+    .badge-exempt {
+        @apply bg-line text-ink;
+    }
+}
