@@ -5,6 +5,9 @@
     <nav aria-label="Navegación"><a href="{{ $editing ? '/fees/'.$feeYear->id : '/fees' }}">Volver</a></nav>
     <h1>{{ $editing ? 'Cambiar el importe de '.$feeYear->year : 'Fijar cuota de un año' }}</h1>
     <p>Usa solo importes ficticios. Al fijar un año se asigna la cuota a los socios activos con alta hasta el fin de ese año.</p>
+    @if ($editing && $feeYear->hasActivePayments())
+        <p class="notice">Este año tiene pagos vigentes, así que el importe no se puede cambiar hasta anularlos.</p>
+    @endif
     @if ($errors->any())
         <div class="error" role="alert">
             <ul>

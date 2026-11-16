@@ -15,3 +15,4 @@ dd { margin: .25rem 0 1rem; overflow-wrap: anywhere; }
 .member { margin: 1.25rem 0; padding-top: 1rem; border-top: 1px solid #c8d7d1; }
 .member h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
 .error ul { margin: 0; padding-left: 1.2rem; }
+select { display: block; box-sizing: border-box; width: 100%; min-height: 44px; padding: .7rem; border: 1px solid #647d76; border-radius: .35rem; font: inherit; background: white; }
