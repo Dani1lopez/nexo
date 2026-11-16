@@ -961,8 +961,8 @@
         margin: 0;
         font-size: clamp(2.25rem, 6.5vw, 3.75rem);
         line-height: 1.04;
-        font-weight: 650;
-        letter-spacing: -0.035em;
+        font-weight: 600;
+        letter-spacing: -0.04em;
     }
 
     .hero .lead {
@@ -977,9 +977,62 @@
         margin-top: 0;
     }
 
+    /* Home: the product itself is the hero, as a floating application window over a dotted field. */
+    .field {
+        position: relative;
+        isolation: isolate;
+    }
+
+    .field::before {
+        content: '';
+        position: absolute;
+        inset: -2rem -1rem auto;
+        z-index: -1;
+        height: 30rem;
+        pointer-events: none;
+        background-image: radial-gradient(
+            color-mix(in srgb, var(--color-ink) 18%, transparent) 1px,
+            transparent 1.3px
+        );
+        background-size: 22px 22px;
+        -webkit-mask-image: radial-gradient(ellipse 75% 80% at 50% 0%, #000 25%, transparent 75%);
+        mask-image: radial-gradient(ellipse 75% 80% at 50% 0%, #000 25%, transparent 75%);
+    }
+
+    .btn-pill {
+        min-height: 2.75rem;
+        padding-inline: 1.5rem;
+        border-radius: 999px;
+    }
+
+    .window {
+        margin-top: 2.5rem;
+        overflow: hidden;
+        background: var(--color-surface);
+        border-radius: 1rem;
+        box-shadow:
+            var(--shadow-lift),
+            0 40px 80px -40px color-mix(in srgb, var(--line) 35%, transparent);
+    }
+
+    .window-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.875rem 1.25rem;
+        box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 8%, transparent);
+    }
+
+    .window-title {
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+
     .sample {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 5.75rem 1fr auto;
         align-items: center;
         column-gap: 1rem;
         padding: 0.875rem 1.25rem;
@@ -989,31 +1042,99 @@
         box-shadow: 0 -1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent);
     }
 
+    .sample-head {
+        padding-block: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 550;
+        color: var(--color-muted);
+        background: color-mix(in srgb, var(--color-ink) 3%, transparent);
+    }
+
+    .sample-head span:last-child {
+        text-align: right;
+    }
+
     .sample strong {
-        font-weight: 600;
+        font-weight: 550;
     }
 
     .sample small {
-        grid-column: 1;
         font-size: 0.8125rem;
         color: var(--color-muted);
     }
 
     .sample b {
-        grid-column: 2;
-        grid-row: 1 / span 2;
         font-size: 1.0625rem;
         font-weight: 600;
+        text-align: right;
     }
 
-    .sample-caption {
-        max-width: none;
-        margin: 0;
-        padding: 0.625rem 1.25rem;
+    .avatar {
+        display: inline-grid;
+        flex: none;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
         font-size: 0.8125rem;
-        color: var(--color-muted);
-        background: color-mix(in srgb, var(--color-ink) 3%, transparent);
-        box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--line);
+        background: color-mix(in srgb, var(--line) 16%, var(--color-surface));
+        border-radius: 999px;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 28%, transparent);
+    }
+
+    .person {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .person h2 {
+        margin: 0;
+    }
+
+    /* Wide screens: movements read as a table with a column header. */
+    .board-head {
+        display: none;
+    }
+
+    @media (min-width: 40rem) {
+        .board-head {
+            display: grid;
+            grid-template-columns: 7rem 1fr auto;
+            column-gap: 1rem;
+            padding: 0.625rem 1.25rem;
+            font-size: 0.75rem;
+            font-weight: 550;
+            color: var(--color-muted);
+            background: color-mix(in srgb, var(--color-ink) 3%, transparent);
+            box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent);
+        }
+
+        .board-head span:last-child {
+            text-align: right;
+        }
+
+        .movement {
+            grid-template-columns: 7rem 1fr auto;
+        }
+
+        .movement h3 {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .movement dd {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .movement dd.amount {
+            grid-column: 3;
+            grid-row: 1;
+        }
     }
 
     /* The route of the money: four stops, the last one still to come. */

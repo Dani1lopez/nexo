@@ -66,6 +66,7 @@
     <h2>Movimientos</h2>
     @if ($movements->isNotEmpty())
     <div class="board">
+        <div class="board-head" aria-hidden="true"><span>Fecha</span><span>Concepto</span><span>Importe</span></div>
     @endif
     @forelse ($movements as $movement)
         <article class="entry movement">

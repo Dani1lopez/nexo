@@ -27,7 +27,7 @@
     @forelse ($dues as $due)
         @php($active = $due->activeExemption())
         <article class="entry due due-{{ $due->status() }}">
-            <h2>{{ $due->member->name }}</h2>
+            <div class="person"><x-avatar :name="$due->member->name" /><h2>{{ $due->member->name }}</h2></div>
             <p>Cuota: {{ $money($feeYear->amount_cents) }} · A pagar: {{ $money($due->payableCents()) }}</p>
             <p>Pagado: {{ $money($due->paidCents()) }} · Pendiente: {{ $money($due->pendingCents()) }}</p>
             <p>Estado: <strong class="badge badge-{{ $due->status() }}">{{ ['pending' => 'Pendiente de pago', 'partial' => 'Parcial', 'paid' => 'Pagada', 'exempt' => 'Exenta'][$due->status()] }}</strong></p>

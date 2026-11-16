@@ -2,18 +2,24 @@
 @section('public', true)
 @section('full_title', 'Nexo — Tesorería para asociaciones')
 @section('content')
-    <header class="hero">
-        <h1>Tesorería para asociaciones</h1>
-        <p class="lead">Las cuentas de la asociación, claras para quien venga después. Socios, cuotas y movimientos del banco en un solo sitio.</p>
-        <a class="btn" href="/login">Entrar a la demo</a>
-        <p class="notice">Demo en construcción · Datos ficticios</p>
-    </header>
+    <div class="field">
+        <header class="hero">
+            <h1>Tesorería para asociaciones</h1>
+            <p class="lead">Las cuentas de la asociación, claras para quien venga después. Socios, cuotas y movimientos del banco en un solo sitio.</p>
+            <a class="btn btn-pill" href="/login">Entrar a la demo</a>
+            <p class="notice">Demo en construcción · Datos ficticios</p>
+        </header>
 
-    <div class="board mt-10" role="img" aria-label="Ejemplo ficticio de movimientos bancarios">
-        <p class="sample-caption">Así se ven los movimientos importados del banco. Ejemplo con datos ficticios.</p>
-        <div class="sample"><strong>Cuota Ana</strong><small>12/01/2026</small><b class="text-ok">10,00 €</b></div>
-        <div class="sample"><strong>Recibo luz enero</strong><small>15/01/2026</small><b class="text-danger">-84,50 €</b></div>
-        <div class="sample"><strong>Ingreso Luis Gómez</strong><small>10/03/2025</small><b class="text-ok">15,00 €</b></div>
+        <div class="window" role="img" aria-label="Ejemplo ficticio de la aplicación: lista de movimientos bancarios con sus importes">
+            <div class="window-bar">
+                <span class="window-title">Movimientos bancarios</span>
+                <span class="badge badge-partial">Ejemplo con datos ficticios</span>
+            </div>
+            <div class="sample sample-head"><span>Fecha</span><span>Concepto</span><span>Importe</span></div>
+            <div class="sample"><small>12/01/2026</small><strong>Cuota Ana</strong><b class="text-ok">10,00 €</b></div>
+            <div class="sample"><small>15/01/2026</small><strong>Recibo luz enero</strong><b class="text-danger">-84,50 €</b></div>
+            <div class="sample"><small>10/03/2025</small><strong>Ingreso Luis Gómez</strong><b class="text-ok">15,00 €</b></div>
+        </div>
     </div>
 
     <ol class="map" aria-label="Recorrido del dinero en una asociación">

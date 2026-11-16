@@ -19,7 +19,7 @@
     @endif
     @forelse ($members as $member)
         <article class="entry">
-            <h2>{{ $member->name }}</h2>
+            <div class="person"><x-avatar :name="$member->name" /><h2>{{ $member->name }}</h2></div>
             <dl>
                 <dt>Correo</dt><dd>{{ $member->email }}</dd>
                 <dt>Fecha de alta</dt><dd>{{ $member->joined_on->format('d/m/Y') }}</dd>
