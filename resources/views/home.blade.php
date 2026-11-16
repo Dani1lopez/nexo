@@ -4,7 +4,7 @@
 @section('content')
     <header>
         <p class="notice">Demo en construcción · Datos ficticios</p>
-        <h1 class="text-6xl">Nexo</h1>
+        <h1 class="text-8xl">Nexo</h1>
         <p class="text-lg text-muted">Tesorería para asociaciones</p>
     </header>
 

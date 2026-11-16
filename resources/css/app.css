@@ -1,65 +1,86 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/bricolage-grotesque';
-@import '@fontsource/atkinson-hyperlegible/latin-400.css';
-@import '@fontsource/atkinson-hyperlegible/latin-700.css';
+@import '@fontsource/barlow/latin-400.css';
+@import '@fontsource/barlow/latin-600.css';
+@import '@fontsource/barlow/latin-700.css';
+@import '@fontsource/barlow-condensed/latin-600.css';
+@import '@fontsource/barlow-condensed/latin-700.css';
 
 @source '../views';
 
 /*
  * Design tokens. Colours, type and spacing live here and nowhere else:
- * views use the generated utilities (bg-brand, text-muted, max-w-page...), never hex values.
+ * views use the generated utilities (bg-canvas, text-muted, max-w-page...), never hex values.
  *
- * The visual idea is a treasurer's ledger: green-grey paper, a lighter sheet with a double
- * red margin rule, filing-cabinet tabs for navigation and rubber stamps for statuses.
+ * The visual idea is public-transport wayfinding: every section of the app is a "line" with its
+ * own colour, navigation is a line diagram with stops, and statuses are timetable pictograms.
+ * The body class (line-panel, line-socios...) sets --line, the colour of the current line.
  */
 @theme {
-    --font-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-display: 'Bricolage Grotesque Variable', 'Atkinson Hyperlegible', system-ui, sans-serif;
+    --font-sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
 
-    --color-canvas: #e3e9dc;
-    --color-tab: #cdd7c4;
-    --color-surface: #f8faf4;
-    --color-line: #b9c4b0;
-    --color-ink: #12213f;
-    --color-muted: #43506a;
-    --color-brand: #1f3a93;
-    --color-brand-strong: #172b72;
-    --color-brand-soft: #dde4f6;
-    --color-marker: #f4d35e;
-    --color-margin: #b4302b;
-    --color-focus: #12213f;
-    --color-danger: #a82a25;
-    --color-danger-strong: #7a1f1b;
-    --color-danger-soft: #fbe9e6;
+    --color-canvas: #eef0f4;
+    --color-surface: #ffffff;
+    --color-rule: #c9ced8;
+    --color-ink: #14213d;
+    --color-muted: #4a5568;
+
+    --color-line-panel: #1f4fbf;
+    --color-line-socios: #00796b;
+    --color-line-cuotas: #b4530a;
+    --color-line-movimientos: #7b3fa0;
+
+    --color-danger: #b3261e;
+    --color-danger-strong: #7f1a15;
+    --color-danger-soft: #fceae8;
     --color-warn: #8a4b00;
-    --color-warn-soft: #fbefd5;
-    --color-ok: #1d6b3f;
-    --color-ok-soft: #e0f1e6;
-    --color-exempt: #55407f;
+    --color-warn-soft: #fdefd3;
+    --color-ok: #1b6b3a;
+    --color-ok-soft: #e1f2e7;
 
-    --container-page: 62rem;
+    --container-page: 64rem;
     --container-narrow: 28rem;
-    --radius-sheet: 0.25rem;
-    --radius-tab: 0.625rem;
-    --radius-stamp: 0.1875rem;
+    --radius-control: 0.375rem;
 }
 
 @layer base {
     html {
         color-scheme: light;
+        accent-color: var(--line);
     }
 
     body {
+        --line: var(--color-line-panel);
+        --line-soft: color-mix(in srgb, var(--line) 11%, white);
         @apply bg-canvas font-sans text-lg/relaxed text-ink antialiased;
         font-variant-numeric: tabular-nums;
+        caret-color: var(--line);
+    }
+
+    body.line-socios {
+        --line: var(--color-line-socios);
+    }
+
+    body.line-cuotas {
+        --line: var(--color-line-cuotas);
+    }
+
+    body.line-movimientos {
+        --line: var(--color-line-movimientos);
+    }
+
+    ::selection {
+        background: var(--line);
+        color: white;
     }
 
     a {
-        @apply font-bold text-brand underline decoration-2 underline-offset-4 hover:bg-marker hover:text-ink;
+        @apply font-semibold underline decoration-2 underline-offset-4 hover:bg-(--line-soft);
+        color: var(--line);
     }
 
     :focus-visible {
-        @apply outline-3 outline-offset-3 outline-focus;
+        @apply outline-3 outline-offset-3 outline-ink;
     }
 
     h1,
@@ -69,32 +90,38 @@
     }
 
     h1 {
-        @apply mb-2 text-4xl/tight font-bold tracking-tight;
+        @apply mb-3 text-6xl/none font-bold tracking-tight;
+        color: var(--line);
     }
 
     h2 {
-        @apply mt-9 mb-2 text-2xl/tight font-bold tracking-tight;
+        @apply mt-10 mb-2 text-3xl/none font-bold;
     }
 
     h3 {
-        @apply mt-4 mb-1 text-xl/snug font-bold;
+        @apply mt-4 mb-1 text-2xl/none font-semibold;
     }
 
     p {
-        @apply my-2;
+        @apply my-2 max-w-prose;
     }
 
     label {
-        @apply mt-4 mb-1 block font-bold;
+        @apply mt-4 mb-1 block font-semibold;
     }
 
     input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
     select {
-        @apply block min-h-11 w-full rounded-stamp border-2 border-ink bg-white px-3 py-2 text-base;
+        @apply block min-h-12 w-full rounded-control border-2 border-ink bg-surface px-3 py-2 text-lg;
     }
 
     input[type='file'] {
-        @apply file:mr-4 file:cursor-pointer file:rounded-stamp file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-bold file:text-brand-strong;
+        @apply file:mr-4 file:cursor-pointer file:rounded-control file:border-0 file:px-4 file:py-2 file:font-semibold;
+    }
+
+    input[type='file']::file-selector-button {
+        background: var(--line-soft);
+        color: var(--line);
     }
 
     dl {
@@ -102,7 +129,7 @@
     }
 
     dt {
-        @apply font-bold text-muted;
+        @apply font-semibold text-muted;
     }
 
     dd {
@@ -124,76 +151,148 @@
     /* Buttons: native buttons and links that act as buttons share one look. */
     button,
     .btn {
-        @apply mt-5 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-stamp border-2 border-brand bg-brand px-5 py-2 text-base font-bold text-white no-underline hover:border-ink hover:bg-marker hover:text-ink disabled:cursor-not-allowed disabled:opacity-60;
+        @apply mt-5 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-control border-2 px-6 py-2 text-lg font-semibold text-white no-underline hover:text-white disabled:cursor-not-allowed disabled:opacity-60;
+        border-color: var(--line);
+        background: var(--line);
+    }
+
+    button:hover,
+    .btn:hover {
+        background: color-mix(in srgb, var(--line) 82%, black);
+        border-color: color-mix(in srgb, var(--line) 82%, black);
     }
 
     .btn-secondary {
-        @apply border-brand bg-transparent text-brand hover:border-ink hover:bg-marker hover:text-ink;
+        background: var(--color-surface);
+        color: var(--line);
+    }
+
+    .btn-secondary:hover {
+        background: var(--line-soft);
+        color: var(--line);
+        border-color: var(--line);
     }
 
     .btn-danger {
-        @apply border-danger bg-transparent text-danger hover:border-danger-strong hover:bg-danger-soft hover:text-danger-strong;
+        @apply border-danger bg-surface text-danger hover:border-danger hover:bg-danger-soft hover:text-danger-strong;
     }
 
     .btn-sm {
-        @apply mt-0 min-h-9 px-3 py-1 text-sm;
+        @apply mt-0 min-h-10 px-3 py-1 text-base;
     }
 
     /* Page frame */
     .skip-link {
-        @apply absolute left-4 top-0 z-50 -translate-y-full rounded-b-stamp bg-ink px-4 py-2 text-white no-underline focus:translate-y-0 focus:bg-ink focus:text-white;
+        @apply absolute left-4 top-0 z-50 -translate-y-full rounded-b-control bg-ink px-4 py-2 text-white no-underline focus:translate-y-0 focus:bg-ink focus:text-white;
     }
 
     .site-header {
-        @apply mx-auto flex w-full max-w-page flex-wrap items-end gap-x-4 gap-y-1 px-4 pt-5;
+        @apply bg-ink text-white;
+        border-bottom: 8px solid var(--line);
+    }
+
+    .site-header :focus-visible {
+        @apply outline-white;
+    }
+
+    .site-header-inner {
+        @apply mx-auto flex max-w-page flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3;
     }
 
     .brand {
-        @apply mr-2 font-display text-4xl/none font-extrabold tracking-tight text-ink no-underline hover:bg-transparent hover:text-brand;
+        @apply mr-2 font-display text-4xl/none font-bold tracking-tight text-white no-underline hover:bg-transparent hover:text-white;
     }
 
     .who {
-        @apply ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 pb-1 text-base;
+        @apply ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-white;
     }
 
-    /* Tabs sit on the sheet's top edge; the current one is the same paper as the sheet. */
-    .tabs {
-        @apply mx-auto mt-4 flex w-full max-w-page flex-wrap items-end gap-1 px-4;
+    .site-header .btn-secondary {
+        @apply border-white bg-transparent text-white hover:border-white hover:bg-white/15 hover:text-white;
     }
 
-    .tab {
-        @apply relative -mb-px rounded-t-tab border border-b-0 border-line bg-tab px-4 py-2 text-base text-ink no-underline hover:bg-marker hover:text-ink;
+    /*
+     * The line diagram: four stops joined by a coloured track. Each stop carries its own line
+     * colour; the current one is filled. The track is decoration, the links are the navigation.
+     */
+    .route {
+        @apply relative mx-auto mt-6 grid w-full max-w-page grid-cols-4 px-4;
     }
 
-    .tab[aria-current='page'] {
-        @apply border-ink bg-surface pt-3 hover:bg-surface;
-    }
-
-    .sheet {
-        @apply relative rounded-sheet border border-ink bg-surface py-6 pr-5 pl-9 sm:py-8 sm:pr-10 sm:pl-20;
-    }
-
-    /* The double red rule of the ledger margin. */
-    .sheet::before {
+    .route::before {
         content: '';
-        @apply absolute inset-y-0 left-4 w-[7px] border-x-2 border-margin sm:left-12;
+        @apply absolute top-[0.8125rem] right-[calc(1rem+12.5%)] left-[calc(1rem+12.5%)] h-2 rounded-full;
+        background: linear-gradient(
+            to right,
+            var(--color-line-panel),
+            var(--color-line-socios),
+            var(--color-line-cuotas),
+            var(--color-line-movimientos)
+        );
+    }
+
+    .stop {
+        @apply relative flex flex-col items-center gap-1.5 px-0.5 text-center text-base/tight font-semibold text-ink no-underline hover:bg-transparent hover:text-ink sm:text-lg/tight;
+    }
+
+    .stop::before {
+        content: '';
+        @apply z-10 size-8 rounded-full border-[6px] bg-surface;
+        border-color: var(--stop);
+    }
+
+    .stop:hover::before {
+        background: var(--stop);
+    }
+
+    .stop[aria-current='page'] {
+        @apply font-bold;
+    }
+
+    .stop[aria-current='page']::before {
+        background: var(--stop);
+        box-shadow: 0 0 0 4px var(--color-canvas), 0 0 0 7px var(--stop);
+    }
+
+    .stop-panel {
+        --stop: var(--color-line-panel);
+    }
+
+    .stop-socios {
+        --stop: var(--color-line-socios);
+    }
+
+    .stop-cuotas {
+        --stop: var(--color-line-cuotas);
+    }
+
+    .stop-movimientos {
+        --stop: var(--color-line-movimientos);
     }
 
     .site-footer {
-        @apply px-4 py-6 text-center text-base text-muted;
+        @apply px-4 py-8 text-center text-base text-muted;
     }
 
     .back-link {
-        @apply mb-3 text-base;
+        @apply mb-4 text-base;
     }
 
-    /* Content */
+    /* Content: forms and data rows sit on white panels over the grey ground. */
+    .sheet {
+        @apply mx-auto w-full flex-1 px-4 pt-6 pb-4;
+    }
+
     .entry {
-        @apply my-6 border-t-2 border-line pt-4;
+        @apply my-3 rounded-control border border-rule bg-surface px-5 py-4;
     }
 
     .entry h2 {
-        @apply mt-0 text-2xl;
+        @apply mt-0 mb-1 text-3xl;
+    }
+
+    .entry dl {
+        @apply my-1;
     }
 
     .filters {
@@ -201,19 +300,41 @@
     }
 
     .filters a {
-        @apply rounded-stamp border-2 border-line px-4 py-1 text-base font-bold text-ink no-underline hover:border-ink hover:bg-marker aria-[current=page]:border-ink aria-[current=page]:bg-marker;
+        @apply min-h-10 rounded-control border-2 border-rule bg-surface px-4 py-1.5 text-base font-semibold text-ink no-underline hover:border-ink hover:bg-surface;
+    }
+
+    .filters a[aria-current='page'] {
+        @apply border-ink bg-ink text-white hover:bg-ink;
     }
 
     .link-grid {
-        @apply my-6 flex flex-col border-t-2 border-ink;
+        @apply my-6 grid gap-3 sm:grid-cols-3;
     }
 
+    /* One destination per line, each in its own line colour. */
     .link-card {
-        @apply border-b-2 border-line py-4 font-display text-2xl font-bold text-ink no-underline hover:bg-marker hover:text-ink;
+        @apply flex min-h-28 items-end rounded-control p-4 font-display text-3xl/none font-bold text-white no-underline hover:text-white;
+        background: var(--card);
+    }
+
+    .link-card:hover {
+        background: color-mix(in srgb, var(--card) 82%, black);
+    }
+
+    .link-card:nth-child(1) {
+        --card: var(--color-line-socios);
+    }
+
+    .link-card:nth-child(2) {
+        --card: var(--color-line-cuotas);
+    }
+
+    .link-card:nth-child(3) {
+        --card: var(--color-line-movimientos);
     }
 
     .form-block {
-        @apply mt-4 rounded-sheet border-2 border-dashed border-line bg-canvas p-4;
+        @apply mt-4 rounded-control border-2 border-dashed border-rule bg-canvas p-4;
     }
 
     .notice {
@@ -221,7 +342,7 @@
     }
 
     .alert {
-        @apply my-4 rounded-sheet border-2 p-3;
+        @apply my-4 rounded-control border-2 p-3;
     }
 
     .alert ul {
@@ -237,12 +358,18 @@
     }
 
     .alert-info {
-        @apply border-brand bg-brand-soft text-ink;
+        @apply bg-surface text-ink;
+        border-color: var(--line);
     }
 
-    /* Statuses are rubber stamps: ink colour carries the meaning, the tilt is the signature. */
+    /* Statuses are timetable pictograms: a drawn square (empty, half, filled, crossed) plus the word. */
     .badge {
-        @apply inline-block -rotate-2 rounded-stamp border-2 px-2.5 py-0.5 text-base font-bold;
+        @apply inline-flex items-center gap-2 rounded-control border-2 px-2.5 py-0.5 text-base font-bold;
+    }
+
+    .badge::before {
+        content: '';
+        @apply size-3.5 rounded-xs border-2 border-current;
     }
 
     .badge-pending {
@@ -250,14 +377,26 @@
     }
 
     .badge-partial {
-        @apply border-brand bg-brand-soft text-brand-strong;
+        @apply border-line-panel bg-surface text-line-panel;
+    }
+
+    .badge-partial::before {
+        background: linear-gradient(to right, currentColor 50%, transparent 50%);
     }
 
     .badge-paid {
         @apply border-ok bg-ok-soft text-ok;
     }
 
+    .badge-paid::before {
+        background: currentColor;
+    }
+
     .badge-exempt {
-        @apply border-exempt bg-canvas text-exempt;
+        @apply border-muted bg-surface text-muted;
+    }
+
+    .badge-exempt::before {
+        background: linear-gradient(to top right, transparent 44%, currentColor 44% 56%, transparent 56%);
     }
 }

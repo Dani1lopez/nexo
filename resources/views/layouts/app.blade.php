@@ -6,42 +6,46 @@
     <title>{{ $__env->hasSection('full_title') ? $__env->yieldContent('full_title') : $__env->yieldContent('title').' — Nexo' }}</title>
     @vite('resources/css/app.css')
 </head>
-<body class="flex min-h-screen flex-col">
+@php
+    // Each section is a "line" with its own colour; the body class selects it.
+    $line = request()->is('members*') ? 'socios' : (request()->is('fees*') ? 'cuotas' : (request()->is('bank*') ? 'movimientos' : 'panel'));
+@endphp
+<body class="flex min-h-screen flex-col line-{{ $line }}">
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
     <header class="site-header">
-        {{-- The public entry page runs without session, so it must not ask who is signed in. --}}
-        @hasSection('public')
-            <a class="brand" href="/">Nexo</a>
-            <a class="btn btn-secondary btn-sm ml-auto mb-1" href="/login">Acceder</a>
-        @else
-            @auth
-                <a class="brand" href="/dashboard">Nexo</a>
-                <div class="who">
-                    <span>{{ auth()->user()->name }} · {{ auth()->user()->role === 'treasury' ? 'Tesorería' : 'Junta' }}</span>
-                    <form method="post" action="/logout">@csrf<button type="submit" class="btn-secondary btn-sm">Cerrar sesión</button></form>
-                </div>
-            @else
+        <div class="site-header-inner">
+            {{-- The public entry page runs without session, so it must not ask who is signed in. --}}
+            @hasSection('public')
                 <a class="brand" href="/">Nexo</a>
-            @endauth
-        @endif
+                <a class="btn btn-secondary btn-sm ml-auto" href="/login">Acceder</a>
+            @else
+                @auth
+                    <a class="brand" href="/dashboard">Nexo</a>
+                    <div class="who">
+                        <span>{{ auth()->user()->name }} · {{ auth()->user()->role === 'treasury' ? 'Tesorería' : 'Junta' }}</span>
+                        <form method="post" action="/logout">@csrf<button type="submit" class="btn-secondary btn-sm">Cerrar sesión</button></form>
+                    </div>
+                @else
+                    <a class="brand" href="/">Nexo</a>
+                @endauth
+            @endif
+        </div>
     </header>
     @if (! $__env->hasSection('public'))
         @auth
-            <nav aria-label="Principal" class="tabs">
-                <a class="tab" href="/dashboard" @if (request()->is('dashboard')) aria-current="page" @endif>Panel</a>
-                <a class="tab" href="/members" @if (request()->is('members*')) aria-current="page" @endif>Socios</a>
-                <a class="tab" href="/fees" @if (request()->is('fees*')) aria-current="page" @endif>Cuotas</a>
-                <a class="tab" href="/bank" @if (request()->is('bank*')) aria-current="page" @endif>Movimientos</a>
+            <nav aria-label="Principal" class="route">
+                <a class="stop stop-panel" href="/dashboard" @if (request()->is('dashboard')) aria-current="page" @endif>Panel</a>
+                <a class="stop stop-socios" href="/members" @if (request()->is('members*')) aria-current="page" @endif>Socios</a>
+                <a class="stop stop-cuotas" href="/fees" @if (request()->is('fees*')) aria-current="page" @endif>Cuotas</a>
+                <a class="stop stop-movimientos" href="/bank" @if (request()->is('bank*')) aria-current="page" @endif>Movimientos</a>
             </nav>
         @endauth
     @endif
-    <main id="contenido" tabindex="-1" class="mx-auto w-full flex-1 px-4 pb-6 @if ($__env->hasSection('public') || ! auth()->check()) pt-6 @endif @hasSection('narrow') max-w-narrow @else max-w-page @endif">
-        <div class="sheet">
-            @yield('content')
-        </div>
+    <main id="contenido" tabindex="-1" class="sheet @hasSection('narrow') max-w-narrow @else max-w-page @endif">
+        @yield('content')
     </main>
     <footer class="site-footer">
-        <p>Demo con datos ficticios · No uses datos personales ni dinero real</p>
+        <p class="mx-auto">Demo con datos ficticios · No uses datos personales ni dinero real</p>
     </footer>
 </body>
 </html>
