@@ -26,7 +26,7 @@ class FeeYearController extends Controller
     {
         $feeYear = $setFeeYear->handle((int) $request->validated('year'), $request->amountCents());
 
-        return redirect("/fees/{$feeYear->id}");
+        return redirect("/fees/{$feeYear->id}")->with('status', 'Cuota fijada.');
     }
 
     public function show(FeeYear $feeYear): View
@@ -48,6 +48,6 @@ class FeeYearController extends Controller
     {
         $updateAmount->handle($feeYear, $request->amountCents());
 
-        return redirect("/fees/{$feeYear->id}");
+        return redirect("/fees/{$feeYear->id}")->with('status', 'Importe guardado.');
     }
 }

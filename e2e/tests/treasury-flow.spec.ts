@@ -11,6 +11,7 @@ test('tesorería crea un socio, fija la cuota y registra un pago parcial', async
   await page.getByLabel('Fecha de alta').fill('2020-01-01');
   await page.getByRole('button', { name: 'Crear socio' }).click();
   await expect(page).toHaveURL(/\/members$/);
+  await expect(page.getByRole('status')).toHaveText('Socio creado.');
   await expect(page.getByRole('heading', { name })).toBeVisible();
 
   await page.goto('/fees/create');
@@ -18,12 +19,15 @@ test('tesorería crea un socio, fija la cuota y registra un pago parcial', async
   await page.getByLabel('Importe en euros').fill('30');
   await page.getByRole('button', { name: 'Fijar cuota' }).click();
   await expect(page.getByRole('heading', { name: 'Cuota de 2025' })).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Cuota fijada.');
 
   const due = page.locator('article', { has: page.getByRole('heading', { name }) });
   await expect(due).toContainText('Pendiente: 30,00 €');
 
   await due.getByLabel(`Importe del pago en euros (${name})`).fill('12,50');
   await due.getByRole('button', { name: 'Registrar pago' }).click();
+  await expect(page.getByRole('status')).toHaveText('Pago registrado.');
+  await expect(page.getByRole('group', { name: 'Resumen del año' })).toContainText('Cobrado');
   await expect(due).toContainText('Pagado: 12,50 €');
   await expect(due).toContainText('Pendiente: 17,50 €');
   await expect(due).toContainText('Parcial');

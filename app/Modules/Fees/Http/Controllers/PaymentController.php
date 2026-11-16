@@ -17,13 +17,13 @@ class PaymentController extends Controller
     {
         $register->handle($due, $request->amountCents(), $request->validated('paid_on'), $request->validated('method'), $request->validated('note'), $request->validated('submission_key'));
 
-        return redirect("/fees/{$due->fee_year_id}");
+        return redirect("/fees/{$due->fee_year_id}")->with('status', 'Pago registrado.');
     }
 
     public function void(ReasonRequest $request, Payment $payment, VoidPayment $void): RedirectResponse
     {
         $void->handle($payment, $request->validated('reason'));
 
-        return redirect('/fees/'.$payment->due->fee_year_id);
+        return redirect('/fees/'.$payment->due->fee_year_id)->with('status', 'Pago anulado.');
     }
 }
