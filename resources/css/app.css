@@ -1,46 +1,45 @@
 @import 'tailwindcss';
-@import '@fontsource/barlow/latin-400.css';
-@import '@fontsource/barlow/latin-600.css';
-@import '@fontsource/barlow/latin-700.css';
-@import '@fontsource/barlow-condensed/latin-600.css';
-@import '@fontsource/barlow-condensed/latin-700.css';
+@import '@fontsource-variable/inter';
 
 @source '../views';
 
 /*
- * Design tokens. Colours, type and spacing live here and nowhere else:
- * views use the generated utilities (bg-canvas, text-muted, max-w-page...), never hex values.
+ * Design tokens. Colours, type and spacing live here and nowhere else.
  *
- * The visual idea is public-transport wayfinding: every section of the app is a "line" with its
- * own colour, navigation is a line diagram with stops, and statuses are timetable pictograms.
- * The body class (line-panel, line-socios...) sets --line, the colour of the current line.
+ * Direction: a calm, dense application shell. Hierarchy comes from type size, weight and space
+ * rather than from boxes; surfaces are separated by translucent shadows instead of solid borders;
+ * colour is reserved for meaning. Each section keeps a quiet "line" accent (a dot in the menu,
+ * links, primary buttons) that nods to the transit-map idea of Nexo without shouting.
+ * The body class (line-panel, line-socios...) sets --line, the accent of the current section.
  */
-@theme {
-    --font-sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+@theme static {
+    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-    --color-canvas: #eef0f4;
+    --color-canvas: #f6f7f9;
     --color-surface: #ffffff;
-    --color-rule: #c9ced8;
-    --color-ink: #14213d;
-    --color-muted: #4a5568;
+    --color-ink: #0f172a;
+    --color-muted: #5b6475;
+    --color-rule: #e4e7ec;
 
-    --color-line-panel: #1f4fbf;
-    --color-line-socios: #00796b;
-    --color-line-cuotas: #b4530a;
-    --color-line-movimientos: #7b3fa0;
+    --color-line-panel: #3451d1;
+    --color-line-socios: #0f766e;
+    --color-line-cuotas: #b45309;
+    --color-line-movimientos: #6d28d9;
 
-    --color-danger: #b3261e;
-    --color-danger-strong: #7f1a15;
-    --color-danger-soft: #fceae8;
-    --color-warn: #8a4b00;
-    --color-warn-soft: #fdefd3;
-    --color-ok: #1b6b3a;
-    --color-ok-soft: #e1f2e7;
+    --color-danger: #b42318;
+    --color-danger-strong: #912018;
+    --color-danger-soft: #fef3f2;
+    --color-warn: #93370d;
+    --color-warn-soft: #fef0c7;
+    --color-ok: #067647;
+    --color-ok-soft: #dcfae6;
+    --color-info: #3538cd;
+    --color-info-soft: #e0eaff;
+    --color-neutral-soft: #eef0f3;
 
-    --container-page: 64rem;
-    --container-narrow: 28rem;
-    --radius-control: 0.375rem;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --shadow-ring: 0 0 0 1px rgb(15 23 42 / 0.07), 0 1px 2px rgb(15 23 42 / 0.05);
+    --shadow-lift: 0 0 0 1px rgb(15 23 42 / 0.07), 0 6px 16px -4px rgb(15 23 42 / 0.1);
 }
 
 @layer base {
@@ -51,10 +50,15 @@
 
     body {
         --line: var(--color-line-panel);
-        --line-soft: color-mix(in srgb, var(--line) 11%, white);
-        @apply bg-canvas font-sans text-lg/relaxed text-ink antialiased;
+        --line-soft: color-mix(in srgb, var(--line) 8%, white);
+        font-family: var(--font-sans);
+        font-size: 0.9375rem;
+        line-height: 1.6;
+        color: var(--color-ink);
+        background: var(--color-canvas);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
         font-variant-numeric: tabular-nums;
-        caret-color: var(--line);
     }
 
     body.line-socios {
@@ -70,79 +74,145 @@
     }
 
     ::selection {
-        background: var(--line);
-        color: white;
+        background: color-mix(in srgb, var(--line) 22%, white);
     }
 
     a {
-        @apply font-semibold underline decoration-2 underline-offset-4 hover:bg-(--line-soft);
         color: var(--line);
+        font-weight: 500;
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        text-decoration-color: color-mix(in srgb, var(--line) 38%, transparent);
+        transition: text-decoration-color 150ms var(--ease-out);
+    }
+
+    a:hover {
+        text-decoration-color: currentColor;
     }
 
     :focus-visible {
-        @apply outline-3 outline-offset-3 outline-ink;
+        outline: 2px solid var(--line);
+        outline-offset: 2px;
+        border-radius: 0.25rem;
     }
 
     h1,
     h2,
     h3 {
-        @apply font-display text-ink;
+        color: var(--color-ink);
+        text-wrap: balance;
     }
 
     h1 {
-        @apply mb-3 text-6xl/none font-bold tracking-tight;
-        color: var(--line);
+        margin: 0 0 0.25rem;
+        font-size: 1.75rem;
+        line-height: 1.2;
+        font-weight: 650;
+        letter-spacing: -0.025em;
     }
 
     h2 {
-        @apply mt-10 mb-2 text-3xl/none font-bold;
+        margin: 2.25rem 0 0.5rem;
+        font-size: 1.25rem;
+        line-height: 1.3;
+        font-weight: 600;
+        letter-spacing: -0.015em;
     }
 
     h3 {
-        @apply mt-4 mb-1 text-2xl/none font-semibold;
+        margin: 1rem 0 0.25rem;
+        font-size: 1rem;
+        line-height: 1.4;
+        font-weight: 600;
     }
 
     p {
-        @apply my-2 max-w-prose;
+        margin: 0.5rem 0;
+        max-width: 65ch;
     }
 
     label {
-        @apply mt-4 mb-1 block font-semibold;
+        display: block;
+        margin: 1rem 0 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 550;
     }
 
     input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
     select {
-        @apply block min-h-12 w-full rounded-control border-2 border-ink bg-surface px-3 py-2 text-lg;
+        display: block;
+        width: 100%;
+        min-height: 2.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9375rem;
+        color: var(--color-ink);
+        background: var(--color-surface);
+        border: 1px solid #cfd4dc;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+        transition:
+            border-color 150ms var(--ease-out),
+            box-shadow 150ms var(--ease-out);
     }
 
-    input[type='file'] {
-        @apply file:mr-4 file:cursor-pointer file:rounded-control file:border-0 file:px-4 file:py-2 file:font-semibold;
+    input:not([type='hidden']):focus,
+    select:focus {
+        outline: none;
+        border-color: var(--line);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--line) 20%, transparent);
     }
 
     input[type='file']::file-selector-button {
-        background: var(--line-soft);
+        margin-right: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        font: inherit;
+        font-weight: 550;
         color: var(--line);
+        background: var(--line-soft);
+        border: 0;
+        border-radius: 0.375rem;
+        cursor: pointer;
     }
 
     dl {
-        @apply my-3 grid grid-cols-1 gap-x-6 gap-y-0.5 sm:grid-cols-[max-content_1fr];
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.125rem 1.5rem;
+        margin: 0.75rem 0;
     }
 
     dt {
-        @apply font-semibold text-muted;
+        font-weight: 550;
+        color: var(--color-muted);
     }
 
     dd {
-        @apply mb-2 break-words sm:mb-0;
+        margin: 0 0 0.5rem;
+        overflow-wrap: anywhere;
     }
 
     ul {
-        @apply my-2 list-disc pl-6;
+        margin: 0.5rem 0;
+        padding-left: 1.25rem;
+        list-style: disc;
+    }
+
+    @media (min-width: 40rem) {
+        dl {
+            grid-template-columns: max-content 1fr;
+        }
+
+        dd {
+            margin-bottom: 0;
+        }
     }
 
     @media (prefers-reduced-motion: reduce) {
         * {
             scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+            animation-duration: 0.01ms !important;
         }
     }
 }
@@ -151,124 +221,213 @@
     /* Buttons: native buttons and links that act as buttons share one look. */
     button,
     .btn {
-        @apply mt-5 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-control border-2 px-6 py-2 text-lg font-semibold text-white no-underline hover:text-white disabled:cursor-not-allowed disabled:opacity-60;
-        border-color: var(--line);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.5rem;
+        margin-top: 1.25rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.9375rem;
+        font-weight: 550;
+        line-height: 1.25;
+        color: #fff;
+        text-decoration: none;
         background: var(--line);
+        border: 1px solid color-mix(in srgb, var(--line) 85%, black);
+        border-radius: 0.5rem;
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.14),
+            0 1px 2px rgb(15 23 42 / 0.14);
+        cursor: pointer;
+        transition:
+            background-color 150ms var(--ease-out),
+            box-shadow 150ms var(--ease-out),
+            transform 160ms var(--ease-out);
     }
 
-    button:hover,
-    .btn:hover {
-        background: color-mix(in srgb, var(--line) 82%, black);
-        border-color: color-mix(in srgb, var(--line) 82%, black);
+    button:active,
+    .btn:active {
+        transform: scale(0.97);
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    @media (hover: hover) {
+        button:hover,
+        .btn:hover {
+            color: #fff;
+            background: color-mix(in srgb, var(--line) 88%, black);
+        }
     }
 
     .btn-secondary {
+        color: var(--color-ink);
         background: var(--color-surface);
-        color: var(--line);
-    }
-
-    .btn-secondary:hover {
-        background: var(--line-soft);
-        color: var(--line);
-        border-color: var(--line);
+        border-color: transparent;
+        box-shadow: var(--shadow-ring);
     }
 
     .btn-danger {
-        @apply border-danger bg-surface text-danger hover:border-danger hover:bg-danger-soft hover:text-danger-strong;
+        color: var(--color-danger);
+        background: var(--color-surface);
+        border-color: transparent;
+        box-shadow: var(--shadow-ring);
+    }
+
+    @media (hover: hover) {
+        .btn-secondary:hover {
+            color: var(--color-ink);
+            background: #f9fafb;
+        }
+
+        .btn-danger:hover {
+            color: var(--color-danger-strong);
+            background: var(--color-danger-soft);
+        }
     }
 
     .btn-sm {
-        @apply mt-0 min-h-10 px-3 py-1 text-base;
+        min-height: 2rem;
+        margin-top: 0;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
     }
 
     /* Page frame */
     .skip-link {
-        @apply absolute left-4 top-0 z-50 -translate-y-full rounded-b-control bg-ink px-4 py-2 text-white no-underline focus:translate-y-0 focus:bg-ink focus:text-white;
+        position: absolute;
+        top: 0;
+        left: 1rem;
+        z-index: 50;
+        padding: 0.5rem 1rem;
+        color: #fff;
+        text-decoration: none;
+        background: var(--color-ink);
+        border-radius: 0 0 0.5rem 0.5rem;
+        transform: translateY(-100%);
     }
 
-    .site-header {
-        @apply bg-ink text-white;
-        border-bottom: 8px solid var(--line);
+    .skip-link:focus {
+        transform: translateY(0);
+        color: #fff;
     }
 
-    .site-header :focus-visible {
-        @apply outline-white;
+    .frame {
+        width: 100%;
+        max-width: 72rem;
+        margin-inline: auto;
+        padding-inline: 1rem;
     }
 
-    .site-header:has(.platform) {
-        border-bottom: 0;
+    .topbar {
+        background: var(--color-surface);
+        box-shadow: 0 1px 0 rgb(15 23 42 / 0.07);
     }
 
-    /* The platform sign: the current line's name, large, on its own colour. */
-    .platform {
-        background: var(--line);
-    }
-
-    .platform-inner {
-        @apply mx-auto max-w-page px-4 py-1 font-display text-4xl/none font-bold text-white;
-    }
-
-    .status {
-        @apply mt-0 max-w-none;
-    }
-
-    .site-header-inner {
-        @apply mx-auto flex max-w-page flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3;
+    .topbar-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        min-height: 3.5rem;
+        padding-block: 0.5rem;
     }
 
     .brand {
-        @apply mr-2 font-display text-4xl/none font-bold tracking-tight text-white no-underline hover:bg-transparent hover:text-white;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.125rem;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        color: var(--color-ink);
+        text-decoration: none;
+    }
+
+    .brand svg {
+        color: var(--line);
     }
 
     .who {
-        @apply ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-white;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        margin-left: auto;
+        font-size: 0.875rem;
+        color: var(--color-muted);
     }
 
-    .site-header .btn-secondary {
-        @apply border-white bg-transparent text-white hover:border-white hover:bg-white/15 hover:text-white;
+    /* Application shell: section menu on the left from md up, a scrolling row on phones. */
+    .shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        flex: 1;
+        gap: 1.25rem;
+        padding-block: 1.25rem 2rem;
     }
 
-    /*
-     * The line diagram: four stops joined by a coloured track. Each stop carries its own line
-     * colour; the current one is filled. The track is decoration, the links are the navigation.
-     */
-    .route {
-        @apply relative mx-auto mt-6 grid w-full max-w-page grid-cols-4 px-4;
-    }
-
-    .route::before {
-        content: '';
-        @apply absolute top-[0.8125rem] right-[calc(1rem+12.5%)] left-[calc(1rem+12.5%)] h-2 rounded-full;
-        background: linear-gradient(
-            to right,
-            var(--color-line-panel),
-            var(--color-line-socios),
-            var(--color-line-cuotas),
-            var(--color-line-movimientos)
-        );
+    .side {
+        position: relative;
+        display: flex;
+        gap: 0.25rem;
+        overflow-x: auto;
+        padding: 0.125rem;
     }
 
     .stop {
-        @apply relative flex flex-col items-center gap-1.5 px-0.5 text-center text-base/tight font-semibold text-ink no-underline hover:bg-transparent hover:text-ink sm:text-lg/tight;
+        position: relative;
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.5rem 0.75rem;
+        font-weight: 500;
+        color: var(--color-ink);
+        text-decoration: none;
+        border-radius: 0.5rem;
+        transition:
+            background-color 150ms var(--ease-out),
+            box-shadow 150ms var(--ease-out);
     }
 
     .stop::before {
         content: '';
-        @apply z-10 size-8 rounded-full border-[6px] bg-surface;
-        border-color: var(--stop);
+        position: relative;
+        z-index: 1;
+        width: 0.5rem;
+        height: 0.5rem;
+        background: var(--stop);
+        border-radius: 999px;
+        box-shadow: 0 0 0 3px var(--color-canvas);
     }
 
-    .stop:hover::before {
-        background: var(--stop);
+    @media (hover: hover) {
+        .stop:hover {
+            background: rgb(15 23 42 / 0.05);
+        }
     }
 
     .stop[aria-current='page'] {
-        @apply font-bold;
+        font-weight: 600;
+        background: var(--color-surface);
+        box-shadow: var(--shadow-ring);
     }
 
     .stop[aria-current='page']::before {
-        background: var(--stop);
-        box-shadow: 0 0 0 4px var(--color-canvas), 0 0 0 7px var(--stop);
+        box-shadow: 0 0 0 3px var(--color-surface);
+    }
+
+    @media (max-width: 39.99rem) {
+        .stop {
+            gap: 0.375rem;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }
     }
 
     .stop-panel {
@@ -287,190 +446,263 @@
         --stop: var(--color-line-movimientos);
     }
 
+    @media (min-width: 48rem) {
+        .shell {
+            grid-template-columns: 12.5rem minmax(0, 1fr);
+            gap: 2.5rem;
+            padding-block: 2rem 3rem;
+        }
+
+        .side {
+            flex-direction: column;
+            align-self: start;
+            position: sticky;
+            top: 1.5rem;
+            overflow: visible;
+        }
+
+        /* A faint track joins the stops, echoing a transit line. */
+        .side::before {
+            content: '';
+            position: absolute;
+            top: 1.25rem;
+            bottom: 1.25rem;
+            left: calc(0.875rem + 3px);
+            width: 2px;
+            background: linear-gradient(
+                to bottom,
+                var(--color-line-panel),
+                var(--color-line-socios),
+                var(--color-line-cuotas),
+                var(--color-line-movimientos)
+            );
+            opacity: 0.35;
+            border-radius: 999px;
+        }
+    }
+
+    .content {
+        min-width: 0;
+    }
+
+    .content-narrow {
+        align-self: start;
+        max-width: 30rem;
+        padding: 1.5rem;
+        background: var(--color-surface);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-ring);
+    }
+
+    .guest {
+        flex: 1;
+        width: 100%;
+        max-width: 72rem;
+        margin-inline: auto;
+        padding: 2rem 1rem 3rem;
+    }
+
+    .guest-narrow {
+        flex: none;
+        align-self: center;
+        max-width: 26rem;
+        margin-block: 2.5rem;
+        padding: 1.75rem;
+        background: var(--color-surface);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-lift);
+    }
+
     .site-footer {
-        @apply bg-ink px-4 py-8 text-center text-base text-white/85;
-        border-top: 8px solid var(--line);
+        padding: 1.5rem 1rem 2rem;
+        font-size: 0.8125rem;
+        text-align: center;
+        color: var(--color-muted);
+    }
+
+    .site-footer p {
+        max-width: none;
+        margin: 0;
     }
 
     .back-link {
-        @apply mb-4 text-base;
+        margin-bottom: 0.75rem;
+        font-size: 0.875rem;
     }
 
-    /* Content: forms and data rows sit on white panels over the grey ground. */
-    .sheet {
-        @apply mx-auto w-full flex-1 px-4 pt-6 pb-4;
-    }
-
-    .form-page {
-        @apply mx-auto my-8 w-[calc(100%-2rem)] flex-1 self-start rounded-control border border-rule bg-surface p-6 sm:p-8;
-    }
-
+    /* Content: records sit on white surfaces separated by a translucent ring, not by solid borders. */
     .entry {
-        @apply my-3 rounded-control border border-rule bg-surface px-5 py-4;
+        margin: 0.75rem 0;
+        padding: 1.25rem;
+        background: var(--color-surface);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-ring);
     }
 
-    /* Facts of one record on a single running line instead of a stacked list. */
+    .entry h2 {
+        margin: 0 0 0.25rem;
+        font-size: 1.125rem;
+    }
+
     .entry dl {
-        @apply block;
+        display: block;
+        margin: 0.25rem 0;
     }
 
     .entry dt,
     .entry dd {
-        @apply inline;
+        display: inline;
     }
 
     .entry dd {
-        @apply mr-6 ml-1.5;
+        margin: 0 1.5rem 0 0.375rem;
     }
 
-    /* A board joins many short rows into one table-like surface, like a departures panel. */
+    /* A board joins many short rows into one surface, like a table. */
     .board {
-        @apply my-4 overflow-hidden rounded-control border border-rule bg-surface;
+        margin: 1rem 0;
+        overflow: hidden;
+        background: var(--color-surface);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-ring);
     }
 
     .board > .entry {
-        @apply my-0 rounded-none border-0 border-b border-rule;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
     }
 
-    .board > .entry:last-child {
-        @apply border-b-0;
+    .board > .entry + .entry {
+        box-shadow: 0 -1px 0 rgb(15 23 42 / 0.07);
     }
 
     .movement {
-        @apply grid grid-cols-[1fr_auto] items-center gap-x-4;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        column-gap: 1rem;
     }
 
     .movement h3 {
-        @apply col-start-1 row-start-1 mb-0 break-words text-2xl/tight;
+        grid-column: 1;
+        grid-row: 1;
+        margin: 0;
+        font-size: 0.9375rem;
+        overflow-wrap: anywhere;
     }
 
     .movement dl {
-        @apply contents;
+        display: contents;
     }
 
     .movement dt {
-        @apply sr-only;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 
     .movement dd {
-        @apply col-start-1 row-start-2 m-0 text-base text-muted;
+        grid-column: 1;
+        grid-row: 2;
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--color-muted);
     }
 
     .movement dd.amount {
-        @apply col-start-2 row-span-2 row-start-1 font-display text-3xl/none font-semibold whitespace-nowrap text-ink;
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        font-size: 1.0625rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        color: var(--color-ink);
     }
 
     .movement dd.amount-out {
-        @apply text-danger;
+        color: var(--color-danger);
     }
 
     .movement dd.amount-in {
-        @apply text-ok;
+        color: var(--color-ok);
     }
 
-    .entry h2 {
-        @apply mt-0 mb-1 text-3xl;
-    }
-
-    /* Home: the route of the money as a line map, vertical on phones and horizontal from sm up. */
-    .map {
-        @apply relative my-10 grid list-none gap-8 pl-0 sm:grid-cols-4 sm:gap-4;
-    }
-
-    /* On phones each stop draws its own segment down to the next one; the last one has none. */
-    .map::before {
-        display: none;
-    }
-
-    .map li::after {
-        content: '';
-        @apply absolute top-8 -bottom-8 left-3 w-2;
-        background: var(--stop);
-    }
-
-    .map li:last-child::after {
-        display: none;
-    }
-
-    .map li {
-        @apply relative flex flex-col pl-14 sm:pt-14 sm:pl-0;
-    }
-
-    .map li::before {
-        content: '';
-        @apply absolute top-0 left-0 size-8 rounded-full border-[6px] bg-surface;
-        border-color: var(--stop);
-    }
-
-    .map strong {
-        @apply font-display text-3xl/none font-bold;
-        color: var(--stop);
-    }
-
-    .map span {
-        @apply mt-1 text-base text-muted;
-    }
-
-    .map .stop-next {
-        --stop: var(--color-muted);
-    }
-
-    .map .stop-next::before {
-        @apply border-dashed;
-    }
-
-    @media (min-width: 40rem) {
-        .map li::after {
-            display: none;
-        }
-
-        .map::before {
-            @apply absolute top-3 right-[calc(25%-1rem)] left-4 block h-2 rounded-full;
-            background: linear-gradient(
-                to right,
-                var(--color-line-socios),
-                var(--color-line-cuotas),
-                var(--color-line-movimientos),
-                var(--color-muted)
-            );
-        }
-    }
-
-    /* Filters are one segmented track in the colour of the current line. */
+    /* Filters: one segmented control. */
     .filters {
-        @apply my-4 flex flex-wrap;
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.125rem;
+        margin: 1rem 0;
+        padding: 0.1875rem;
+        background: rgb(15 23 42 / 0.06);
+        border-radius: 0.625rem;
+    }
+
+    .filters:not(:has(a)) {
+        display: none;
     }
 
     .filters a {
-        @apply -ml-0.5 min-h-10 border-2 bg-surface px-5 py-1.5 text-base font-semibold text-ink no-underline first:ml-0 first:rounded-l-control last:rounded-r-control hover:bg-(--line-soft);
-        border-color: var(--line);
+        padding: 0.3125rem 0.875rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-muted);
+        text-decoration: none;
+        border-radius: 0.4375rem;
+        transition:
+            background-color 150ms var(--ease-out),
+            color 150ms var(--ease-out);
     }
 
     .filters a[aria-current='page'] {
-        @apply text-white hover:text-white;
-        background: var(--line);
+        color: var(--color-ink);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-ring);
     }
 
+    /* Dashboard destinations: a list, each title in its section accent. */
     .link-grid {
-        @apply my-6 grid gap-3 sm:grid-cols-3;
+        margin: 1.5rem 0;
+        overflow: hidden;
+        background: var(--color-surface);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-ring);
     }
 
-    /* One destination per line, each in its own line colour. */
     .link-card {
-        @apply flex min-h-36 flex-col justify-end gap-1 rounded-control p-4 text-white no-underline hover:text-white;
-        background: var(--card);
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        padding: 1rem 1.25rem;
+        color: var(--color-ink);
+        text-decoration: none;
+        transition: background-color 150ms var(--ease-out);
+    }
+
+    .link-card + .link-card {
+        box-shadow: 0 -1px 0 rgb(15 23 42 / 0.07);
     }
 
     .link-card strong {
-        @apply font-display text-3xl/none font-bold;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--card);
     }
 
     .link-card span {
-        @apply text-base/snug font-normal;
+        font-size: 0.875rem;
+        font-weight: 400;
+        color: var(--color-muted);
     }
 
-    .link-card:hover {
-        background: color-mix(in srgb, var(--card) 82%, black);
+    @media (hover: hover) {
+        .link-card:hover {
+            background: color-mix(in srgb, var(--card) 6%, white);
+        }
     }
 
     .link-card:nth-child(1) {
@@ -486,194 +718,264 @@
     }
 
     .form-block {
-        @apply mt-4 rounded-control border-2 border-dashed border-rule bg-canvas p-4;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fb;
+        border-radius: 0.625rem;
+        box-shadow: 0 0 0 1px rgb(15 23 42 / 0.06);
     }
 
     .notice {
-        @apply text-base text-muted;
+        font-size: 0.875rem;
+        color: var(--color-muted);
     }
 
     .alert {
-        @apply my-4 rounded-control border-2 p-3;
+        margin: 1rem 0;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
     }
 
     .alert ul {
-        @apply my-0;
+        margin: 0;
     }
 
     .alert-error {
-        @apply border-danger bg-danger-soft text-danger-strong;
+        color: var(--color-danger-strong);
+        background: var(--color-danger-soft);
+        box-shadow: 0 0 0 1px #fecdca;
     }
 
     .alert-ok {
-        @apply border-ok bg-ok-soft text-ink;
+        color: #054f31;
+        background: #ecfdf3;
+        box-shadow: 0 0 0 1px #abefc6;
     }
 
     .alert-info {
-        @apply bg-surface text-ink;
-        border-color: var(--line);
+        color: var(--color-ink);
+        background: var(--line-soft);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 22%, white);
     }
 
-    /* Statuses are timetable pictograms: a drawn square (empty, half, filled, crossed) plus the word. */
+    .status {
+        max-width: none;
+        margin-top: 0;
+        transition:
+            opacity 220ms var(--ease-out),
+            transform 220ms var(--ease-out);
+    }
+
+    @starting-style {
+        .status {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+    }
+
+    /* Statuses are quiet tinted pills with a dot; the word carries the meaning. */
     .badge {
-        @apply inline-flex items-center gap-2 rounded-control border-2 px-2.5 py-0.5 text-base font-bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.125rem 0.625rem;
+        font-size: 0.8125rem;
+        font-weight: 550;
+        border-radius: 999px;
     }
 
     .badge::before {
         content: '';
-        @apply size-3.5 rounded-xs border-2 border-current;
+        width: 0.375rem;
+        height: 0.375rem;
+        background: currentColor;
+        border-radius: 999px;
     }
 
     .badge-pending {
-        @apply border-warn bg-warn-soft text-warn;
+        color: var(--color-warn);
+        background: var(--color-warn-soft);
     }
 
     .badge-partial {
-        @apply border-line-panel bg-surface text-line-panel;
-    }
-
-    .badge-partial::before {
-        background: linear-gradient(to right, currentColor 50%, transparent 50%);
+        color: var(--color-info);
+        background: var(--color-info-soft);
     }
 
     .badge-paid {
-        @apply border-ok bg-ok-soft text-ok;
-    }
-
-    .badge-paid::before {
-        background: currentColor;
+        color: var(--color-ok);
+        background: var(--color-ok-soft);
     }
 
     .badge-exempt {
-        @apply border-muted bg-surface text-muted;
+        color: #475467;
+        background: var(--color-neutral-soft);
     }
 
-    .badge-exempt::before {
-        background: linear-gradient(to top right, transparent 44%, currentColor 44% 56%, transparent 56%);
-    }
-}
-
-@layer components {
-    /* Year summary, like the totals line of a departures board. */
+    /* Year summary */
     .tally {
-        @apply my-5 grid overflow-hidden rounded-control border border-ink bg-ink sm:grid-cols-3;
+        display: grid;
         gap: 1px;
+        margin: 1.25rem 0;
+        overflow: hidden;
+        background: rgb(15 23 42 / 0.08);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-ring);
     }
 
     .tally p {
-        @apply m-0 max-w-none bg-surface p-4;
+        max-width: none;
+        margin: 0;
+        padding: 1rem 1.25rem;
+        background: var(--color-surface);
     }
 
     .tally span {
-        @apply block text-base text-muted;
+        display: block;
+        font-size: 0.8125rem;
+        color: var(--color-muted);
     }
 
     .tally strong {
-        @apply font-display text-4xl/none font-bold;
+        font-size: 1.625rem;
+        font-weight: 650;
+        letter-spacing: -0.02em;
     }
 
-    /* A large status pictogram marks every due; the badge keeps the word. */
-    .due {
-        @apply relative pr-5 sm:pl-24;
-    }
-
-    .due h2 {
-        @apply pr-12 sm:pr-0;
-    }
-
-    .due::before {
-        content: '';
-        @apply absolute top-5 right-5 size-8 rounded-xs border-4 border-current sm:top-6 sm:right-auto sm:left-6 sm:size-12;
-    }
-
-    .due-pending {
-        @apply text-warn;
-    }
-
-    .due-partial {
-        @apply text-line-panel;
-    }
-
-    .due-partial::before {
-        background: linear-gradient(to right, currentColor 50%, transparent 50%);
-    }
-
-    .due-paid {
-        @apply text-ok;
-    }
-
-    .due-paid::before {
-        background: currentColor;
-    }
-
-    .due-exempt {
-        @apply text-muted;
-    }
-
-    .due-exempt::before {
-        background: linear-gradient(to top right, transparent 44%, currentColor 44% 56%, transparent 56%);
-    }
-
-    .due > * {
-        @apply text-ink;
+    @media (min-width: 40rem) {
+        .tally {
+            grid-template-columns: repeat(3, 1fr);
+        }
     }
 
     .empty {
-        @apply my-4 flex flex-col items-start gap-3 rounded-control border-2 border-dashed border-rule bg-surface p-6;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin: 1rem 0;
+        padding: 1.5rem;
+        background: var(--color-surface);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-ring);
     }
 
     .empty p {
-        @apply m-0;
-    }
-}
-
-/* One authored moment: the line draws itself and the stops pop in, once per page load. */
-@media (prefers-reduced-motion: no-preference) {
-    .route::before {
-        animation: track-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+        margin: 0;
+        color: var(--color-muted);
     }
 
-    .stop::before {
-        animation: stop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    /* Home */
+    .hero h1 {
+        max-width: 16ch;
+        margin: 0;
+        font-size: clamp(2.25rem, 6.5vw, 3.75rem);
+        line-height: 1.04;
+        font-weight: 650;
+        letter-spacing: -0.035em;
     }
 
-    .stop:nth-child(2)::before {
-        animation-delay: 0.12s;
+    .hero .lead {
+        max-width: 36rem;
+        margin: 1rem 0 1.5rem;
+        font-size: 1.125rem;
+        line-height: 1.55;
+        color: var(--color-muted);
     }
 
-    .stop:nth-child(3)::before {
-        animation-delay: 0.24s;
+    .hero .btn {
+        margin-top: 0;
     }
 
-    .stop:nth-child(4)::before {
-        animation-delay: 0.36s;
-    }
-}
-
-@keyframes track-in {
-    from {
-        clip-path: inset(0 100% 0 0);
+    .sample {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        column-gap: 1rem;
+        padding: 0.875rem 1.25rem;
     }
 
-    to {
-        clip-path: inset(0);
-    }
-}
-
-@keyframes stop-in {
-    from {
-        transform: scale(0.4);
+    .sample + .sample {
+        box-shadow: 0 -1px 0 rgb(15 23 42 / 0.07);
     }
 
-    to {
-        transform: scale(1);
+    .sample strong {
+        font-weight: 600;
+    }
+
+    .sample small {
+        grid-column: 1;
+        font-size: 0.8125rem;
+        color: var(--color-muted);
+    }
+
+    .sample b {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        font-size: 1.0625rem;
+        font-weight: 600;
+    }
+
+    .sample-caption {
+        max-width: none;
+        margin: 0;
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8125rem;
+        color: var(--color-muted);
+        background: #f8f9fb;
+        box-shadow: 0 1px 0 rgb(15 23 42 / 0.07);
+    }
+
+    /* The route of the money: four stops, the last one still to come. */
+    .map {
+        display: grid;
+        gap: 1.25rem;
+        margin: 2.5rem 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .map li {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        padding-top: 0.875rem;
+        box-shadow: 0 -2px 0 var(--stop);
+    }
+
+    .map strong {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--stop);
+    }
+
+    .map span {
+        font-size: 0.875rem;
+        color: var(--color-muted);
+    }
+
+    .map .stop-next {
+        --stop: #98a2b3;
+        box-shadow: none;
+        background: repeating-linear-gradient(to right, #98a2b3 0 6px, transparent 6px 10px) top / 100% 2px no-repeat;
+    }
+
+    .map .stop-next strong {
+        color: var(--color-muted);
+    }
+
+    @media (min-width: 40rem) {
+        .map {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
     }
 }
 
 /* Treasurers print lists for the board: keep the data, drop the chrome. */
 @media print {
-    .site-header,
-    .route,
+    .topbar,
+    .side,
     .site-footer,
     .skip-link,
     .back-link,
@@ -690,6 +992,11 @@
         font-size: 11pt;
     }
 
+    .shell {
+        display: block;
+        padding: 0;
+    }
+
     main::before {
         content: 'Nexo — demo con datos ficticios';
         display: block;
@@ -697,18 +1004,18 @@
         font-weight: 700;
     }
 
-    h1,
     a {
         color: black;
         text-decoration: none;
     }
 
-    .board {
-        overflow: visible;
+    .board,
+    .entry {
+        box-shadow: none;
+        border: 1px solid #999;
     }
 
     .entry {
         break-inside: avoid;
-        border-color: black;
     }
 }

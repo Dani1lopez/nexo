@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { logIn } from '../support/session';
 
 // Same value as --color-canvas in resources/css/app.css, as the browser reports it.
-const canvas = 'rgb(238, 240, 244)';
+const canvas = 'rgb(246, 247, 249)';
 
 test.describe('base visual', () => {
   test('la hoja de estilos compilada se carga en la página pública y en la de acceso', async ({ page }) => {
@@ -77,12 +77,12 @@ test.describe('base visual', () => {
     expect(await overflow(), 'detalle de la cuota').toBeLessThanOrEqual(0);
   });
 
-  test('un filtro sin socios ofrece el siguiente paso y la sección actual se anuncia en la cabecera', async ({ page }) => {
+  test('un filtro sin socios ofrece el siguiente paso y el menú marca la sección actual', async ({ page }) => {
     await logIn(page, 'treasury');
     await page.goto('/members?estado=bajas');
     await expect(page.getByText('No hay socios que mostrar con este filtro.')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Añadir un socio' })).toBeVisible();
-    await expect(page.locator('.platform')).toHaveText('Socios');
+    await expect(page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Socios' })).toHaveAttribute('aria-current', 'page');
   });
 
   test('al imprimir solo queda el contenido: sin navegación, sin formularios ni botones', async ({ page }) => {

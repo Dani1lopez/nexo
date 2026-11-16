@@ -2,11 +2,19 @@
 @section('public', true)
 @section('full_title', 'Nexo — Tesorería para asociaciones')
 @section('content')
-    <header>
+    <header class="hero">
+        <h1>Tesorería para asociaciones</h1>
+        <p class="lead">Las cuentas de la asociación, claras para quien venga después. Socios, cuotas y movimientos del banco en un solo sitio.</p>
+        <a class="btn" href="/login">Entrar a la demo</a>
         <p class="notice">Demo en construcción · Datos ficticios</p>
-        <h1 class="text-8xl">Nexo</h1>
-        <p class="font-display text-4xl/none font-semibold">Tesorería para asociaciones</p>
     </header>
+
+    <div class="board mt-10" role="img" aria-label="Ejemplo ficticio de movimientos bancarios">
+        <p class="sample-caption">Así se ven los movimientos importados del banco. Ejemplo con datos ficticios.</p>
+        <div class="sample"><strong>Cuota Ana</strong><small>12/01/2026</small><b class="text-ok">10,00 €</b></div>
+        <div class="sample"><strong>Recibo luz enero</strong><small>15/01/2026</small><b class="text-danger">-84,50 €</b></div>
+        <div class="sample"><strong>Ingreso Luis Gómez</strong><small>10/03/2025</small><b class="text-ok">15,00 €</b></div>
+    </div>
 
     <ol class="map" aria-label="Recorrido del dinero en una asociación">
         <li class="stop-socios">
