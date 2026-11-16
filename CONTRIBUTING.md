@@ -22,7 +22,7 @@ El workflow `.github/workflows/ci.yml` se ejecuta en cada PR hacia `main` y en c
 | Trabajo | Cuándo | Qué comprueba |
 | --- | --- | --- |
 | `Comprobaciones (PHP 8.4)` y `(PHP 8.5)` | Siempre | `composer validate --strict`, `git diff --check`, formato con Pint, análisis estático con Larastan, PHPUnit que falla también por avisos, deprecaciones, notices y pruebas arriesgadas, migraciones desde cero con reversión completa y reaplicación, y `shellcheck`. En PHP 8.5 también `composer audit` |
-| `E2E (Playwright)` | En `main`, y en una PR solo si cambia `app`, `bootstrap`, `config`, `database`, `e2e`, `public`, `resources`, `routes`, `scripts`, las dependencias o los workflows. Solo se ejecuta si las comprobaciones anteriores pasan | Flujos reales en Chromium contra `php artisan serve` con un SQLite temporal: acceso y permisos con sesión y cookies reales, flujo de tesorería (socio, cuota y pago parcial) y, cuando existan, los flujos de cada funcionalidad crítica |
+| `E2E (Playwright)` | En `main`, y en una PR solo si cambia `app`, `bootstrap`, `config`, `database`, `e2e`, `public`, `resources`, `routes`, `scripts`, las dependencias o los workflows. Solo se ejecuta si las comprobaciones anteriores pasan | Flujos reales en Chromium contra `php artisan serve` con un SQLite temporal: acceso y permisos con sesión y cookies reales, flujo de tesorería (socio, cuota y pago parcial), importación CSV (subida real, filas rechazadas, reimportación detectada y junta sin acceso a importar) y, cuando existan, los flujos de cada funcionalidad crítica |
 
 Reglas:
 
