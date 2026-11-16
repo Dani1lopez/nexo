@@ -44,6 +44,17 @@ La recomendación inicial es **tomar la estructura de 03 para el trabajo de conc
 
 P6 primero como línea base medida, luego P1 y P2 (baratos, alto impacto), después P3 y P4, y P5 al final, cuando la estructura ya no cambie. P7 cierra cada fase, no solo el final.
 
+## Entrega
+
+Rama `feat/26-visual-foundation`, issue #26. Límites de rebanada, para que el revisor no reciba una sorpresa:
+
+| Rebanada | Commit | Contenido |
+| --- | --- | --- |
+| 1 | `687f372` | Documentación de diseño: sincronización del sistema, cuatro direcciones, benchmark y este documento (1.693 líneas, casi todas HTML de tableros) |
+| 2 | `be23658` | Fundamento real: tokens aditivos en `app.css`, `scripts/check-weight.mjs` y script npm (207 líneas) |
+
+El código de producción de esta entrega son unas 130 líneas; el volumen de la rebanada 1 son tableros de diseño, no código que se ejecute. Si el revisor prefiere separarlo, la rebanada 2 se puede llevar a su propia PR sin tocar la otra, porque los tableros no dependen de los tokens nuevos.
+
 ## Log
 
 L1. User request: «si dale y despues de eso lo quieor es que investigues y crees una ruta y rodamdp de mejroar la pagian a otro nievel para que sea una pagina de una empresa grande con animaciones y css mejorado diseño brutla pero eso sencilla de usar para el susuario y que no pese». «si dale» se refiere a publicar la rama de la issue #9 y abrir su PR, hecho como PR #25.
