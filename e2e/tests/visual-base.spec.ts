@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { logIn } from '../support/session';
 
 // Same value as --color-canvas in resources/css/app.css, as the browser reports it.
-const canvas = 'rgb(246, 247, 249)';
+const canvas = 'rgb(11, 13, 18)';
 
 test.describe('base visual', () => {
   test('la hoja de estilos compilada se carga en la página pública y en la de acceso', async ({ page }) => {

@@ -6,56 +6,65 @@
 /*
  * Design tokens. Colours, type and spacing live here and nowhere else.
  *
- * Direction: a calm, dense application shell. Hierarchy comes from type size, weight and space
- * rather than from boxes; surfaces are separated by translucent shadows instead of solid borders;
- * colour is reserved for meaning. Each section keeps a quiet "line" accent (a dot in the menu,
+ * Direction: a calm, dense, dark application shell. Hierarchy comes from type size, weight and
+ * space rather than from boxes; surfaces are separated by translucent rings instead of solid
+ * borders; colour is reserved for meaning, and a soft glow in the section accent lights the top
+ * of every page. Each section keeps a quiet "line" accent (a dot in the menu,
  * links, primary buttons) that nods to the transit-map idea of Nexo without shouting.
  * The body class (line-panel, line-socios...) sets --line, the accent of the current section.
  */
 @theme static {
     --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-    --color-canvas: #f6f7f9;
-    --color-surface: #ffffff;
-    --color-ink: #0f172a;
-    --color-muted: #5b6475;
-    --color-rule: #e4e7ec;
+    --color-canvas: #0b0d12;
+    --color-surface: #12151c;
+    --color-raised: #181c25;
+    --color-ink: #e8eaf0;
+    --color-muted: #9aa3b2;
+    --color-rule: rgb(255 255 255 / 0.08);
+    --color-on-accent: #0b0d12;
 
-    --color-line-panel: #3451d1;
-    --color-line-socios: #0f766e;
-    --color-line-cuotas: #b45309;
-    --color-line-movimientos: #6d28d9;
+    --color-line-panel: #8b9cff;
+    --color-line-socios: #2dd4bf;
+    --color-line-cuotas: #fbbf24;
+    --color-line-movimientos: #b79cff;
 
-    --color-danger: #b42318;
-    --color-danger-strong: #912018;
-    --color-danger-soft: #fef3f2;
-    --color-warn: #93370d;
-    --color-warn-soft: #fef0c7;
-    --color-ok: #067647;
-    --color-ok-soft: #dcfae6;
-    --color-info: #3538cd;
-    --color-info-soft: #e0eaff;
-    --color-neutral-soft: #eef0f3;
+    --color-danger: #f97066;
+    --color-danger-strong: #fda29b;
+    --color-danger-soft: rgb(240 68 56 / 0.14);
+    --color-warn: #fec84b;
+    --color-warn-soft: rgb(247 144 9 / 0.15);
+    --color-ok: #47cd89;
+    --color-ok-soft: rgb(18 183 106 / 0.15);
+    --color-info: #a4bcfd;
+    --color-info-soft: rgb(99 102 241 / 0.2);
+    --color-neutral-soft: rgb(255 255 255 / 0.08);
 
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --shadow-ring: 0 0 0 1px rgb(15 23 42 / 0.07), 0 1px 2px rgb(15 23 42 / 0.05);
-    --shadow-lift: 0 0 0 1px rgb(15 23 42 / 0.07), 0 6px 16px -4px rgb(15 23 42 / 0.1);
+    --shadow-ring: 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-lift: 0 0 0 1px rgb(255 255 255 / 0.09), 0 16px 40px -12px rgb(0 0 0 / 0.7);
 }
 
 @layer base {
     html {
-        color-scheme: light;
+        color-scheme: dark;
         accent-color: var(--line);
     }
 
     body {
         --line: var(--color-line-panel);
-        --line-soft: color-mix(in srgb, var(--line) 8%, white);
+        --line-soft: color-mix(in srgb, var(--line) 12%, var(--color-surface));
         font-family: var(--font-sans);
         font-size: 0.9375rem;
         line-height: 1.6;
         color: var(--color-ink);
-        background: var(--color-canvas);
+        background-color: var(--color-canvas);
+        background-image: radial-gradient(
+            ellipse 60rem 22rem at 50% -6rem,
+            color-mix(in srgb, var(--line) 30%, transparent),
+            transparent
+        );
+        background-repeat: no-repeat;
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
         font-variant-numeric: tabular-nums;
@@ -74,7 +83,7 @@
     }
 
     ::selection {
-        background: color-mix(in srgb, var(--line) 22%, white);
+        background: color-mix(in srgb, var(--line) 35%, transparent);
     }
 
     a {
@@ -147,10 +156,10 @@
         padding: 0.5rem 0.75rem;
         font-size: 0.9375rem;
         color: var(--color-ink);
-        background: var(--color-surface);
-        border: 1px solid #cfd4dc;
+        background: var(--color-raised);
+        border: 1px solid rgb(255 255 255 / 0.14);
         border-radius: 0.5rem;
-        box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
         transition:
             border-color 150ms var(--ease-out),
             box-shadow 150ms var(--ease-out);
@@ -160,7 +169,7 @@
     select:focus {
         outline: none;
         border-color: var(--line);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--line) 20%, transparent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--line) 30%, transparent);
     }
 
     input[type='file']::file-selector-button {
@@ -231,14 +240,14 @@
         font-size: 0.9375rem;
         font-weight: 550;
         line-height: 1.25;
-        color: #fff;
+        color: var(--color-on-accent);
         text-decoration: none;
         background: var(--line);
-        border: 1px solid color-mix(in srgb, var(--line) 85%, black);
+        border: 1px solid color-mix(in srgb, var(--line) 80%, white);
         border-radius: 0.5rem;
         box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 0.14),
-            0 1px 2px rgb(15 23 42 / 0.14);
+            inset 0 1px 0 rgb(255 255 255 / 0.3),
+            0 1px 2px rgb(0 0 0 / 0.4);
         cursor: pointer;
         transition:
             background-color 150ms var(--ease-out),
@@ -259,21 +268,21 @@
     @media (hover: hover) {
         button:hover,
         .btn:hover {
-            color: #fff;
-            background: color-mix(in srgb, var(--line) 88%, black);
+            color: var(--color-on-accent);
+            background: color-mix(in srgb, var(--line) 86%, white);
         }
     }
 
     .btn-secondary {
         color: var(--color-ink);
-        background: var(--color-surface);
+        background: rgb(255 255 255 / 0.06);
         border-color: transparent;
         box-shadow: var(--shadow-ring);
     }
 
     .btn-danger {
         color: var(--color-danger);
-        background: var(--color-surface);
+        background: rgb(255 255 255 / 0.04);
         border-color: transparent;
         box-shadow: var(--shadow-ring);
     }
@@ -281,7 +290,7 @@
     @media (hover: hover) {
         .btn-secondary:hover {
             color: var(--color-ink);
-            background: #f9fafb;
+            background: rgb(255 255 255 / 0.1);
         }
 
         .btn-danger:hover {
@@ -304,7 +313,7 @@
         left: 1rem;
         z-index: 50;
         padding: 0.5rem 1rem;
-        color: #fff;
+        color: var(--color-canvas);
         text-decoration: none;
         background: var(--color-ink);
         border-radius: 0 0 0.5rem 0.5rem;
@@ -313,7 +322,7 @@
 
     .skip-link:focus {
         transform: translateY(0);
-        color: #fff;
+        color: var(--color-canvas);
     }
 
     .frame {
@@ -324,8 +333,13 @@
     }
 
     .topbar {
-        background: var(--color-surface);
-        box-shadow: 0 1px 0 rgb(15 23 42 / 0.07);
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        background: rgb(11 13 18 / 0.72);
+        box-shadow: 0 1px 0 rgb(255 255 255 / 0.07);
+        -webkit-backdrop-filter: blur(14px) saturate(1.4);
+        backdrop-filter: blur(14px) saturate(1.4);
     }
 
     .topbar-inner {
@@ -408,7 +422,7 @@
 
     @media (hover: hover) {
         .stop:hover {
-            background: rgb(15 23 42 / 0.05);
+            background: rgb(255 255 255 / 0.06);
         }
     }
 
@@ -476,7 +490,7 @@
                 var(--color-line-cuotas),
                 var(--color-line-movimientos)
             );
-            opacity: 0.35;
+            opacity: 0.55;
             border-radius: 999px;
         }
     }
@@ -574,7 +588,7 @@
     }
 
     .board > .entry + .entry {
-        box-shadow: 0 -1px 0 rgb(15 23 42 / 0.07);
+        box-shadow: 0 -1px 0 rgb(255 255 255 / 0.07);
     }
 
     .movement {
@@ -638,7 +652,7 @@
         gap: 0.125rem;
         margin: 1rem 0;
         padding: 0.1875rem;
-        background: rgb(15 23 42 / 0.06);
+        background: rgb(255 255 255 / 0.06);
         border-radius: 0.625rem;
     }
 
@@ -660,7 +674,7 @@
 
     .filters a[aria-current='page'] {
         color: var(--color-ink);
-        background: var(--color-surface);
+        background: var(--color-raised);
         box-shadow: var(--shadow-ring);
     }
 
@@ -684,7 +698,7 @@
     }
 
     .link-card + .link-card {
-        box-shadow: 0 -1px 0 rgb(15 23 42 / 0.07);
+        box-shadow: 0 -1px 0 rgb(255 255 255 / 0.07);
     }
 
     .link-card strong {
@@ -701,7 +715,7 @@
 
     @media (hover: hover) {
         .link-card:hover {
-            background: color-mix(in srgb, var(--card) 6%, white);
+            background: color-mix(in srgb, var(--card) 9%, var(--color-surface));
         }
     }
 
@@ -720,9 +734,9 @@
     .form-block {
         margin-top: 1rem;
         padding: 1rem;
-        background: #f8f9fb;
+        background: rgb(255 255 255 / 0.03);
         border-radius: 0.625rem;
-        box-shadow: 0 0 0 1px rgb(15 23 42 / 0.06);
+        box-shadow: 0 0 0 1px rgb(255 255 255 / 0.07);
     }
 
     .notice {
@@ -743,19 +757,19 @@
     .alert-error {
         color: var(--color-danger-strong);
         background: var(--color-danger-soft);
-        box-shadow: 0 0 0 1px #fecdca;
+        box-shadow: 0 0 0 1px rgb(240 68 56 / 0.35);
     }
 
     .alert-ok {
-        color: #054f31;
-        background: #ecfdf3;
-        box-shadow: 0 0 0 1px #abefc6;
+        color: #75e0a7;
+        background: var(--color-ok-soft);
+        box-shadow: 0 0 0 1px rgb(18 183 106 / 0.35);
     }
 
     .alert-info {
         color: var(--color-ink);
         background: var(--line-soft);
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 22%, white);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
     }
 
     .status {
@@ -808,7 +822,7 @@
     }
 
     .badge-exempt {
-        color: #475467;
+        color: #cbd2dd;
         background: var(--color-neutral-soft);
     }
 
@@ -818,7 +832,7 @@
         gap: 1px;
         margin: 1.25rem 0;
         overflow: hidden;
-        background: rgb(15 23 42 / 0.08);
+        background: rgb(255 255 255 / 0.08);
         border-radius: 0.75rem;
         box-shadow: var(--shadow-ring);
     }
@@ -896,7 +910,7 @@
     }
 
     .sample + .sample {
-        box-shadow: 0 -1px 0 rgb(15 23 42 / 0.07);
+        box-shadow: 0 -1px 0 rgb(255 255 255 / 0.07);
     }
 
     .sample strong {
@@ -922,8 +936,8 @@
         padding: 0.625rem 1.25rem;
         font-size: 0.8125rem;
         color: var(--color-muted);
-        background: #f8f9fb;
-        box-shadow: 0 1px 0 rgb(15 23 42 / 0.07);
+        background: rgb(255 255 255 / 0.03);
+        box-shadow: 0 1px 0 rgb(255 255 255 / 0.07);
     }
 
     /* The route of the money: four stops, the last one still to come. */
@@ -974,6 +988,17 @@
 
 /* Treasurers print lists for the board: keep the data, drop the chrome. */
 @media print {
+    :root {
+        --color-canvas: #fff;
+        --color-surface: #fff;
+        --color-raised: #fff;
+        --color-ink: #000;
+        --color-muted: #333;
+        --color-ok: #065f46;
+        --color-danger: #b42318;
+        --color-on-accent: #fff;
+    }
+
     .topbar,
     .side,
     .site-footer,
@@ -989,6 +1014,7 @@
 
     body {
         background: white;
+        background-image: none;
         font-size: 11pt;
     }
 
