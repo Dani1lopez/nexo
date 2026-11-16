@@ -6,7 +6,7 @@
     <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
 
     @if ($errors->any())
-        <div class="alert-error" role="alert"><ul>@foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
+        <div class="alert alert-error" role="alert"><ul>@foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
     @endif
 
     @if (session('import_report'))

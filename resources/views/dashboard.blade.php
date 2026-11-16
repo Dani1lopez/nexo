@@ -7,7 +7,7 @@
         <dt>Correo</dt><dd>{{ auth()->user()->email }}</dd>
         <dt>Rol</dt><dd>{{ auth()->user()->role === 'treasury' ? 'Tesorería' : 'Junta' }}</dd>
     </dl>
-    <p class="alert-info alert">Este panel es de consulta. Las operaciones económicas todavía no están disponibles.</p>
+    <p class="alert alert-info">Este panel es de consulta. Las operaciones económicas todavía no están disponibles.</p>
     <div class="link-grid">
         <a class="link-card" href="/members">Ver socios</a>
         <a class="link-card" href="/fees">Cuotas anuales</a>

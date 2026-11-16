@@ -10,7 +10,7 @@
         <p class="alert alert-info">Este año tiene pagos vigentes, así que el importe no se puede cambiar hasta anularlos.</p>
     @endif
     @if ($errors->any())
-        <div class="alert-error" role="alert">
+        <div class="alert alert-error" role="alert">
             <ul>
                 @foreach ($errors->all() as $message)
                     <li>{{ $message }}</li>

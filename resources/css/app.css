@@ -188,13 +188,8 @@
         @apply my-0;
     }
 
-    .alert-error,
-    .error {
-        @apply my-4 rounded-md border-l-4 border-danger bg-danger-soft p-3 text-danger-strong;
-    }
-
-    .error ul {
-        @apply my-0;
+    .alert-error {
+        @apply border-danger bg-danger-soft text-danger-strong;
     }
 
     .alert-ok {

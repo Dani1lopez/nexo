@@ -58,5 +58,18 @@ test.describe('base visual', () => {
       await page.goto(path);
       expect(await overflow(), path).toBeLessThanOrEqual(0);
     }
+
+    // The densest screen: a year with one member, so the payment and exemption forms are rendered.
+    await page.goto('/members/create');
+    await page.getByLabel('Nombre completo').fill(`Socia móvil ${Date.now()}`);
+    await page.getByLabel('Correo ficticio (.test)').fill(`movil.${Date.now()}@example.test`);
+    await page.getByLabel('Fecha de alta').fill('2020-01-01');
+    await page.getByRole('button', { name: 'Crear socio' }).click();
+    await page.goto('/fees/create');
+    await page.getByLabel('Año').fill('2023');
+    await page.getByLabel('Importe en euros').fill('30');
+    await page.getByRole('button', { name: 'Fijar cuota' }).click();
+    await expect(page.getByRole('button', { name: 'Registrar pago' }).first()).toBeVisible();
+    expect(await overflow(), 'detalle de la cuota').toBeLessThanOrEqual(0);
   });
 });

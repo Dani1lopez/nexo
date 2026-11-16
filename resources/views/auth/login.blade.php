@@ -5,7 +5,7 @@
     <h1>Acceso individual</h1>
     <p>Entra con tu cuenta ficticia de tesorería o junta.</p>
     @if ($errors->any())
-        <div class="alert-error" role="alert">{{ $errors->first() }}</div>
+        <div class="alert alert-error" role="alert">{{ $errors->first() }}</div>
     @endif
     <form method="post" action="/login">
         @csrf
