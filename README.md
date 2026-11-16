@@ -31,6 +31,16 @@ composer validate --strict
 composer audit
 ```
 
+`composer ci` ejecuta de una vez las mismas comprobaciones de PHP que el CI (validación, formato, Larastan, PHPUnit estricto, migraciones y auditoría). Las pruebas e2e en un navegador real usan Playwright y Node 24 o superior, solo para desarrollo:
+
+```sh
+npm ci
+npx playwright install chromium
+npm run e2e
+```
+
+La política del CI está en [CONTRIBUTING.md](CONTRIBUTING.md#integración-continua).
+
 `composer test` ejecuta PHPUnit directamente. `php artisan test` puede mostrar una advertencia de phpdotenv por la ausencia deliberada del archivo de entorno. No uses datos ni credenciales reales.
 
 ## Primera versión

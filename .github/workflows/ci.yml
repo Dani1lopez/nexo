@@ -1,0 +1,139 @@
+name: CI
+
+# Política completa en CONTRIBUTING.md (sección "Integración continua").
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Una ejecución por PR o rama: una nueva cancela la anterior en las PR para no gastar minutos.
+# En main nunca se cancela, para que cada commit integrado quede comprobado.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  COMPOSER_NO_INTERACTION: '1'
+
+jobs:
+  changes:
+    name: Qué cambió
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: filter
+        # El e2e se ejecuta siempre en main y, en una PR, solo si cambia algo que puede afectarlo.
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only HEAD^1 HEAD | grep -Eq '^(app|bootstrap|config|database|e2e|public|resources|routes|scripts)/|^(composer\.(json|lock)|package(-lock)?\.json|artisan)$|^\.github/workflows/'; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  checks:
+    name: Comprobaciones (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+      - id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ matrix.php }}-
+      - run: composer validate --strict
+      - run: composer install --prefer-dist --no-progress
+      - name: Espacios y marcadores de conflicto
+        run: git diff --check HEAD^1 HEAD
+      - name: Formato (Pint)
+        run: composer lint
+      - name: Análisis estático (Larastan)
+        run: composer analyse
+      - name: Pruebas (PHPUnit estricto)
+        run: composer test
+      - name: Migraciones desde cero, reversión y reaplicación
+        run: composer check:migrations
+      - name: Scripts de shell
+        run: shellcheck scripts/*.sh e2e/support/*.sh
+      - name: Vulnerabilidades conocidas
+        if: matrix.php == '8.5'
+        run: composer audit
+
+  e2e:
+    name: E2E (Playwright)
+    needs: [changes, checks]
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          extensions: dom, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+      - id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.5-
+      - run: composer install --no-dev --prefer-dist --no-progress
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Instalar Chromium y sus dependencias del sistema
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Instalar solo las dependencias del sistema de Chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: npm run e2e
+      - name: Conservar el rastro solo si falla
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -1,0 +1,11 @@
+{
+  "name": "nexo",
+  "private": true,
+  "description": "Herramientas de desarrollo de Nexo (pruebas e2e). La aplicación no depende de Node.",
+  "scripts": {
+    "e2e": "playwright test --config e2e/playwright.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  }
+}
