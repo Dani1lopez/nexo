@@ -3,6 +3,7 @@
 use App\Modules\Access\Http\Controllers\SessionController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
 use App\Modules\Fees\Http\Controllers\FeeYearController;
+use App\Modules\Fees\Http\Controllers\PaymentController;
 use App\Modules\Members\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,8 @@ Route::middleware(['auth', 'can:view-treasury'])->group(function (): void {
         Route::get('/fees/{feeYear}/edit', [FeeYearController::class, 'edit'])->name('fees.edit');
         Route::put('/fees/{feeYear}', [FeeYearController::class, 'update'])->name('fees.update');
         Route::post('/dues/{due}/exemptions', [ExemptionController::class, 'grant'])->name('exemptions.grant');
+        Route::post('/dues/{due}/payments', [PaymentController::class, 'store'])->name('payments.store');
+        Route::post('/payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
         Route::post('/exemptions/{exemption}/revoke', [ExemptionController::class, 'revoke'])->name('exemptions.revoke');
     });
 

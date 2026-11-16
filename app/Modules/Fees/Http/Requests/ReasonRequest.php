@@ -4,7 +4,7 @@ namespace App\Modules\Fees\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ExemptionRequest extends FormRequest
+class ReasonRequest extends FormRequest
 {
     public function authorize(): bool
     {
