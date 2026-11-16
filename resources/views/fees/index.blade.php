@@ -10,25 +10,23 @@
     </div>
     <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
     @if ($years->isNotEmpty())
-    <div class="board">
-    @endif
-    @forelse ($years as $feeYear)
-        <article class="entry">
-            <h2><a href="/fees/{{ $feeYear->id }}">Cuota de {{ $feeYear->year }}</a></h2>
-            <dl>
-                <dt>Importe</dt><dd>{{ \App\Modules\Fees\Support\Money::format($feeYear->amount_cents) }}</dd>
-                <dt>Cuotas asignadas</dt><dd>{{ $feeYear->dues_count }}</dd>
-            </dl>
-        </article>
-    @empty
+        <div class="board">
+            @foreach ($years as $feeYear)
+                <article class="entry">
+                    <h2><a href="/fees/{{ $feeYear->id }}">Cuota de {{ $feeYear->year }}</a></h2>
+                    <dl>
+                        <dt>Importe</dt><dd>{{ \App\Modules\Fees\Support\Money::format($feeYear->amount_cents) }}</dd>
+                        <dt>Cuotas asignadas</dt><dd>{{ $feeYear->dues_count }}</dd>
+                    </dl>
+                </article>
+            @endforeach
+        </div>
+    @else
         <div class="empty">
             <p>Todavía no se ha fijado ninguna cuota.</p>
             @can('edit-treasury')
                 <a href="/fees/create" class="btn btn-secondary btn-sm">Fijar la primera cuota</a>
             @endcan
         </div>
-    @endforelse
-    @if ($years->isNotEmpty())
-    </div>
     @endif
 @endsection

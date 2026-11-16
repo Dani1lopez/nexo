@@ -9,8 +9,14 @@
     @vite('resources/css/app.css')
 </head>
 @php
-    // Each section has its own accent; the body class selects it.
-    $line = request()->is('members*') ? 'socios' : (request()->is('fees*') ? 'cuotas' : (request()->is('bank*') ? 'movimientos' : 'panel'));
+    // The menu is defined once: the section accent (body class) and the current item both come from it.
+    $menu = [
+        ['key' => 'panel', 'label' => 'Panel', 'href' => '/dashboard', 'match' => 'dashboard'],
+        ['key' => 'socios', 'label' => 'Socios', 'href' => '/members', 'match' => 'members*'],
+        ['key' => 'cuotas', 'label' => 'Cuotas', 'href' => '/fees', 'match' => 'fees*'],
+        ['key' => 'movimientos', 'label' => 'Movimientos', 'href' => '/bank', 'match' => 'bank*'],
+    ];
+    $line = collect($menu)->first(fn ($item) => request()->is($item['match']))['key'] ?? 'panel';
     // The public entry page runs without session, so it must not ask who is signed in.
     $public = $__env->hasSection('public');
     $signedIn = ! $public && auth()->check();
@@ -39,10 +45,9 @@
     @if ($signedIn)
         <div class="frame shell">
             <nav aria-label="Principal" class="side">
-                <a class="stop stop-panel" href="/dashboard" @if (request()->is('dashboard')) aria-current="page" @endif>Panel</a>
-                <a class="stop stop-socios" href="/members" @if (request()->is('members*')) aria-current="page" @endif>Socios</a>
-                <a class="stop stop-cuotas" href="/fees" @if (request()->is('fees*')) aria-current="page" @endif>Cuotas</a>
-                <a class="stop stop-movimientos" href="/bank" @if (request()->is('bank*')) aria-current="page" @endif>Movimientos</a>
+                @foreach ($menu as $item)
+                    <a class="stop stop-{{ $item['key'] }}" href="{{ $item['href'] }}" @if (request()->is($item['match'])) aria-current="page" @endif>{{ $item['label'] }}</a>
+                @endforeach
             </nav>
     @endif
     <main id="contenido" tabindex="-1" class="{{ $signedIn ? 'content' : 'guest' }}{{ $narrow ? ($signedIn ? ' content-narrow' : ' guest-narrow') : '' }}">
