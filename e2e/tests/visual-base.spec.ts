@@ -5,6 +5,9 @@ import { logIn } from '../support/session';
 const canvas = 'rgb(32, 38, 52)';
 
 test.describe('base visual', () => {
+  // The default look is the dark one; the light one has its own tests below.
+  test.use({ colorScheme: 'dark' });
+
   test('la hoja de estilos compilada se carga en la página pública y en la de acceso', async ({ page }) => {
     for (const path of ['/', '/login']) {
       await page.goto(path);
@@ -93,5 +96,39 @@ test.describe('base visual', () => {
     await expect(page.getByRole('navigation', { name: 'Principal' })).toBeHidden();
     await expect(page.getByRole('button', { name: 'Importar extracto' })).toBeHidden();
     await expect(page.getByRole('heading', { name: 'Movimientos bancarios' })).toBeVisible();
+  });
+});
+
+test.describe('modo claro', () => {
+  const light = 'rgb(221, 227, 236)';
+  const dark = 'rgb(32, 38, 52)';
+  const background = (page: import('@playwright/test').Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+  test.describe('sin elección previa', () => {
+    test.use({ colorScheme: 'light' });
+
+    test('sigue la preferencia clara del sistema', async ({ page }) => {
+      await page.goto('/');
+      expect(await background(page)).toBe(light);
+    });
+  });
+
+  test.describe('con la preferencia oscura del sistema', () => {
+    test.use({ colorScheme: 'dark' });
+
+    test('el botón cambia de tema, lo recuerda al recargar y se puede revertir', async ({ page }) => {
+      await page.goto('/');
+      expect(await background(page)).toBe(dark);
+
+      await page.getByRole('button', { name: 'Modo claro' }).click();
+      expect(await background(page)).toBe(light);
+      await expect(page.getByRole('button', { name: 'Modo oscuro' })).toBeVisible();
+
+      await page.reload();
+      expect(await background(page)).toBe(light);
+
+      await page.getByRole('button', { name: 'Modo oscuro' }).click();
+      expect(await background(page)).toBe(dark);
+    });
   });
 });

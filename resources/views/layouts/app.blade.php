@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <script>try{var t=localStorage.getItem('nexo-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>{{ $__env->hasSection('full_title') ? $__env->yieldContent('full_title') : $__env->yieldContent('title').' — Nexo' }}</title>
     @vite('resources/css/app.css')
 </head>
@@ -23,9 +25,11 @@
                 Nexo
             </a>
             @if ($public)
-                <a class="btn btn-secondary btn-sm ml-auto" href="/login">Acceder</a>
+                <button type="button" class="btn-secondary btn-sm theme-toggle ml-auto" id="theme-toggle" hidden>Modo claro</button>
+                <a class="btn btn-secondary btn-sm" href="/login">Acceder</a>
             @elseif ($signedIn)
                 <div class="who">
+                    <button type="button" class="btn-secondary btn-sm theme-toggle" id="theme-toggle" hidden>Modo claro</button>
                     <span>{{ auth()->user()->name }} · {{ auth()->user()->role === 'treasury' ? 'Tesorería' : 'Junta' }}</span>
                     <form method="post" action="/logout">@csrf<button type="submit" class="btn-secondary btn-sm">Cerrar sesión</button></form>
                 </div>
@@ -50,6 +54,28 @@
     @if ($signedIn)
         </div>
     @endif
+    <script>
+        // Theme switch: follows the system until the person chooses; the choice is remembered in this browser.
+        (function () {
+            var button = document.getElementById('theme-toggle');
+            if (!button) return;
+            var root = document.documentElement;
+            function current() {
+                return root.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            }
+            function paint() {
+                button.textContent = current() === 'light' ? 'Modo oscuro' : 'Modo claro';
+                button.hidden = false;
+            }
+            button.addEventListener('click', function () {
+                var next = current() === 'light' ? 'dark' : 'light';
+                root.dataset.theme = next;
+                try { localStorage.setItem('nexo-theme', next); } catch (e) {}
+                paint();
+            });
+            paint();
+        })();
+    </script>
     <footer class="site-footer">
         <p>Demo con datos ficticios · No uses datos personales ni dinero real</p>
     </footer>
