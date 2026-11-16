@@ -4,6 +4,7 @@ namespace App\Modules\Fees\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Fees\Actions\SetFeeYear;
+use App\Modules\Fees\Actions\UpdateFeeAmount;
 use App\Modules\Fees\Http\Requests\FeeYearRequest;
 use App\Modules\Fees\Models\FeeYear;
 use Illuminate\Http\RedirectResponse;
@@ -30,7 +31,9 @@ class FeeYearController extends Controller
 
     public function show(FeeYear $feeYear): View
     {
-        $dues = $feeYear->dues()->with(['member', 'exemptions'])->get()->sortBy(fn ($due) => mb_strtolower($due->member->name).'|'.$due->id)->values();
+        $dues = $feeYear->dues()->with(['member', 'exemptions', 'payments'])->get()
+            ->each(fn ($due) => $due->setRelation('feeYear', $feeYear))
+            ->sortBy(fn ($due) => mb_strtolower($due->member->name).'|'.$due->id)->values();
 
         return view('fees.show', ['feeYear' => $feeYear, 'dues' => $dues]);
     }
@@ -40,10 +43,10 @@ class FeeYearController extends Controller
         return view('fees.form', ['feeYear' => $feeYear]);
     }
 
-    /** Only the amount can change. Block this once payments exist. */
-    public function update(FeeYearRequest $request, FeeYear $feeYear): RedirectResponse
+    /** Only the amount can change, and only while no payment is active. */
+    public function update(FeeYearRequest $request, FeeYear $feeYear, UpdateFeeAmount $updateAmount): RedirectResponse
     {
-        $feeYear->update(['amount_cents' => $request->amountCents()]);
+        $updateAmount->handle($feeYear, $request->amountCents());
 
         return redirect("/fees/{$feeYear->id}");
     }

@@ -13,4 +13,9 @@ class FeeYear extends Model
     {
         return $this->hasMany(Due::class);
     }
+
+    public function hasActivePayments(): bool
+    {
+        return Payment::query()->whereNull('voided_at')->whereIn('due_id', $this->dues()->select('id'))->exists();
+    }
 }
