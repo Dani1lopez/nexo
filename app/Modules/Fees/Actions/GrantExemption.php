@@ -12,7 +12,8 @@ class GrantExemption
     public function handle(Due $due, string $reason): Exemption
     {
         return DB::transaction(function () use ($due, $reason): Exemption {
-            if ($due->activeExemption() !== null) {
+            // Reload inside the transaction: a previously loaded relation may be stale.
+            if ($due->load('exemptions')->activeExemption() !== null) {
                 throw ValidationException::withMessages(['reason' => 'Esta cuota ya tiene una exención vigente.']);
             }
 

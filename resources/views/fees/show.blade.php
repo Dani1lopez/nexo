@@ -18,10 +18,10 @@
         </div>
     @endif
     @forelse ($dues as $due)
-        @php($active = $due->exemptions->firstWhere('revoked_at', null))
+        @php($active = $due->activeExemption())
         <article class="member">
             <h2>{{ $due->member->name }}</h2>
-            <p>Cuota: {{ $money($feeYear->amount_cents) }} · A pagar: {{ $money($active ? 0 : $feeYear->amount_cents) }}</p>
+            <p>Cuota: {{ $money($feeYear->amount_cents) }} · A pagar: {{ $money($due->payableCents()) }}</p>
             @if ($due->exemptions->isNotEmpty())
                 <h3>Historial de exenciones</h3>
                 <ul>

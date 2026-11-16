@@ -24,9 +24,10 @@ class Due extends Model
         return $this->hasMany(Exemption::class)->orderBy('id');
     }
 
+    /** Uses the loaded relation when present, so listings do not repeat queries. */
     public function activeExemption(): ?Exemption
     {
-        return $this->exemptions()->whereNull('revoked_at')->first();
+        return $this->exemptions->first(fn (Exemption $exemption): bool => $exemption->revoked_at === null);
     }
 
     /** The amount still to be paid: zero while an exemption is in force. */
