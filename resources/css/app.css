@@ -16,13 +16,13 @@
 @theme static {
     --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-    --color-canvas: #0b0d12;
-    --color-surface: #12151c;
-    --color-raised: #181c25;
-    --color-ink: #e8eaf0;
-    --color-muted: #9aa3b2;
+    --color-canvas: #202634;
+    --color-surface: #2a3142;
+    --color-raised: #333b50;
+    --color-ink: #eceff6;
+    --color-muted: #aab3c7;
     --color-rule: rgb(255 255 255 / 0.08);
-    --color-on-accent: #0b0d12;
+    --color-on-accent: #141925;
 
     --color-line-panel: #8b9cff;
     --color-line-socios: #2dd4bf;
@@ -41,7 +41,7 @@
     --color-neutral-soft: rgb(255 255 255 / 0.08);
 
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --shadow-ring: 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-ring: 0 0 0 1px rgb(255 255 255 / 0.09), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.25);
     --shadow-lift: 0 0 0 1px rgb(255 255 255 / 0.09), 0 16px 40px -12px rgb(0 0 0 / 0.7);
 }
 
@@ -61,7 +61,7 @@
         background-color: var(--color-canvas);
         background-image: radial-gradient(
             ellipse 60rem 22rem at 50% -6rem,
-            color-mix(in srgb, var(--line) 30%, transparent),
+            color-mix(in srgb, var(--line) 24%, transparent),
             transparent
         );
         background-repeat: no-repeat;
@@ -157,7 +157,7 @@
         font-size: 0.9375rem;
         color: var(--color-ink);
         background: var(--color-raised);
-        border: 1px solid rgb(255 255 255 / 0.14);
+        border: 1px solid rgb(255 255 255 / 0.18);
         border-radius: 0.5rem;
         box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
         transition:
@@ -336,7 +336,7 @@
         position: sticky;
         top: 0;
         z-index: 40;
-        background: rgb(11 13 18 / 0.72);
+        background: rgb(32 38 52 / 0.78);
         box-shadow: 0 1px 0 rgb(255 255 255 / 0.07);
         -webkit-backdrop-filter: blur(14px) saturate(1.4);
         backdrop-filter: blur(14px) saturate(1.4);
