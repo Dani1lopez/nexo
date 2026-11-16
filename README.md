@@ -6,7 +6,7 @@ Tesorería para asociaciones: cuotas claras, conciliación de movimientos y cuen
 
 ## Ejecutar en local
 
-Requisitos: PHP 8.3 o superior, Composer 2 y extensiones habituales de Laravel (incluidas DOM, mbstring, XML y PDO SQLite). La instalación se ha comprobado con PHP 8.5.12. Composer comprueba los requisitos exactos del archivo de bloqueo.
+Requisitos: PHP 8.4 o superior, Composer 2 y extensiones habituales de Laravel (incluidas DOM, mbstring, XML y PDO SQLite). La instalación se ha comprobado con PHP 8.5.12. Composer comprueba los requisitos exactos del archivo de bloqueo.
 
 ```sh
 composer install
@@ -30,6 +30,16 @@ vendor/bin/pint --test
 composer validate --strict
 composer audit
 ```
+
+`composer ci` ejecuta de una vez las mismas comprobaciones de PHP que el CI (validación, formato, Larastan, PHPUnit estricto, migraciones y auditoría). Las pruebas e2e en un navegador real usan Playwright y Node 24 o superior, solo para desarrollo:
+
+```sh
+npm ci
+npx playwright install chromium
+npm run e2e
+```
+
+La política del CI está en [CONTRIBUTING.md](CONTRIBUTING.md#integración-continua).
 
 `composer test` ejecuta PHPUnit directamente. `php artisan test` puede mostrar una advertencia de phpdotenv por la ausencia deliberada del archivo de entorno. No uses datos ni credenciales reales.
 
@@ -55,7 +65,7 @@ No se garantiza cumplimiento fiscal, contable o legal. No se publicarán datos p
 
 ## Dirección técnica
 
-Base inicial: PHP 8.3+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
+Base inicial: PHP 8.4+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
 
 El código se organiza como un monolito modular: cada área de negocio vive en `app/Modules/<Área>`, separada en `Actions` (casos de uso), `Http/Controllers`, `Http/Requests` (validación), `Models` y `Authorization`. Los módulos son `Access` (acceso y roles), `Members` (socios), `Fees` (cuota anual, exenciones y pagos) y `Bank` (importación de extractos bancarios). Rutas, vistas, migraciones, pruebas y proveedores mantienen las ubicaciones convencionales de Laravel. Solo se crea un módulo o una carpeta cuando contiene código real.
 
