@@ -57,6 +57,8 @@ No se garantiza cumplimiento fiscal, contable o legal. No se publicarán datos p
 
 Base inicial: PHP 8.3+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
 
+El código se organiza como un monolito modular: cada área de negocio vive en `app/Modules/<Área>`, separada en `Actions` (casos de uso), `Http/Controllers`, `Http/Requests` (validación), `Models` y `Authorization`. El primer módulo es `Access` (acceso y roles). Rutas, vistas, migraciones, pruebas y proveedores mantienen las ubicaciones convencionales de Laravel. Solo se crea un módulo o una carpeta cuando contiene código real.
+
 La estructura y la configuración inicial proceden de `laravel/laravel` v13.11.0 (MIT); se conserva su licencia en `LICENSE.framework.md`. La aplicación no tiene todavía una licencia de reutilización concedida.
 
 ## Desarrollo y versiones
