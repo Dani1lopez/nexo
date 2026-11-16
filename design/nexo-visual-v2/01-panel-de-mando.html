@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexo · panel de mando</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --font: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --canvas: light-dark(#e6eaf1, #171c27);
+    --surface: light-dark(#f6f8fb, #212836);
+    --raised: light-dark(#ffffff, #2b3345);
+    --ink: light-dark(#101828, #f2f5fa);
+    --muted: light-dark(#4a5568, #a3adc0);
+    --rule: color-mix(in srgb, var(--ink) 10%, transparent);
+    --line: light-dark(#3a50c8, #9aabff);
+    --ok: light-dark(#067647, #47cd89);
+    --warn: light-dark(#93370d, #fec84b);
+    --danger: light-dark(#b42318, #f97066);
+    --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  :root[data-theme="light"] { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; display: grid; grid-template-columns: 236px 1fr;
+    background: var(--canvas); color: var(--ink);
+    font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  .rail {
+    border-right: 1px solid var(--rule); padding: 22px 16px; display: flex; flex-direction: column; gap: 26px;
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: -0.02em; }
+  .dot { width: 9px; height: 9px; border-radius: 2px; background: var(--line); }
+  nav { display: grid; gap: 2px; }
+  nav a {
+    display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px;
+    color: var(--muted); font-weight: 500; transition: background .16s var(--ease), color .16s var(--ease);
+  }
+  nav a:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+  nav a[aria-current="page"] { background: color-mix(in srgb, var(--line) 14%, transparent); color: var(--ink); font-weight: 620; }
+  nav a[aria-current="page"] .dot { background: var(--ok); }
+  nav a .dot { width: 6px; height: 6px; background: var(--muted); }
+  .who { margin-top: auto; font-size: 12px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 14px; }
+  .who b { color: var(--ink); display: block; font-size: 13px; }
+  main { overflow: auto; }
+  .bar {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+    padding: 14px 28px; border-bottom: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--canvas) 82%, transparent); backdrop-filter: blur(10px);
+  }
+  .bar h1 { margin: 0; font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
+  .search {
+    margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 260px;
+    padding: 7px 11px; border-radius: 8px; background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--rule); color: var(--muted); font-size: 13px;
+  }
+  kbd { font: 600 11px/1 var(--font); border-radius: 4px; padding: 3px 5px; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+  .btn {
+    border: 0; font: 600 13px/1 var(--font); padding: 9px 13px; border-radius: 8px; cursor: pointer;
+    background: var(--line); color: light-dark(#fff, #141925);
+    transition: transform .16s var(--ease), box-shadow .16s var(--ease);
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -12px rgb(0 0 0 / .6); }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+  .wrap { padding: 26px 28px 60px; display: grid; gap: 22px; }
+  .kpis { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 1px; background: var(--rule); border-radius: 12px; overflow: hidden; }
+  .kpi { background: var(--surface); padding: 16px 18px; }
+  .kpi .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 620; }
+  .kpi .n { margin-top: 8px; font-size: 27px; font-weight: 660; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .kpi.hero .n { font-size: 40px; }
+  .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .up { color: var(--ok); } .down { color: var(--danger); }
+  .panel { background: var(--surface); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--rule); }
+  .panel > header { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--rule); }
+  .panel > header h2 { margin: 0; font-size: 13px; font-weight: 620; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font: 620 11px/1 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 10px 16px; }
+  td { padding: 11px 16px; border-top: 1px solid var(--rule); }
+  tbody tr { transition: background .12s var(--ease); }
+  tbody tr:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  td.num { text-align: right; font-weight: 620; }
+  .tag { font: 620 11px/1 var(--font); border-radius: 999px; padding: 4px 9px; }
+  .tag.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .tag.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  .tag.danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 13%, transparent); }
+  .cols { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; }
+  .feed { padding: 6px 16px 14px; display: grid; gap: 0; }
+  .item { display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .item:last-child { border-bottom: 0; }
+  .item time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .empty { padding: 18px 16px; color: var(--muted); font-size: 13px; }
+  :focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (max-width: 1080px) { body { grid-template-columns: 1fr; } .rail { display: none; } .kpis { grid-template-columns: 1fr 1fr; } .cols { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } .search { display: none; } .wrap { padding: 18px 16px 48px; } }
+</style>
+</head>
+<body>
+  <aside class="rail">
+    <div class="brand"><span class="dot"></span>Nexo</div>
+    <nav aria-label="Secciones">
+      <a href="#" aria-current="page"><span class="dot"></span>Panel</a>
+      <a href="#"><span class="dot"></span>Socios <span style="margin-left:auto;color:var(--muted)">48</span></a>
+      <a href="#"><span class="dot"></span>Cuotas</a>
+      <a href="#"><span class="dot"></span>Movimientos</a>
+      <a href="#"><span class="dot"></span>Conciliación <span style="margin-left:auto;color:var(--warn)">6</span></a>
+    </nav>
+    <div class="who">
+      <b>Ana Alcaraz</b>
+      Tesorería · Asociación La Veleta
+    </div>
+  </aside>
+
+  <main>
+    <div class="bar">
+      <h1>Panel · ejercicio 2026</h1>
+      <div class="search" role="search" tabindex="0">Buscar socia, recibo o importe… <kbd>⌘K</kbd></div>
+      <button class="btn ghost" type="button">Importar CSV</button>
+      <button class="btn" type="button">Añadir movimiento</button>
+    </div>
+
+    <div class="wrap">
+      <section class="kpis" aria-label="Indicadores">
+        <div class="kpi hero">
+          <div class="label">Saldo total</div>
+          <div class="n">3.482,50 €</div>
+          <div class="sub up">+412,00 € este mes · banco 2.980,50 € · caja 502,00 €</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Cuotas cobradas</div>
+          <div class="n">4.120,00 €</div>
+          <div class="sub">34 de 48 socias</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Pendiente</div>
+          <div class="n">1.680,00 €</div>
+          <div class="sub down">14 socias sin pagar</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Sin conciliar</div>
+          <div class="n">6</div>
+          <div class="sub">movimientos del extracto</div>
+        </div>
+      </section>
+
+      <div class="cols">
+        <section class="panel">
+          <header>
+            <h2>Movimientos recientes</h2>
+            <button class="btn ghost" type="button" style="margin-left:auto">Filtrar</button>
+          </header>
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>Concepto</th><th>Socia</th><th style="text-align:right">Importe</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>14 feb</td><td>Cuota anual · 1.º plazo</td><td>Ana Alcaraz</td><td class="num">60,00 €</td><td><span class="tag ok">Cobrado</span></td></tr>
+              <tr><td>14 feb</td><td>Transferencia recibida</td><td>Luis Ferrer</td><td class="num">120,00 €</td><td><span class="tag warn">Sin conciliar</span></td></tr>
+              <tr><td>12 feb</td><td>Cena de socias</td><td>—</td><td class="num">−86,40 €</td><td><span class="tag ok">Confirmado</span></td></tr>
+              <tr><td>09 feb</td><td>Cuota anual · pendiente</td><td>Marta Ibáñez</td><td class="num">120,00 €</td><td><span class="tag danger">Vencido</span></td></tr>
+              <tr><td>07 feb</td><td>Ingreso en caja</td><td>—</td><td class="num">40,00 €</td><td><span class="tag ok">Confirmado</span></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="panel">
+          <header><h2>Actividad</h2></header>
+          <div class="feed">
+            <div class="item"><time>Hoy 10:42</time><div>Importaste <b>extracto-febrero.csv</b> · 18 movimientos, 6 sin conciliar.</div></div>
+            <div class="item"><time>Ayer</time><div>Marta Ibáñez quedó <b>exenta</b> por ingreso bajo, con justificante.</div></div>
+            <div class="item"><time>12 feb</time><div>Registraste <b>Cena de socias</b> sin justificante, con motivo.</div></div>
+            <div class="item"><time>09 feb</time><div>Se anuló un pago y se creó uno nuevo: historial conservado.</div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
