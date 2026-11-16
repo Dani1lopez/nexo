@@ -22,7 +22,7 @@ test.describe('acceso y permisos con sesión real', () => {
 
   test('tesorería inicia sesión y puede editar', async ({ page }) => {
     await logIn(page, 'treasury');
-    await expect(page.getByText('Tesorería', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tesorería, con edición')).toBeVisible();
 
     await page.goto('/members');
     await expect(page.getByRole('link', { name: 'Nuevo socio' })).toBeVisible();
@@ -32,7 +32,7 @@ test.describe('acceso y permisos con sesión real', () => {
 
   test('junta solo consulta y el cierre de sesión la deja fuera', async ({ page }) => {
     await logIn(page, 'board');
-    await expect(page.getByText('Junta', { exact: true })).toBeVisible();
+    await expect(page.getByText('Junta, solo consulta')).toBeVisible();
 
     await page.goto('/members');
     await expect(page.getByRole('heading', { name: 'Socios' })).toBeVisible();

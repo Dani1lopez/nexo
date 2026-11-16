@@ -1,37 +1,84 @@
 @extends('layouts.app')
 @section('title', 'Panel')
 @section('content')
-    <h1>Tu acceso</h1>
-    <p>Sesión iniciada como <strong>{{ auth()->user()->name }}</strong>.</p>
-    <dl>
-        <dt>Correo</dt><dd>{{ auth()->user()->email }}</dd>
-        <dt>Rol</dt><dd>{{ auth()->user()->role === 'treasury' ? 'Tesorería' : 'Junta' }}</dd>
-    </dl>
-    <section aria-labelledby="resumen">
-        <h2 id="resumen">Resumen</h2>
-        @if ($overview['year'])
-            <div class="tally" role="group" aria-label="Cifras de la cuota de {{ $overview['year'] }}">
-                <p><span>Socios activos</span><strong>{{ $overview['activeMembers'] }}</strong></p>
-                <p><span>Pendiente de cobro en {{ $overview['year'] }}</span><strong>{{ \App\Modules\Fees\Support\Money::format($overview['pendingCents']) }}</strong><span>{{ $overview['pendingDues'] }} {{ $overview['pendingDues'] === 1 ? 'cuota pendiente' : 'cuotas pendientes' }}</span></p>
-                <p><span>Cobrado en {{ $overview['year'] }}</span><strong>{{ \App\Modules\Fees\Support\Money::format($overview['paidCents']) }}</strong><span>de {{ \App\Modules\Fees\Support\Money::format($overview['payableCents']) }} a cobrar</span></p>
-            </div>
-        @else
-            <div class="empty">
-                <p>Todavía no hay cuotas fijadas, así que no hay cifras de cobro que mostrar. Hay {{ $overview['activeMembers'] }} {{ $overview['activeMembers'] === 1 ? 'socio activo' : 'socios activos' }}.</p>
-            </div>
-        @endif
-        <p class="notice">
+    @php
+        $pendingDues = $overview['pendingDues'];
+        $paidShare = $overview['payableCents'] > 0
+            ? (int) round($overview['paidCents'] / $overview['payableCents'] * 100)
+            : 0;
+    @endphp
+
+    <header class="page-head">
+        <h1>Panel{{ $overview['year'] ? ' · ejercicio '.$overview['year'] : '' }}</h1>
+        <p class="meta">
             @if ($overview['lastImportAt'])
-                Último extracto importado el {{ $overview['lastImportAt']->format('d/m/Y') }}, con {{ $overview['movements'] }} {{ $overview['movements'] === 1 ? 'movimiento' : 'movimientos' }} en total.
+                Extracto actualizado el {{ $overview['lastImportAt']->format('d/m/Y') }}
             @else
-                Todavía no se ha importado ningún extracto bancario.
+                Sin extracto importado todavía
             @endif
         </p>
-    </section>
+    </header>
+
+    @if ($overview['year'])
+        <section class="kpis" aria-label="Cifras del ejercicio {{ $overview['year'] }}">
+            <div>
+                <span class="k">Pendiente de cobro</span>
+                <span class="n hero">{{ \App\Modules\Fees\Support\Money::format($overview['pendingCents']) }}</span>
+                <span class="sub{{ $pendingDues > 0 ? ' warn' : '' }}">
+                    {{ $pendingDues }} {{ $pendingDues === 1 ? 'cuota pendiente' : 'cuotas pendientes' }}
+                </span>
+            </div>
+            <div>
+                <span class="k">Cobrado</span>
+                <span class="n">{{ \App\Modules\Fees\Support\Money::format($overview['paidCents']) }}</span>
+                <span class="sub">de {{ \App\Modules\Fees\Support\Money::format($overview['payableCents']) }} a cobrar</span>
+                <span class="progress" role="img" aria-label="Cobrado el {{ $paidShare }} % de lo previsto">
+                    <i style="width: {{ $paidShare }}%"></i>
+                </span>
+            </div>
+            <div>
+                <span class="k">Socios activos</span>
+                <span class="n">{{ $overview['activeMembers'] }}</span>
+                <span class="sub">{{ $overview['activeMembers'] === 1 ? 'persona con alta vigente' : 'personas con alta vigente' }}</span>
+            </div>
+            <div>
+                <span class="k">Movimientos</span>
+                <span class="n">{{ $overview['movements'] }}</span>
+                <span class="sub">en el extracto importado</span>
+            </div>
+        </section>
+    @else
+        <div class="empty">
+            <p>Todavía no hay cuotas fijadas, así que no hay cifras de cobro que mostrar. Hay {{ $overview['activeMembers'] }} {{ $overview['activeMembers'] === 1 ? 'socio activo' : 'socios activos' }}.</p>
+            <a class="btn btn-sm" href="/fees">Fijar la cuota del año</a>
+        </div>
+    @endif
+
+    <p class="section-label">Siguientes pasos</p>
+    <nav class="next" aria-label="Siguientes pasos">
+        <a href="/members">
+            <b>Ver socios</b>
+            <span>Altas, bajas y datos de contacto.</span>
+            <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a href="/fees">
+            <b>Cuotas anuales</b>
+            <span>Quién ha pagado y quién debe.</span>
+            <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a href="/bank">
+            <b>Movimientos bancarios</b>
+            <span>El extracto del banco, importado en CSV.</span>
+            <span class="arrow" aria-hidden="true">→</span>
+        </a>
+    </nav>
+
+    <p class="section-label">Tu acceso</p>
+    <p class="stale">
+        Sesión iniciada como <strong>{{ auth()->user()->name }}</strong> ·
+        {{ auth()->user()->role === 'treasury' ? 'Tesorería, con edición' : 'Junta, solo consulta' }} ·
+        {{ auth()->user()->email }}
+    </p>
+
     <p class="alert alert-info">Este panel es de consulta. Las operaciones económicas todavía no están disponibles.</p>
-    <div class="link-grid">
-        <a class="link-card" href="/members"><strong>Ver socios</strong><span>Altas, bajas y datos de contacto.</span></a>
-        <a class="link-card" href="/fees"><strong>Cuotas anuales</strong><span>Quién ha pagado y quién debe.</span></a>
-        <a class="link-card" href="/bank"><strong>Movimientos bancarios</strong><span>El extracto del banco, importado en CSV.</span></a>
-    </div>
 @endsection
