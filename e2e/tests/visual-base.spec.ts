@@ -88,6 +88,14 @@ test.describe('base visual', () => {
     await expect(page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Socios' })).toHaveAttribute('aria-current', 'page');
   });
 
+  test('el panel resume socios activos, lo pendiente y lo cobrado, o explica por qué no hay cifras', async ({ page }) => {
+    await logIn(page, 'board');
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Resumen' })).toBeVisible();
+    await expect(page.getByText('Último extracto importado').or(page.getByText('Todavía no se ha importado ningún extracto bancario.'))).toBeVisible();
+    await expect(page.getByText('Socios activos').or(page.getByText('Todavía no hay cuotas fijadas'))).toBeVisible();
+  });
+
   test('al imprimir solo queda el contenido: sin navegación, sin formularios ni botones', async ({ page }) => {
     await logIn(page, 'treasury');
     await page.goto('/bank');
