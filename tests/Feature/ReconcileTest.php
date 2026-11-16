@@ -6,6 +6,7 @@ use App\Modules\Access\Models\User;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Fees\Actions\GrantExemption;
+use App\Modules\Fees\Actions\RegisterPayment;
 use App\Modules\Fees\Actions\SetFeeYear;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\FeeYear;
@@ -211,6 +212,40 @@ class ReconcileTest extends AuthTestCase
         $this->assertDatabaseCount('payments', 2);
         $this->assertSame(1, Payment::whereNull('voided_at')->count());
         $this->assertSame('paid', $due->fresh()->status());
+    }
+
+    public function test_the_database_allows_only_one_active_payment_per_movement(): void
+    {
+        // Models the simultaneous submission the verifier described: two inserts for the
+        // same movement, each with its own submission key, bypassing the early check.
+        $due = $this->dueFor($this->member(), $this->year());
+        $movement = $this->movement(1000);
+        $register = app(RegisterPayment::class);
+
+        $first = $register->handle($due, 1000, '2026-02-14', Payment::BANK, null, 'probe-key-1', $movement->id);
+        $second = $register->handle($due, 1000, '2026-02-14', Payment::BANK, null, 'probe-key-2', $movement->id);
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->count());
+        $this->assertSame(1000, $due->fresh()->paidCents());
+    }
+
+    public function test_the_bank_void_refuses_a_payment_that_did_not_come_from_a_movement(): void
+    {
+        $due = $this->dueFor($this->member(), $this->year());
+        $manual = Payment::forceCreate([
+            'due_id' => $due->id,
+            'amount_cents' => 500,
+            'paid_on' => '2026-02-01',
+            'method' => Payment::CASH,
+            'submission_key' => 'manual-key',
+        ]);
+
+        $this->actingAs($this->treasury())
+            ->post("/bank/payments/{$manual->id}/void", ['reason' => 'No procede.'])
+            ->assertSessionHasErrors('payment');
+
+        $this->assertNull($manual->fresh()->voided_at);
     }
 
     public function test_the_movements_screen_shows_the_form_only_for_credit_movements_and_the_linked_payment(): void

@@ -5,6 +5,7 @@ namespace App\Modules\Fees\Actions;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Fees\Support\Money;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,6 +28,22 @@ class RegisterPayment
 
             $due = Due::with(['feeYear', 'exemptions', 'payments'])->findOrFail($due->id);
 
+            // Read inside the transaction: a movement can only feed one active payment.
+            if ($bankMovementId !== null) {
+                $reconciled = Payment::query()
+                    ->where('bank_movement_id', $bankMovementId)
+                    ->whereNull('voided_at')
+                    ->first();
+
+                if ($reconciled !== null) {
+                    if ($reconciled->due_id !== $due->id) {
+                        throw ValidationException::withMessages(['due_id' => 'El movimiento ya está conciliado con otra cuota. Anula ese pago antes de conciliarlo de nuevo.']);
+                    }
+
+                    return $reconciled;
+                }
+            }
+
             if ($due->activeExemption() !== null) {
                 throw ValidationException::withMessages(['amount' => 'La cuota está exenta y no admite pagos.']);
             }
@@ -35,15 +52,33 @@ class RegisterPayment
                 throw ValidationException::withMessages(['amount' => 'El pago supera lo pendiente de la cuota ('.Money::format($due->pendingCents()).').']);
             }
 
-            return Payment::forceCreate([
-                'due_id' => $due->id,
-                'bank_movement_id' => $bankMovementId,
-                'amount_cents' => $amountCents,
-                'paid_on' => $paidOn,
-                'method' => $method,
-                'submission_key' => $submissionKey,
-                'note' => $note === null || trim($note) === '' ? null : trim($note),
-            ]);
+            try {
+                return Payment::forceCreate([
+                    'due_id' => $due->id,
+                    'bank_movement_id' => $bankMovementId,
+                    'amount_cents' => $amountCents,
+                    'paid_on' => $paidOn,
+                    'method' => $method,
+                    'submission_key' => $submissionKey,
+                    'note' => $note === null || trim($note) === '' ? null : trim($note),
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                // The unique index caught two simultaneous submissions; resolve to the winner.
+                $reconciled = $bankMovementId === null ? null : Payment::query()
+                    ->where('bank_movement_id', $bankMovementId)
+                    ->whereNull('voided_at')
+                    ->first();
+
+                if ($reconciled === null) {
+                    throw $e;
+                }
+
+                if ($reconciled->due_id !== $due->id) {
+                    throw ValidationException::withMessages(['due_id' => 'El movimiento ya está conciliado con otra cuota. Anula ese pago antes de conciliarlo de nuevo.']);
+                }
+
+                return $reconciled;
+            }
         });
     }
 }
