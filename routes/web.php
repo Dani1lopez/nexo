@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Auth\SessionController;
+use App\Modules\Access\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [SessionController::class, 'create'])->name('login');

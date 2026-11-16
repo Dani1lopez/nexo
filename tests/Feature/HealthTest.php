@@ -10,4 +10,9 @@ class HealthTest extends TestCase
     {
         $this->get('/up')->assertOk();
     }
+
+    public function test_health_endpoint_is_stateless_and_sets_no_cookie(): void
+    {
+        $this->get('/up')->assertOk()->assertHeaderMissing('Set-Cookie');
+    }
 }
