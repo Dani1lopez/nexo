@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Modules\Access\Models\User;
+use App\Modules\Fees\Actions\GrantExemption;
 use App\Modules\Fees\Actions\RegisterPayment;
 use App\Modules\Fees\Actions\SetFeeYear;
+use App\Modules\Fees\Actions\VoidPayment;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Members\Models\Member;
 use Tests\Support\AuthTestCase;
@@ -54,6 +56,45 @@ class DashboardTest extends AuthTestCase
             ->assertSee('Cobrado en 2026')
             ->assertSee('10,00 €')
             ->assertSee('de 60,00 € a cobrar');
+    }
+
+    public function test_an_exempt_due_is_neither_payable_nor_pending(): void
+    {
+        $this->member('a@example.test');
+        $this->member('b@example.test');
+        app(SetFeeYear::class)->handle(2026, 3000);
+        app(GrantExemption::class)->handle(Due::orderBy('id')->firstOrFail(), 'Situación económica');
+
+        $this->actingAs($this->board())->get('/dashboard')
+            ->assertSee('30,00 €')
+            ->assertSee('1 cuota pendiente')
+            ->assertSee('de 30,00 € a cobrar');
+    }
+
+    public function test_a_voided_payment_does_not_count_as_collected(): void
+    {
+        $this->member('a@example.test');
+        $year = app(SetFeeYear::class)->handle(2026, 3000);
+        $due = Due::where('fee_year_id', $year->id)->firstOrFail();
+        $payment = app(RegisterPayment::class)->handle($due, 1000, '2026-01-10', 'bank', null, 'key-void');
+        app(VoidPayment::class)->handle($payment, 'Error de importe');
+
+        $this->actingAs($this->board())->get('/dashboard')
+            ->assertSee('Cobrado en 2026')
+            ->assertSee('0,00 €')
+            ->assertSee('de 30,00 € a cobrar')
+            ->assertSee('1 cuota pendiente');
+    }
+
+    public function test_when_everything_is_paid_nothing_is_pending(): void
+    {
+        $this->member('a@example.test');
+        $year = app(SetFeeYear::class)->handle(2026, 3000);
+        app(RegisterPayment::class)->handle(Due::where('fee_year_id', $year->id)->firstOrFail(), 3000, '2026-01-10', 'bank', null, 'key-full');
+
+        $this->actingAs($this->board())->get('/dashboard')
+            ->assertSee('0 cuotas pendientes')
+            ->assertSee('de 30,00 € a cobrar');
     }
 
     public function test_anonymous_visitors_are_sent_to_login(): void

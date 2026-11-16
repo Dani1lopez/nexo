@@ -6,109 +6,64 @@
 /*
  * Design tokens. Colours, type and spacing live here and nowhere else.
  *
- * Direction: a calm, dense, dark application shell. Hierarchy comes from type size, weight and
- * space rather than from boxes; surfaces are separated by translucent rings instead of solid
- * borders; colour is reserved for meaning, and a soft glow in the section accent lights the top
- * of every page. Each section keeps a quiet "line" accent (a dot in the menu,
- * links, primary buttons) that nods to the transit-map idea of Nexo without shouting.
- * The body class (line-panel, line-socios...) sets --line, the accent of the current section.
+ * Direction: a calm, dense application shell. Hierarchy comes from type size, weight and space
+ * rather than from boxes; surfaces are separated by translucent rings instead of solid borders;
+ * colour is reserved for meaning, and a soft glow in the section accent lights the top of every
+ * page. Each section keeps a quiet accent (a dot in the menu, links, primary buttons).
+ *
+ * Themes: every colour is defined once as light-dark(light value, dark value). The used value
+ * follows `color-scheme`, which is the system preference unless a person picked a theme with the
+ * menu button (that sets data-theme on <html>). The body class (line-panel, line-socios...) sets
+ * --line, the accent of the current section.
  */
 @theme static {
     --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-    --color-canvas: #202634;
-    --color-surface: #2a3142;
-    --color-raised: #333b50;
-    --color-ink: #eceff6;
-    --color-muted: #aab3c7;
+    --color-canvas: light-dark(#dde3ec, #202634);
+    --color-surface: light-dark(#f2f5f9, #2a3142);
+    --color-raised: light-dark(#fbfcfe, #333b50);
+    --color-ink: light-dark(#172033, #eceff6);
+    --color-muted: light-dark(#4b566e, #aab3c7);
     --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
-    --color-on-accent: #141925;
+    --color-on-accent: light-dark(#ffffff, #141925);
 
-    --color-line-panel: #8b9cff;
-    --color-line-socios: #2dd4bf;
-    --color-line-cuotas: #fbbf24;
-    --color-line-movimientos: #b79cff;
+    --color-line-panel: light-dark(#3a50c8, #8b9cff);
+    --color-line-socios: light-dark(#0f766e, #2dd4bf);
+    --color-line-cuotas: light-dark(#b45309, #fbbf24);
+    --color-line-movimientos: light-dark(#6d28d9, #b79cff);
 
-    --color-danger: #f97066;
-    --color-danger-strong: #fda29b;
-    --color-danger-soft: rgb(240 68 56 / 0.14);
-    --color-warn: #fec84b;
-    --color-warn-soft: rgb(247 144 9 / 0.15);
-    --color-ok: #47cd89;
-    --color-ok-soft: rgb(18 183 106 / 0.15);
-    --color-info: #a4bcfd;
-    --color-info-soft: rgb(99 102 241 / 0.2);
+    --color-danger: light-dark(#b42318, #f97066);
+    --color-danger-strong: light-dark(#912018, #fda29b);
+    --color-danger-soft: light-dark(rgb(240 68 56 / 0.1), rgb(240 68 56 / 0.14));
+    --color-warn: light-dark(#93370d, #fec84b);
+    --color-warn-soft: light-dark(rgb(247 144 9 / 0.18), rgb(247 144 9 / 0.15));
+    --color-ok: light-dark(#067647, #47cd89);
+    --color-ok-soft: light-dark(rgb(18 183 106 / 0.14), rgb(18 183 106 / 0.15));
+    --color-info: light-dark(#3538cd, #a4bcfd);
+    --color-info-soft: light-dark(rgb(99 102 241 / 0.14), rgb(99 102 241 / 0.2));
     --color-neutral-soft: color-mix(in srgb, var(--color-ink) 8%, transparent);
-    --color-ok-strong: #75e0a7;
-    --color-neutral-text: #cbd2dd;
-    --topbar-bg: rgb(32 38 52 / 0.78);
-    --glow-strength: 24%;
+    --color-ok-strong: light-dark(#054f31, #75e0a7);
+    --color-neutral-text: light-dark(#475467, #cbd2dd);
+    --topbar-bg: light-dark(rgb(242 245 249 / 0.82), rgb(32 38 52 / 0.78));
 
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --shadow-ring: 0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 6%, transparent), 0 1px 2px rgb(0 0 0 / 0.25);
-    --shadow-lift: 0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+    --shadow-ring:
+        0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
+        inset 0 1px 0 light-dark(transparent, color-mix(in srgb, var(--color-ink) 6%, transparent)),
+        0 1px 2px light-dark(rgb(15 23 42 / 0.06), rgb(0 0 0 / 0.25));
+    --shadow-lift:
+        0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
+        0 16px 40px -14px light-dark(rgb(15 23 42 / 0.3), rgb(0 0 0 / 0.7));
 }
 
 @layer base {
-    /* Light theme: chosen with the menu button, or followed from the system when nothing was chosen. */
-    :root[data-theme='light'] {
-        --color-canvas: #dde3ec;
-        --color-surface: #f2f5f9;
-        --color-raised: #fbfcfe;
-        --color-ink: #172033;
-        --color-muted: #4b566e;
-        --color-on-accent: #ffffff;
-        --color-line-panel: #3a50c8;
-        --color-line-socios: #0f766e;
-        --color-line-cuotas: #b45309;
-        --color-line-movimientos: #6d28d9;
-        --color-danger: #b42318;
-        --color-danger-strong: #912018;
-        --color-danger-soft: rgb(240 68 56 / 0.1);
-        --color-warn: #93370d;
-        --color-warn-soft: rgb(247 144 9 / 0.18);
-        --color-ok: #067647;
-        --color-ok-soft: rgb(18 183 106 / 0.14);
-        --color-info: #3538cd;
-        --color-info-soft: rgb(99 102 241 / 0.14);
-        --color-ok-strong: #054f31;
-        --color-neutral-text: #475467;
-        --topbar-bg: rgb(242 245 249 / 0.82);
-        --glow-strength: 14%;
-        --shadow-ring: 0 0 0 1px rgb(15 23 42 / 0.09), 0 1px 2px rgb(15 23 42 / 0.06);
-        --shadow-lift: 0 0 0 1px rgb(15 23 42 / 0.09), 0 16px 40px -14px rgb(15 23 42 / 0.3);
-        color-scheme: light;
+    /* The system preference decides unless a theme was chosen with the menu button. */
+    :root {
+        color-scheme: light dark;
     }
 
-    @media (prefers-color-scheme: light) {
-        :root:not([data-theme='dark']) {
-            --color-canvas: #dde3ec;
-        --color-surface: #f2f5f9;
-        --color-raised: #fbfcfe;
-        --color-ink: #172033;
-        --color-muted: #4b566e;
-        --color-on-accent: #ffffff;
-        --color-line-panel: #3a50c8;
-        --color-line-socios: #0f766e;
-        --color-line-cuotas: #b45309;
-        --color-line-movimientos: #6d28d9;
-        --color-danger: #b42318;
-        --color-danger-strong: #912018;
-        --color-danger-soft: rgb(240 68 56 / 0.1);
-        --color-warn: #93370d;
-        --color-warn-soft: rgb(247 144 9 / 0.18);
-        --color-ok: #067647;
-        --color-ok-soft: rgb(18 183 106 / 0.14);
-        --color-info: #3538cd;
-        --color-info-soft: rgb(99 102 241 / 0.14);
-        --color-ok-strong: #054f31;
-        --color-neutral-text: #475467;
-        --topbar-bg: rgb(242 245 249 / 0.82);
-        --glow-strength: 14%;
-        --shadow-ring: 0 0 0 1px rgb(15 23 42 / 0.09), 0 1px 2px rgb(15 23 42 / 0.06);
-        --shadow-lift: 0 0 0 1px rgb(15 23 42 / 0.09), 0 16px 40px -14px rgb(15 23 42 / 0.3);
+    :root[data-theme='light'] {
         color-scheme: light;
-        }
     }
 
     :root[data-theme='dark'] {
@@ -122,6 +77,10 @@
     body {
         --line: var(--color-line-panel);
         --line-soft: color-mix(in srgb, var(--line) 12%, var(--color-surface));
+        --glow: light-dark(
+            color-mix(in srgb, var(--line) 14%, transparent),
+            color-mix(in srgb, var(--line) 24%, transparent)
+        );
         font-family: var(--font-sans);
         font-size: 0.9375rem;
         line-height: 1.6;
@@ -129,7 +88,7 @@
         background-color: var(--color-canvas);
         background-image: radial-gradient(
             ellipse 60rem 22rem at 50% -6rem,
-            color-mix(in srgb, var(--line) var(--glow-strength), transparent),
+            var(--glow),
             transparent
         );
         background-repeat: no-repeat;
@@ -620,7 +579,7 @@
         font-size: 0.875rem;
     }
 
-    /* Content: records sit on white surfaces separated by a translucent ring, not by solid borders. */
+    /* Content: records sit on raised surfaces separated by a translucent ring, not by solid borders. */
     .entry {
         margin: 0.75rem 0;
         padding: 1.25rem;
@@ -955,7 +914,7 @@
         color: var(--color-muted);
     }
 
-    /* Home */
+    /* Home: hero text */
     .hero h1 {
         max-width: 16ch;
         margin: 0;
