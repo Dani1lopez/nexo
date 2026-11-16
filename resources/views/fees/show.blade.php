@@ -10,6 +10,11 @@
         @endcan
     </div>
     <p>Importe: <strong>{{ $money($feeYear->amount_cents) }}</strong></p>
+    <div class="tally" role="group" aria-label="Resumen del año">
+        <p><span>Total a cobrar</span><strong>{{ $money($dues->sum(fn ($d) => $d->payableCents())) }}</strong></p>
+        <p><span>Cobrado</span><strong>{{ $money($dues->sum(fn ($d) => $d->paidCents())) }}</strong></p>
+        <p><span>Por cobrar</span><strong>{{ $money($dues->sum(fn ($d) => $d->pendingCents())) }}</strong></p>
+    </div>
     @if ($errors->any())
         <div class="alert alert-error" role="alert">
             <ul>
@@ -21,7 +26,7 @@
     @endif
     @forelse ($dues as $due)
         @php($active = $due->activeExemption())
-        <article class="entry">
+        <article class="entry due due-{{ $due->status() }}">
             <h2>{{ $due->member->name }}</h2>
             <p>Cuota: {{ $money($feeYear->amount_cents) }} · A pagar: {{ $money($due->payableCents()) }}</p>
             <p>Pagado: {{ $money($due->paidCents()) }} · Pendiente: {{ $money($due->pendingCents()) }}</p>
@@ -55,7 +60,7 @@
                         @csrf
                         <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                         <p class="notice mt-0">No escribas datos personales reales en la nota.</p>
-                        <div class="grid gap-x-4 sm:grid-cols-2">
+                        <div class="grid items-end gap-x-4 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <label for="pay-amount-{{ $due->id }}">Importe del pago en euros ({{ $due->member->name }})</label>
                                 <input id="pay-amount-{{ $due->id }}" name="amount" type="text" inputmode="decimal" autocomplete="off" required>

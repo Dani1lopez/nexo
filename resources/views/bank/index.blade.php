@@ -52,7 +52,12 @@
             </dl>
         </article>
     @empty
-        <p>Todavía no se ha importado ningún extracto.</p>
+        <div class="empty">
+            <p>Todavía no se ha importado ningún extracto.</p>
+            @can('edit-treasury')
+                <a href="#file" class="btn btn-secondary btn-sm">Elegir un archivo CSV</a>
+            @endcan
+        </div>
     @endforelse
     @if ($imports->isNotEmpty())
     </div>
@@ -71,7 +76,9 @@
             </dl>
         </article>
     @empty
-        <p>No hay movimientos importados.</p>
+        <div class="empty">
+            <p>No hay movimientos importados.</p>
+        </div>
     @endforelse
     @if ($movements->isNotEmpty())
     </div>

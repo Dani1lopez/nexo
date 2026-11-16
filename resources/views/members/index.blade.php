@@ -37,7 +37,12 @@
             @endcan
         </article>
     @empty
-        <p>No hay socios que mostrar con este filtro.</p>
+        <div class="empty">
+            <p>No hay socios que mostrar con este filtro.</p>
+            @can('edit-treasury')
+                <a href="/members/create" class="btn btn-secondary btn-sm">Añadir un socio</a>
+            @endcan
+        </div>
     @endforelse
     @if ($members->isNotEmpty())
     </div>

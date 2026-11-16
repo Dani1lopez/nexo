@@ -195,6 +195,23 @@
         @apply outline-white;
     }
 
+    .site-header:has(.platform) {
+        border-bottom: 0;
+    }
+
+    /* The platform sign: the current line's name, large, on its own colour. */
+    .platform {
+        background: var(--line);
+    }
+
+    .platform-inner {
+        @apply mx-auto max-w-page px-4 py-1 font-display text-4xl/none font-bold text-white;
+    }
+
+    .status {
+        @apply mt-0 max-w-none;
+    }
+
     .site-header-inner {
         @apply mx-auto flex max-w-page flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3;
     }
@@ -271,7 +288,8 @@
     }
 
     .site-footer {
-        @apply px-4 py-8 text-center text-base text-muted;
+        @apply bg-ink px-4 py-8 text-center text-base text-white/85;
+        border-top: 8px solid var(--line);
     }
 
     .back-link {
@@ -418,16 +436,19 @@
         }
     }
 
+    /* Filters are one segmented track in the colour of the current line. */
     .filters {
-        @apply my-4 flex flex-wrap gap-2;
+        @apply my-4 flex flex-wrap;
     }
 
     .filters a {
-        @apply min-h-10 rounded-control border-2 border-rule bg-surface px-4 py-1.5 text-base font-semibold text-ink no-underline hover:border-ink hover:bg-surface;
+        @apply -ml-0.5 min-h-10 border-2 bg-surface px-5 py-1.5 text-base font-semibold text-ink no-underline first:ml-0 first:rounded-l-control last:rounded-r-control hover:bg-(--line-soft);
+        border-color: var(--line);
     }
 
     .filters a[aria-current='page'] {
-        @apply border-ink bg-ink text-white hover:bg-ink;
+        @apply text-white hover:text-white;
+        background: var(--line);
     }
 
     .link-grid {
@@ -529,5 +550,165 @@
 
     .badge-exempt::before {
         background: linear-gradient(to top right, transparent 44%, currentColor 44% 56%, transparent 56%);
+    }
+}
+
+@layer components {
+    /* Year summary, like the totals line of a departures board. */
+    .tally {
+        @apply my-5 grid overflow-hidden rounded-control border border-ink bg-ink sm:grid-cols-3;
+        gap: 1px;
+    }
+
+    .tally p {
+        @apply m-0 max-w-none bg-surface p-4;
+    }
+
+    .tally span {
+        @apply block text-base text-muted;
+    }
+
+    .tally strong {
+        @apply font-display text-4xl/none font-bold;
+    }
+
+    /* A large status pictogram marks every due; the badge keeps the word. */
+    .due {
+        @apply relative pr-5 sm:pl-24;
+    }
+
+    .due h2 {
+        @apply pr-12 sm:pr-0;
+    }
+
+    .due::before {
+        content: '';
+        @apply absolute top-5 right-5 size-8 rounded-xs border-4 border-current sm:top-6 sm:right-auto sm:left-6 sm:size-12;
+    }
+
+    .due-pending {
+        @apply text-warn;
+    }
+
+    .due-partial {
+        @apply text-line-panel;
+    }
+
+    .due-partial::before {
+        background: linear-gradient(to right, currentColor 50%, transparent 50%);
+    }
+
+    .due-paid {
+        @apply text-ok;
+    }
+
+    .due-paid::before {
+        background: currentColor;
+    }
+
+    .due-exempt {
+        @apply text-muted;
+    }
+
+    .due-exempt::before {
+        background: linear-gradient(to top right, transparent 44%, currentColor 44% 56%, transparent 56%);
+    }
+
+    .due > * {
+        @apply text-ink;
+    }
+
+    .empty {
+        @apply my-4 flex flex-col items-start gap-3 rounded-control border-2 border-dashed border-rule bg-surface p-6;
+    }
+
+    .empty p {
+        @apply m-0;
+    }
+}
+
+/* One authored moment: the line draws itself and the stops pop in, once per page load. */
+@media (prefers-reduced-motion: no-preference) {
+    .route::before {
+        animation: track-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .stop::before {
+        animation: stop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .stop:nth-child(2)::before {
+        animation-delay: 0.12s;
+    }
+
+    .stop:nth-child(3)::before {
+        animation-delay: 0.24s;
+    }
+
+    .stop:nth-child(4)::before {
+        animation-delay: 0.36s;
+    }
+}
+
+@keyframes track-in {
+    from {
+        clip-path: inset(0 100% 0 0);
+    }
+
+    to {
+        clip-path: inset(0);
+    }
+}
+
+@keyframes stop-in {
+    from {
+        transform: scale(0.4);
+    }
+
+    to {
+        transform: scale(1);
+    }
+}
+
+/* Treasurers print lists for the board: keep the data, drop the chrome. */
+@media print {
+    .site-header,
+    .route,
+    .site-footer,
+    .skip-link,
+    .back-link,
+    .filters,
+    form,
+    button,
+    .btn,
+    .empty a {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+        font-size: 11pt;
+    }
+
+    main::before {
+        content: 'Nexo — demo con datos ficticios';
+        display: block;
+        margin-bottom: 0.75rem;
+        font-weight: 700;
+    }
+
+    h1,
+    a {
+        color: black;
+        text-decoration: none;
+    }
+
+    .board {
+        overflow: visible;
+    }
+
+    .entry {
+        break-inside: avoid;
+        border-color: black;
     }
 }

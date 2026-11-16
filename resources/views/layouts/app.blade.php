@@ -30,6 +30,9 @@
                 @endauth
             @endif
         </div>
+        @if (! $__env->hasSection('public') && auth()->check())
+            <div class="platform" aria-hidden="true"><div class="platform-inner">{{ ['panel' => 'Panel', 'socios' => 'Socios', 'cuotas' => 'Cuotas', 'movimientos' => 'Movimientos'][$line] }}</div></div>
+        @endif
     </header>
     @if (! $__env->hasSection('public'))
         @auth
@@ -42,6 +45,9 @@
         @endauth
     @endif
     <main id="contenido" tabindex="-1" class="@hasSection('narrow') form-page max-w-narrow @else sheet max-w-page @endif">
+        @if (! $__env->hasSection('public') && session('status'))
+            <p class="alert alert-ok status" role="status">{{ session('status') }}</p>
+        @endif
         @yield('content')
     </main>
     <footer class="site-footer">

@@ -16,13 +16,13 @@ class ExemptionController extends Controller
     {
         $grant->handle($due, $request->validated('reason'));
 
-        return redirect("/fees/{$due->fee_year_id}");
+        return redirect("/fees/{$due->fee_year_id}")->with('status', 'Exención concedida.');
     }
 
     public function revoke(ReasonRequest $request, Exemption $exemption, RevokeExemption $revoke): RedirectResponse
     {
         $revoke->handle($exemption, $request->validated('reason'));
 
-        return redirect('/fees/'.$exemption->due->fee_year_id);
+        return redirect('/fees/'.$exemption->due->fee_year_id)->with('status', 'Exención anulada.');
     }
 }

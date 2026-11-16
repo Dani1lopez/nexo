@@ -21,7 +21,12 @@
             </dl>
         </article>
     @empty
-        <p>Todavía no se ha fijado ninguna cuota.</p>
+        <div class="empty">
+            <p>Todavía no se ha fijado ninguna cuota.</p>
+            @can('edit-treasury')
+                <a href="/fees/create" class="btn btn-secondary btn-sm">Fijar la primera cuota</a>
+            @endcan
+        </div>
     @endforelse
     @if ($years->isNotEmpty())
     </div>

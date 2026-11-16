@@ -76,4 +76,22 @@ test.describe('base visual', () => {
     await expect(page.getByRole('button', { name: 'Registrar pago' }).first()).toBeVisible();
     expect(await overflow(), 'detalle de la cuota').toBeLessThanOrEqual(0);
   });
+
+  test('un filtro sin socios ofrece el siguiente paso y la sección actual se anuncia en la cabecera', async ({ page }) => {
+    await logIn(page, 'treasury');
+    await page.goto('/members?estado=bajas');
+    await expect(page.getByText('No hay socios que mostrar con este filtro.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Añadir un socio' })).toBeVisible();
+    await expect(page.locator('.platform')).toHaveText('Socios');
+  });
+
+  test('al imprimir solo queda el contenido: sin navegación, sin formularios ni botones', async ({ page }) => {
+    await logIn(page, 'treasury');
+    await page.goto('/bank');
+    await expect(page.getByRole('button', { name: 'Importar extracto' })).toBeVisible();
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.getByRole('navigation', { name: 'Principal' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Importar extracto' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Movimientos bancarios' })).toBeVisible();
+  });
 });
