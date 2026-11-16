@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Access\Http\Controllers\SessionController;
+use App\Modules\Bank\Http\Controllers\BankImportController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
 use App\Modules\Fees\Http\Controllers\FeeYearController;
 use App\Modules\Fees\Http\Controllers\PaymentController;
@@ -40,4 +41,9 @@ Route::middleware(['auth', 'can:view-treasury'])->group(function (): void {
     });
 
     Route::get('/fees/{feeYear}', [FeeYearController::class, 'show'])->name('fees.show');
+});
+
+Route::middleware(['auth', 'can:view-treasury'])->prefix('bank')->name('bank.')->group(function (): void {
+    Route::get('/', [BankImportController::class, 'index'])->name('index');
+    Route::post('/imports', [BankImportController::class, 'store'])->middleware('can:edit-treasury')->name('imports.store');
 });

@@ -10,5 +10,6 @@
     <p>Este panel es de consulta. Las operaciones económicas todavía no están disponibles.</p>
     <p><a href="/members">Ver socios</a></p>
     <p><a href="/fees">Cuotas anuales</a></p>
+    <p><a href="/bank">Movimientos bancarios</a></p>
     <form method="post" action="/logout">@csrf<button type="submit">Cerrar sesión</button></form>
 @endsection
