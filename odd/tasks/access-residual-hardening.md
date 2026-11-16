@@ -16,9 +16,9 @@ S8. Delivery, verbatim: «Rama propia vinculada a esta issue, commits convencion
 
 ## Tasks
 
-- T1 [S3,S6] route: parent inline, test-first; done; both login rejections now share one generic message, and a blocked attempt still never reaches `Auth::attempt`; tests updated to the generic text plus a new indistinguishability test. commit: 43718aa.
-- T2 [S4,S6] route: parent inline, test-first; done; added `config/trustedproxy.php` with `TRUSTED_PROXIES`; an empty list is the default, so `X-Forwarded-For` is ignored; tests pin the untrusted default, the trusted string list, per-client isolation and the forged `Host` case. commit: 43718aa, corrected in the follow-up commit.
-- T3 [S5,S6] route: parent inline, test-first; done; `role` removed from `$fillable`, writes only through `assignRole()`/`provision()`, unknown values throw before saving, `saving` guard backs it; DB-level `CHECK` accepted as a documented residual (SQLite table rebuild) with the fail-closed gate proof kept through a raw-row helper. Docs: README «Acceso y roles». commit: 43718aa.
+- T1 [S3,S6] route: parent inline, test-first; done; both login rejections now share one generic message, and a blocked attempt still never reaches `Auth::attempt`; tests updated to the generic text plus a new indistinguishability test. commit: 43718aa, 276e3fe.
+- T2 [S4,S6] route: parent inline, test-first; done; added `config/trustedproxy.php` with `TRUSTED_PROXIES`; an empty list is the default, so `X-Forwarded-For` is ignored; tests pin the untrusted default, the trusted string list, per-client isolation and the forged `Host` case. commit: 43718aa, correction 276e3fe.
+- T3 [S5,S6] route: parent inline, test-first; done; `role` removed from `$fillable`, writes only through `assignRole()`/`provision()`, unknown values throw before saving, `saving` guard backs it; DB-level `CHECK` accepted as a documented residual (SQLite table rebuild) with the fail-closed gate proof kept through a raw-row helper. Docs: README «Acceso y roles». commit: 43718aa, 276e3fe.
 
 ## Log
 
