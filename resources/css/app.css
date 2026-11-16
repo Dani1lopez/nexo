@@ -1,35 +1,47 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource/atkinson-hyperlegible/latin-400.css';
+@import '@fontsource/atkinson-hyperlegible/latin-700.css';
 
 @source '../views';
 
 /*
  * Design tokens. Colours, type and spacing live here and nowhere else:
  * views use the generated utilities (bg-brand, text-muted, max-w-page...), never hex values.
+ *
+ * The visual idea is a treasurer's ledger: green-grey paper, a lighter sheet with a double
+ * red margin rule, filing-cabinet tabs for navigation and rubber stamps for statuses.
  */
 @theme {
-    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --font-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Bricolage Grotesque Variable', 'Atkinson Hyperlegible', system-ui, sans-serif;
 
-    --color-ink: #18312e;
-    --color-muted: #4a625c;
-    --color-canvas: #edf4ef;
-    --color-surface: #ffffff;
-    --color-line: #c8d7d1;
-    --color-brand: #125d4e;
-    --color-brand-strong: #0d4a3e;
-    --color-brand-soft: #dcece5;
-    --color-focus: #ad6500;
-    --color-danger: #a32727;
-    --color-danger-strong: #7f1d1d;
-    --color-danger-soft: #fff0f0;
-    --color-warn: #7a4600;
-    --color-warn-soft: #fff4df;
-    --color-ok: #1b6b3a;
-    --color-ok-soft: #e4f4ea;
+    --color-canvas: #e3e9dc;
+    --color-tab: #cdd7c4;
+    --color-surface: #f8faf4;
+    --color-line: #b9c4b0;
+    --color-ink: #12213f;
+    --color-muted: #43506a;
+    --color-brand: #1f3a93;
+    --color-brand-strong: #172b72;
+    --color-brand-soft: #dde4f6;
+    --color-marker: #f4d35e;
+    --color-margin: #b4302b;
+    --color-focus: #12213f;
+    --color-danger: #a82a25;
+    --color-danger-strong: #7a1f1b;
+    --color-danger-soft: #fbe9e6;
+    --color-warn: #8a4b00;
+    --color-warn-soft: #fbefd5;
+    --color-ok: #1d6b3f;
+    --color-ok-soft: #e0f1e6;
+    --color-exempt: #55407f;
 
-    --container-page: 64rem;
+    --container-page: 62rem;
     --container-narrow: 28rem;
-    --radius-card: 1rem;
-    --shadow-card: 0 8px 30px rgb(24 49 46 / 0.09);
+    --radius-sheet: 0.25rem;
+    --radius-tab: 0.625rem;
+    --radius-stamp: 0.1875rem;
 }
 
 @layer base {
@@ -38,27 +50,34 @@
     }
 
     body {
-        @apply bg-canvas font-sans text-ink antialiased;
+        @apply bg-canvas font-sans text-lg/relaxed text-ink antialiased;
+        font-variant-numeric: tabular-nums;
     }
 
     a {
-        @apply font-semibold text-brand underline underline-offset-2 hover:text-brand-strong;
+        @apply font-bold text-brand underline decoration-2 underline-offset-4 hover:bg-marker hover:text-ink;
     }
 
     :focus-visible {
         @apply outline-3 outline-offset-3 outline-focus;
     }
 
+    h1,
+    h2,
+    h3 {
+        @apply font-display text-ink;
+    }
+
     h1 {
-        @apply mb-2 text-2xl font-bold tracking-tight;
+        @apply mb-2 text-4xl/tight font-bold tracking-tight;
     }
 
     h2 {
-        @apply mt-8 mb-2 text-xl font-bold;
+        @apply mt-9 mb-2 text-2xl/tight font-bold tracking-tight;
     }
 
     h3 {
-        @apply mt-4 mb-1 text-base font-bold;
+        @apply mt-4 mb-1 text-xl/snug font-bold;
     }
 
     p {
@@ -66,16 +85,16 @@
     }
 
     label {
-        @apply mt-4 mb-1 block font-semibold;
+        @apply mt-4 mb-1 block font-bold;
     }
 
     input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
     select {
-        @apply block min-h-11 w-full rounded-md border border-muted bg-surface px-3 py-2 text-base;
+        @apply block min-h-11 w-full rounded-stamp border-2 border-ink bg-white px-3 py-2 text-base;
     }
 
     input[type='file'] {
-        @apply file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-semibold file:text-brand-strong;
+        @apply file:mr-4 file:cursor-pointer file:rounded-stamp file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-bold file:text-brand-strong;
     }
 
     dl {
@@ -83,7 +102,7 @@
     }
 
     dt {
-        @apply font-semibold text-muted;
+        @apply font-bold text-muted;
     }
 
     dd {
@@ -93,21 +112,27 @@
     ul {
         @apply my-2 list-disc pl-6;
     }
+
+    @media (prefers-reduced-motion: reduce) {
+        * {
+            scroll-behavior: auto !important;
+        }
+    }
 }
 
 @layer components {
     /* Buttons: native buttons and links that act as buttons share one look. */
     button,
     .btn {
-        @apply mt-5 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-transparent bg-brand px-5 py-2 text-base font-bold text-white no-underline hover:bg-brand-strong hover:text-white disabled:cursor-not-allowed disabled:opacity-60;
+        @apply mt-5 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-stamp border-2 border-brand bg-brand px-5 py-2 text-base font-bold text-white no-underline hover:border-ink hover:bg-marker hover:text-ink disabled:cursor-not-allowed disabled:opacity-60;
     }
 
     .btn-secondary {
-        @apply border-brand bg-surface text-brand hover:bg-brand-soft hover:text-brand-strong;
+        @apply border-brand bg-transparent text-brand hover:border-ink hover:bg-marker hover:text-ink;
     }
 
     .btn-danger {
-        @apply border-danger bg-surface text-danger hover:bg-danger-soft hover:text-danger-strong;
+        @apply border-danger bg-transparent text-danger hover:border-danger-strong hover:bg-danger-soft hover:text-danger-strong;
     }
 
     .btn-sm {
@@ -116,44 +141,59 @@
 
     /* Page frame */
     .skip-link {
-        @apply absolute left-4 top-0 z-50 -translate-y-full rounded-b-md bg-brand-strong px-4 py-2 text-white no-underline focus:translate-y-0 focus:text-white;
+        @apply absolute left-4 top-0 z-50 -translate-y-full rounded-b-stamp bg-ink px-4 py-2 text-white no-underline focus:translate-y-0 focus:bg-ink focus:text-white;
     }
 
     .site-header {
-        @apply bg-brand text-white;
+        @apply mx-auto flex w-full max-w-page flex-wrap items-end gap-x-4 gap-y-1 px-4 pt-5;
     }
 
     .brand {
-        @apply mr-2 text-xl font-extrabold tracking-tight text-white no-underline hover:text-white;
+        @apply mr-2 font-display text-4xl/none font-extrabold tracking-tight text-ink no-underline hover:bg-transparent hover:text-brand;
     }
 
-    .nav-link {
-        @apply rounded-md px-3 py-2 text-white no-underline hover:bg-brand-strong hover:text-white aria-[current=page]:bg-surface aria-[current=page]:text-brand;
+    .who {
+        @apply ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 pb-1 text-base;
     }
 
-    .site-header .btn-secondary {
-        @apply border-white bg-transparent text-white hover:bg-brand-strong hover:text-white;
+    /* Tabs sit on the sheet's top edge; the current one is the same paper as the sheet. */
+    .tabs {
+        @apply mx-auto mt-4 flex w-full max-w-page flex-wrap items-end gap-1 px-4;
     }
 
-    .panel {
-        @apply rounded-card bg-surface p-5 shadow-card sm:p-8;
+    .tab {
+        @apply relative -mb-px rounded-t-tab border border-b-0 border-line bg-tab px-4 py-2 text-base text-ink no-underline hover:bg-marker hover:text-ink;
+    }
+
+    .tab[aria-current='page'] {
+        @apply border-ink bg-surface pt-3 hover:bg-surface;
+    }
+
+    .sheet {
+        @apply relative rounded-sheet border border-ink bg-surface py-6 pr-5 pl-9 sm:py-8 sm:pr-10 sm:pl-20;
+    }
+
+    /* The double red rule of the ledger margin. */
+    .sheet::before {
+        content: '';
+        @apply absolute inset-y-0 left-4 w-[7px] border-x-2 border-margin sm:left-12;
     }
 
     .site-footer {
-        @apply px-4 py-6 text-center text-sm text-muted;
+        @apply px-4 py-6 text-center text-base text-muted;
     }
 
     .back-link {
-        @apply mb-3 text-sm;
+        @apply mb-3 text-base;
     }
 
     /* Content */
     .entry {
-        @apply my-5 border-t border-line pt-4;
+        @apply my-6 border-t-2 border-line pt-4;
     }
 
     .entry h2 {
-        @apply mt-0 text-lg;
+        @apply mt-0 text-2xl;
     }
 
     .filters {
@@ -161,27 +201,27 @@
     }
 
     .filters a {
-        @apply rounded-full border border-line px-4 py-1.5 text-sm text-ink no-underline hover:bg-brand-soft aria-[current=page]:border-brand aria-[current=page]:bg-brand-soft;
+        @apply rounded-stamp border-2 border-line px-4 py-1 text-base font-bold text-ink no-underline hover:border-ink hover:bg-marker aria-[current=page]:border-ink aria-[current=page]:bg-marker;
     }
 
     .link-grid {
-        @apply my-4 grid gap-4 sm:grid-cols-3;
+        @apply my-6 flex flex-col border-t-2 border-ink;
     }
 
     .link-card {
-        @apply block rounded-card border border-line bg-surface p-5 text-ink no-underline hover:border-brand hover:bg-brand-soft hover:text-brand-strong;
+        @apply border-b-2 border-line py-4 font-display text-2xl font-bold text-ink no-underline hover:bg-marker hover:text-ink;
     }
 
     .form-block {
-        @apply mt-4 rounded-md border border-line bg-canvas p-4;
+        @apply mt-4 rounded-sheet border-2 border-dashed border-line bg-canvas p-4;
     }
 
     .notice {
-        @apply text-sm text-muted;
+        @apply text-base text-muted;
     }
 
     .alert {
-        @apply my-4 rounded-md border-l-4 p-3;
+        @apply my-4 rounded-sheet border-2 p-3;
     }
 
     .alert ul {
@@ -200,23 +240,24 @@
         @apply border-brand bg-brand-soft text-ink;
     }
 
+    /* Statuses are rubber stamps: ink colour carries the meaning, the tilt is the signature. */
     .badge {
-        @apply inline-block rounded-full px-3 py-0.5 text-sm font-bold;
+        @apply inline-block -rotate-2 rounded-stamp border-2 px-2.5 py-0.5 text-base font-bold;
     }
 
     .badge-pending {
-        @apply bg-warn-soft text-warn;
+        @apply border-warn bg-warn-soft text-warn;
     }
 
     .badge-partial {
-        @apply bg-brand-soft text-brand-strong;
+        @apply border-brand bg-brand-soft text-brand-strong;
     }
 
     .badge-paid {
-        @apply bg-ok-soft text-ok;
+        @apply border-ok bg-ok-soft text-ok;
     }
 
     .badge-exempt {
-        @apply bg-line text-ink;
+        @apply border-exempt bg-canvas text-exempt;
     }
 }
