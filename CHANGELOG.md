@@ -12,10 +12,14 @@ Los cambios se agrupan por versión. Las etiquetas siguen las reglas de [CONTRIB
 - Cuota anual común (`app/Modules/Fees`): tesorería fija el importe de cada año y se asigna a los socios activos con alta hasta el fin de ese año; los socios dados de alta después reciben las cuotas que les corresponden. Exenciones por socio y año con motivo obligatorio y anulación con motivo que conserva el historial. Importes en céntimos enteros. Requiere ejecutar las migraciones.
 - Pagos manuales de las cuotas (`app/Modules/Fees`): tesorería registra importe, fecha (hasta hoy), forma de pago (banco o efectivo) y una nota opcional sobre una cuota concreta; los pagos parciales suman y nunca pueden superar lo pendiente. Los pagos se corrigen solo con una anulación con motivo que los conserva en el historial. Cada formulario lleva una clave única, de modo que un doble envío no duplica el pago. Con pagos vigentes no se puede conceder una exención ni cambiar el importe del año. Cada cuota muestra pagado, pendiente y estado. Requiere ejecutar las migraciones.
 
+- Integración continua con GitHub Actions (`.github/workflows/ci.yml`): validación de Composer, formato, análisis estático con Larastan, PHPUnit estricto en PHP 8.4 y 8.5, comprobación de migraciones, `shellcheck`, `composer audit` y pruebas e2e con Playwright contra el servidor real. Scripts `composer ci`, `lint`, `analyse` y `check:migrations`. La política está en `CONTRIBUTING.md`.
+
 ### Cambiado
 
 - Las transacciones de SQLite pasan a modo `IMMEDIATE` para que la comprobación de lo pendiente y el registro de un pago sean atómicos frente a peticiones simultáneas.
 - El acceso se organiza como el módulo `app/Modules/Access` (acciones, controladores, solicitudes, modelo y autorización), sin cambios de comportamiento.
+
+- PHPUnit falla ahora también por avisos, deprecaciones, notices, pruebas arriesgadas y salida inesperada.
 
 - Base Laravel con página inicial Blade que identifica la demo ficticia.
 - Comprobación de arranque y pruebas HTTP.
