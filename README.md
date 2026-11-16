@@ -6,7 +6,7 @@ Tesorería para asociaciones: cuotas claras, conciliación de movimientos y cuen
 
 ## Ejecutar en local
 
-Requisitos: PHP 8.3 o superior, Composer 2 y extensiones habituales de Laravel (incluidas DOM, mbstring, XML y PDO SQLite). La instalación se ha comprobado con PHP 8.5.12. Composer comprueba los requisitos exactos del archivo de bloqueo.
+Requisitos: PHP 8.4 o superior, Composer 2 y extensiones habituales de Laravel (incluidas DOM, mbstring, XML y PDO SQLite). La instalación se ha comprobado con PHP 8.5.12. Composer comprueba los requisitos exactos del archivo de bloqueo.
 
 ```sh
 composer install
@@ -65,7 +65,7 @@ No se garantiza cumplimiento fiscal, contable o legal. No se publicarán datos p
 
 ## Dirección técnica
 
-Base inicial: PHP 8.3+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
+Base inicial: PHP 8.4+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
 
 El código se organiza como un monolito modular: cada área de negocio vive en `app/Modules/<Área>`, separada en `Actions` (casos de uso), `Http/Controllers`, `Http/Requests` (validación), `Models` y `Authorization`. Los módulos son `Access` (acceso y roles), `Members` (socios) y `Fees` (cuota anual y exenciones). Rutas, vistas, migraciones, pruebas y proveedores mantienen las ubicaciones convencionales de Laravel. Solo se crea un módulo o una carpeta cuando contiene código real.
 

@@ -21,7 +21,7 @@ El workflow `.github/workflows/ci.yml` se ejecuta en cada PR hacia `main` y en c
 
 | Trabajo | Cuándo | Qué comprueba |
 | --- | --- | --- |
-| `Comprobaciones (PHP 8.3)` y `(PHP 8.5)` | Siempre | `composer validate --strict`, `git diff --check`, formato con Pint, análisis estático con Larastan, PHPUnit que falla también por avisos, deprecaciones, notices y pruebas arriesgadas, migraciones desde cero con reversión completa y reaplicación, y `shellcheck`. En PHP 8.5 también `composer audit` |
+| `Comprobaciones (PHP 8.4)` y `(PHP 8.5)` | Siempre | `composer validate --strict`, `git diff --check`, formato con Pint, análisis estático con Larastan, PHPUnit que falla también por avisos, deprecaciones, notices y pruebas arriesgadas, migraciones desde cero con reversión completa y reaplicación, y `shellcheck`. En PHP 8.5 también `composer audit` |
 | `E2E (Playwright)` | En `main`, y en una PR solo si cambia `app`, `bootstrap`, `config`, `database`, `e2e`, `public`, `resources`, `routes`, `scripts`, las dependencias o los workflows. Solo se ejecuta si las comprobaciones anteriores pasan | Flujos reales en Chromium contra `php artisan serve` con un SQLite temporal: acceso y permisos con sesión y cookies reales, flujo de tesorería (socio, cuota y pago parcial) y, cuando existan, los flujos de cada funcionalidad crítica |
 
 Reglas:
@@ -32,7 +32,7 @@ Reglas:
 - **Un flujo e2e por funcionalidad crítica.** Cuando una funcionalidad añade un flujo con dinero, permisos o importación de datos, su PR añade el flujo e2e correspondiente.
 - **Acciones fijadas.** Las acciones de terceros se fijan por el SHA de un commit, con la versión en un comentario, y los trabajos solo tienen permiso de lectura del contenido. Se actualizan a mano, revisando el cambio.
 - **Consumo de minutos.** El repositorio es público, así que los runners estándar de Linux no gastan la cuota mensual; si pasara a ser privado, sí la gastarían. Por eso el CI cancela las ejecuciones obsoletas de una PR, solo usa Linux, cachea Composer, npm y el navegador, limita el tiempo de cada trabajo, ejecuta el e2e solo cuando hace falta y conserva el rastro de un fallo únicamente siete días.
-- **Protección de ramas.** Este documento no la configura. Si se activa, las comprobaciones exigibles son `Comprobaciones (PHP 8.3)`, `Comprobaciones (PHP 8.5)` y `E2E (Playwright)`; el e2e puede aparecer como omitido cuando una PR no toca nada relevante, y eso cuenta como correcto.
+- **Protección de ramas.** Este documento no la configura. Si se activa, las comprobaciones exigibles son `Comprobaciones (PHP 8.4)`, `Comprobaciones (PHP 8.5)` y `E2E (Playwright)`; el e2e puede aparecer como omitido cuando una PR no toca nada relevante, y eso cuenta como correcto.
 
 ## Versiones
 
