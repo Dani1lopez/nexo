@@ -16,6 +16,12 @@ return [
     |
     */
 
-    'proxies' => env('TRUSTED_PROXIES') ?: null,
+    /*
+    | An empty list is deliberate: `null` lets the framework fall back to
+    | trusting every proxy for Forge/Vapor hosts, and the Host header is
+    | client-controlled.
+    */
+
+    'proxies' => env('TRUSTED_PROXIES') ?: [],
 
 ];

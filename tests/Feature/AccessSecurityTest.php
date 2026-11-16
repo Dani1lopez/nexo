@@ -174,6 +174,33 @@ class AccessSecurityTest extends AuthTestCase
         $this->assertAuthenticated();
     }
 
+    public function test_a_forged_forge_host_does_not_unlock_forwarded_headers(): void
+    {
+        $this->account('ana@example.test', 'board', 'correct-secret-value');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => "203.0.113.{$i}"])
+                ->post('http://evil.on-forge.com/login', ['email' => 'ana@example.test', 'password' => 'wrong-secret-value']);
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '198.51.100.20'])
+            ->post('http://evil.on-forge.com/login', ['email' => 'ana@example.test', 'password' => 'correct-secret-value'])
+            ->assertSessionHasErrors(['email' => 'Las credenciales no son válidas.']);
+        $this->assertGuest();
+    }
+
+    public function test_a_stored_unknown_role_does_not_break_other_saves(): void
+    {
+        $user = $this->accountWithStoredRole('otro@example.test', 'admin', 'unknown-secret-value');
+
+        $user->name = 'Nombre actualizado';
+        $user->save();
+
+        $this->assertSame('Nombre actualizado', $user->fresh()->name);
+        $this->assertSame('admin', $user->fresh()->role);
+        $this->assertFalse(Gate::forUser($user->fresh())->allows('view-treasury'));
+    }
+
     public function test_role_is_not_mass_assignable(): void
     {
         $user = User::provision('Persona ficticia', 'falsa@example.test', 'fictitious-secret-value', 'board');

@@ -50,6 +50,11 @@ class User extends Authenticatable
     protected static function booted(): void
     {
         static::saving(function (User $user): void {
+            // Only a write that changes the role is rejected; a row that already holds
+            // an unknown value must still be able to save unrelated attributes.
+            if (! $user->isDirty('role')) {
+                return;
+            }
             if ($user->role !== null && ! in_array($user->role, self::ROLES, true)) {
                 throw new InvalidArgumentException('Rol no permitido.');
             }
