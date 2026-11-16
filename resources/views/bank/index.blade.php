@@ -40,49 +40,45 @@
 
     <h2>Importaciones</h2>
     @if ($imports->isNotEmpty())
-    <div class="board">
-    @endif
-    @forelse ($imports as $import)
-        <article class="entry">
-            <h3 class="mt-0">{{ $import->created_at->format('d/m/Y H:i') }} · {{ $import->user->email }}</h3>
-            <dl>
-                <dt>Importados</dt><dd>{{ $import->imported_count }}</dd>
-                <dt>Duplicados</dt><dd>{{ $import->duplicate_count }}</dd>
-                <dt>Rechazados</dt><dd>{{ $import->rejected_count }}</dd>
-            </dl>
-        </article>
-    @empty
+        <div class="board">
+            @foreach ($imports as $import)
+                <article class="entry">
+                    <h3 class="mt-0">{{ $import->created_at->format('d/m/Y H:i') }} · {{ $import->user->email }}</h3>
+                    <dl>
+                        <dt>Importados</dt><dd>{{ $import->imported_count }}</dd>
+                        <dt>Duplicados</dt><dd>{{ $import->duplicate_count }}</dd>
+                        <dt>Rechazados</dt><dd>{{ $import->rejected_count }}</dd>
+                    </dl>
+                </article>
+            @endforeach
+        </div>
+    @else
         <div class="empty">
             <p>Todavía no se ha importado ningún extracto.</p>
             @can('edit-treasury')
                 <a href="#file" class="btn btn-secondary btn-sm">Elegir un archivo CSV</a>
             @endcan
         </div>
-    @endforelse
-    @if ($imports->isNotEmpty())
-    </div>
     @endif
 
     <h2>Movimientos</h2>
     @if ($movements->isNotEmpty())
-    <div class="board">
-        <div class="board-head" aria-hidden="true"><span>Fecha</span><span>Concepto</span><span>Importe</span></div>
-    @endif
-    @forelse ($movements as $movement)
-        <article class="entry movement">
-            <h3 class="mt-0">{{ $movement->concept }}</h3>
-            <dl>
-                <dt>Fecha</dt><dd>{{ $movement->occurred_on->format('d/m/Y') }}</dd>
-                <dt>Importe</dt><dd @class(['amount', 'amount-out' => $movement->amount_cents < 0, 'amount-in' => $movement->amount_cents > 0])>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>
-            </dl>
-        </article>
-    @empty
+        <div class="board">
+            <div class="board-head" aria-hidden="true"><span>Fecha</span><span>Concepto</span><span>Importe</span></div>
+            @foreach ($movements as $movement)
+                <article class="entry movement">
+                    <h3 class="mt-0">{{ $movement->concept }}</h3>
+                    <dl>
+                        <dt>Fecha</dt><dd>{{ $movement->occurred_on->format('d/m/Y') }}</dd>
+                        <dt>Importe</dt><dd @class(['amount', 'amount-out' => $movement->amount_cents < 0, 'amount-in' => $movement->amount_cents > 0])>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>
+                    </dl>
+                </article>
+            @endforeach
+        </div>
+    @else
         <div class="empty">
             <p>No hay movimientos importados.</p>
         </div>
-    @endforelse
-    @if ($movements->isNotEmpty())
-    </div>
     @endif
     <nav aria-label="Páginas de movimientos" class="filters">
         @if ($movements->previousPageUrl())<a href="{{ $movements->previousPageUrl() }}">Más recientes</a>@endif

@@ -11,6 +11,9 @@ use Illuminate\Support\Carbon;
 /**
  * Read-only figures for the dashboard: active members, the money of the latest fee year and the bank import.
  * Dues are summed with their own rules (exemptions, voided payments), never re-derived here.
+ *
+ * Known limit: it loads the dues of the latest year once and sums them in PHP, which keeps the rules in one
+ * place and is fine at the size of an association. If the volume ever grows, move only the sums to SQL.
  */
 class BuildOverview
 {
