@@ -2,7 +2,7 @@
 
 Tesorería para asociaciones: cuotas claras, conciliación de movimientos y cuentas comprensibles para el siguiente equipo.
 
-> Estado: base ejecutable. Hay una página inicial y una comprobación de arranque; los módulos de tesorería todavía no están implementados. La primera versión será una demo con datos ficticios, no un servicio preparado para gestionar dinero real.
+> Estado: base ejecutable. Hay una página inicial y una comprobación de arranque; hay acceso por roles y gestión de socios; las cuotas y la conciliación todavía no están implementadas. La primera versión será una demo con datos ficticios, no un servicio preparado para gestionar dinero real.
 
 ## Ejecutar en local
 
@@ -21,7 +21,7 @@ APP_ENV=local APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
 
 Abre http://127.0.0.1:8000. La ruta `/up` devuelve HTTP 200 cuando Laravel arranca. Detén el servidor con Ctrl+C. Este servidor es solo para desarrollo local.
 
-La página pública y `/up` siguen funcionando sin clave ni base de datos. El acceso usa SQLite, sesiones y caché de base de datos; las migraciones normales no borran datos existentes. Crea cuentas individuales ficticias con `demo:user`: correo `.test`, rol y contraseña oculta confirmada de al menos 12 caracteres. El comando solo funciona en entorno local y rechaza duplicados. No utilices datos reales. La clave efímera cambia al reiniciar el servidor, por lo que se pierden las sesiones anteriores. No se crean archivos de credenciales. El panel solo muestra la identidad; no hay operaciones económicas.
+La página pública y `/up` siguen funcionando sin clave ni base de datos. El acceso usa SQLite, sesiones y caché de base de datos; las migraciones normales no borran datos existentes. Crea cuentas individuales ficticias con `demo:user`: correo `.test`, rol y contraseña oculta confirmada de al menos 12 caracteres. El comando solo funciona en entorno local y rechaza duplicados. No utilices datos reales. La clave efímera cambia al reiniciar el servidor, por lo que se pierden las sesiones anteriores. No se crean archivos de credenciales. El panel muestra la identidad y enlaza a `/members`, la gestión de socios: tesorería crea, edita, da de baja y reactiva; junta solo consulta. Cada socio tiene nombre completo, correo ficticio `.test` único, fecha de alta y estado; la baja no borra datos y el listado muestra los activos por defecto (`?estado=activos|bajas|todos`). Tras actualizar, ejecuta `php artisan migrate` contra tu base de desarrollo; no hay operaciones económicas.
 
 Para comprobar formato y dependencias:
 
@@ -57,7 +57,7 @@ No se garantiza cumplimiento fiscal, contable o legal. No se publicarán datos p
 
 Base inicial: PHP 8.3+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. La página inicial no requiere CSS, JavaScript ni compilación de recursos; se incorporarán según los módulos. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
 
-El código se organiza como un monolito modular: cada área de negocio vive en `app/Modules/<Área>`, separada en `Actions` (casos de uso), `Http/Controllers`, `Http/Requests` (validación), `Models` y `Authorization`. El primer módulo es `Access` (acceso y roles). Rutas, vistas, migraciones, pruebas y proveedores mantienen las ubicaciones convencionales de Laravel. Solo se crea un módulo o una carpeta cuando contiene código real.
+El código se organiza como un monolito modular: cada área de negocio vive en `app/Modules/<Área>`, separada en `Actions` (casos de uso), `Http/Controllers`, `Http/Requests` (validación), `Models` y `Authorization`. Los módulos son `Access` (acceso y roles) y `Members` (socios). Rutas, vistas, migraciones, pruebas y proveedores mantienen las ubicaciones convencionales de Laravel. Solo se crea un módulo o una carpeta cuando contiene código real.
 
 La estructura y la configuración inicial proceden de `laravel/laravel` v13.11.0 (MIT); se conserva su licencia en `LICENSE.framework.md`. La aplicación no tiene todavía una licencia de reutilización concedida.
 
