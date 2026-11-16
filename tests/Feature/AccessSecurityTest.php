@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Modules\Access\Models\User;
 use Illuminate\Support\Facades\Gate;
+use InvalidArgumentException;
 use Tests\Support\AuthTestCase;
 
 class AccessSecurityTest extends AuthTestCase
@@ -21,11 +22,12 @@ class AccessSecurityTest extends AuthTestCase
 
     public function test_unknown_and_case_variant_roles_are_denied(): void
     {
-        foreach (['', 'Treasury', 'BOARD', 'treasury '] as $i => $role) {
-            $user = $this->account("rol{$i}@example.test", $role, 'unknown-secret-value');
+        foreach (['', 'Treasury', 'BOARD', 'treasury ', 'admin'] as $i => $role) {
+            $user = $this->accountWithStoredRole("rol{$i}@example.test", $role, 'unknown-secret-value');
             $this->assertFalse(Gate::forUser($user)->allows('view-treasury'), "role [{$role}] must not view");
             $this->assertFalse(Gate::forUser($user)->allows('edit-treasury'), "role [{$role}] must not edit");
             $this->actingAs($user)->get('/dashboard')->assertForbidden();
+            $this->post('/logout');
         }
     }
 
@@ -72,7 +74,7 @@ class AccessSecurityTest extends AuthTestCase
         }
 
         $this->attemptLogin('ana@example.test', 'correct-secret-value', ip: '203.0.113.10')
-            ->assertSessionHasErrors(['email' => 'Demasiados intentos. Inténtalo de nuevo más tarde.']);
+            ->assertSessionHasErrors(['email' => 'Las credenciales no son válidas.']);
         $this->assertGuest();
 
         $this->attemptLogin('luis@example.test', 'other-secret-value', ip: '203.0.113.10')->assertRedirect('/dashboard');
@@ -126,5 +128,76 @@ class AccessSecurityTest extends AuthTestCase
             ->assertSuccessful();
         $this->assertDatabaseCount('users', 1);
         $this->assertSame('treasury', User::firstWhere('email', 'persona@example.test')->role);
+    }
+
+    public function test_lockout_message_is_indistinguishable_from_invalid_credentials(): void
+    {
+        $this->account('ana@example.test', 'board', 'correct-secret-value');
+        $generic = ['email' => 'Las credenciales no son válidas.'];
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->from('/login')->attemptLogin('ana@example.test', 'wrong-secret-value')->assertSessionHasErrors($generic);
+        }
+
+        $this->from('/login')->attemptLogin('ana@example.test', 'correct-secret-value')
+            ->assertRedirect('/login')
+            ->assertSessionHasErrors($generic)
+            ->assertSessionDoesntHaveErrors(['email' => 'Demasiados intentos. Inténtalo de nuevo más tarde.']);
+        $this->assertGuest();
+    }
+
+    public function test_forwarded_for_header_is_ignored_without_trusted_proxies(): void
+    {
+        config(['trustedproxy.proxies' => null]);
+        $this->account('ana@example.test', 'board', 'correct-secret-value');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->attemptLogin('ana@example.test', 'wrong-secret-value', forwardedFor: "203.0.113.{$i}");
+        }
+
+        $this->attemptLogin('ana@example.test', 'correct-secret-value', forwardedFor: '198.51.100.20')
+            ->assertSessionHasErrors(['email' => 'Las credenciales no son válidas.']);
+        $this->assertGuest();
+    }
+
+    public function test_forwarded_for_header_is_used_when_the_proxy_is_trusted(): void
+    {
+        config(['trustedproxy.proxies' => ['127.0.0.1']]);
+        $this->account('ana@example.test', 'board', 'correct-secret-value');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->attemptLogin('ana@example.test', 'wrong-secret-value', forwardedFor: '203.0.113.10');
+        }
+
+        $this->attemptLogin('ana@example.test', 'correct-secret-value', forwardedFor: '198.51.100.20')
+            ->assertRedirect('/dashboard');
+        $this->assertAuthenticated();
+    }
+
+    public function test_role_is_not_mass_assignable(): void
+    {
+        $user = User::provision('Persona ficticia', 'falsa@example.test', 'fictitious-secret-value', 'board');
+
+        $user->fill(['role' => 'treasury'])->save();
+
+        $this->assertSame('board', $user->fresh()->role);
+        $this->assertFalse(Gate::forUser($user->fresh())->allows('edit-treasury'));
+    }
+
+    public function test_only_known_roles_can_be_assigned(): void
+    {
+        $user = User::provision('Persona ficticia', 'falsa@example.test', 'fictitious-secret-value', 'board');
+
+        $this->expectException(InvalidArgumentException::class);
+        $user->assignRole('admin');
+    }
+
+    public function test_a_known_role_can_be_assigned_explicitly(): void
+    {
+        $user = User::provision('Persona ficticia', 'falsa@example.test', 'fictitious-secret-value', 'board');
+        $user->assignRole('treasury')->save();
+
+        $this->assertSame('treasury', $user->fresh()->role);
+        $this->assertTrue(Gate::forUser($user->fresh())->allows('edit-treasury'));
     }
 }
