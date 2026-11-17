@@ -28,6 +28,7 @@
     --color-on-accent: light-dark(#ffffff, #141925);
 
     --color-line-panel: light-dark(#3a50c8, #8b9cff);
+    --color-line-saldos: light-dark(#9d174d, #f9a8d4);
     --color-line-socios: light-dark(#0f766e, #2dd4bf);
     --color-line-cuotas: light-dark(#b45309, #fbbf24);
     --color-line-movimientos: light-dark(#6d28d9, #b79cff);
@@ -111,6 +112,10 @@
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
         font-variant-numeric: tabular-nums;
+    }
+
+    body.line-saldos {
+        --line: var(--color-line-saldos);
     }
 
     body.line-socios {
@@ -499,6 +504,10 @@
         --stop: var(--color-line-panel);
     }
 
+    .stop-saldos {
+        --stop: var(--color-line-saldos);
+    }
+
     .stop-socios {
         --stop: var(--color-line-socios);
     }
@@ -537,6 +546,7 @@
             background: linear-gradient(
                 to bottom,
                 var(--color-line-panel),
+                var(--color-line-saldos),
                 var(--color-line-socios),
                 var(--color-line-cuotas),
                 var(--color-line-movimientos)

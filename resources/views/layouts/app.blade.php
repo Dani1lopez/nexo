@@ -12,6 +12,7 @@
     // The menu is defined once: the section accent (body class) and the current item both come from it.
     $menu = [
         ['key' => 'panel', 'label' => 'Panel', 'href' => '/dashboard', 'match' => 'dashboard'],
+        ['key' => 'saldos', 'label' => 'Saldos', 'href' => '/saldos', 'match' => 'saldos*'],
         ['key' => 'socios', 'label' => 'Socios', 'href' => '/members', 'match' => 'members*'],
         ['key' => 'cuotas', 'label' => 'Cuotas', 'href' => '/fees', 'match' => 'fees*'],
         ['key' => 'movimientos', 'label' => 'Movimientos', 'href' => '/bank', 'match' => 'bank*'],
