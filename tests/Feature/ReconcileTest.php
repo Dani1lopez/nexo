@@ -31,28 +31,26 @@ class ReconcileTest extends AuthTestCase
         return Due::where('member_id', $member->id)->where('fee_year_id', $year->id)->firstOrFail();
     }
 
+    private function provisionUser(string $email, string $role, string $secret, string $name = 'Persona ficticia'): User
+    {
+        // Role is never mass assigned since #25, so accounts are provisioned explicitly.
+        return User::where('email', $email)->first()
+            ?? User::provision($name, $email, $secret, $role);
+    }
+
     private function treasury(): User
     {
-        return User::firstOrCreate(
-            ['email' => 'tesoreria@example.test'],
-            ['name' => 'Persona ficticia', 'role' => 'treasury', 'password' => 'treasury-secret-value'],
-        );
+        return $this->provisionUser('tesoreria@example.test', 'treasury', 'treasury-secret-value');
     }
 
     private function board(): User
     {
-        return User::firstOrCreate(
-            ['email' => 'junta@example.test'],
-            ['name' => 'Persona ficticia', 'role' => 'board', 'password' => 'board-secret-value'],
-        );
+        return $this->provisionUser('junta@example.test', 'board', 'board-secret-value');
     }
 
     private function movement(int $cents, string $concept = 'TRANSFERENCIA ANA'): BankMovement
     {
-        $importer = User::firstOrCreate(
-            ['email' => 'importador@example.test'],
-            ['name' => 'Importador ficticio', 'role' => 'treasury', 'password' => 'importer-secret-value'],
-        );
+        $importer = $this->provisionUser('importador@example.test', 'treasury', 'importer-secret-value', 'Importador ficticio');
 
         $import = BankImport::forceCreate([
             'user_id' => $importer->id,
