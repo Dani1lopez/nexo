@@ -17,7 +17,9 @@ La base actual está en `feat/initial-foundation`: es una entrega de arranque, n
 
 ## Integración continua
 
-El workflow `.github/workflows/ci.yml` se ejecuta en cada PR hacia `main` y en cada push a `main`. Una PR con alguna comprobación en rojo no se integra, y una comprobación fallida se corrige en la misma rama.
+El workflow `.github/workflows/ci.yml` se ejecuta en cada PR hacia `main`, en cada PR hacia una rama de la cadena de la issue #44 y en cada push a `main`. Una PR con alguna comprobación en rojo no se integra, y una comprobación fallida se corrige en la misma rama.
+
+Las ramas de la cadena #44 son la rama de seguimiento de la issue y sus ramas hijas, todas con el prefijo `feat/44-` (por ejemplo `feat/44-other-income`). Una PR hacia cualquiera de ellas recibe exactamente los mismos trabajos que una PR hacia `main`, con el mismo filtro del e2e: no hay un conjunto de comprobaciones más débil para la cadena. El disparador es solo de PR; los push a esas ramas no ejecutan el CI, porque el commit ya se comprueba en la PR de la rama. El patrón `feat/44-*` no cruza `/` en las reglas de GitHub: una rama con más niveles (`feat/44-x/y`) no lo cumple y habría que ampliarlo a `feat/44-**` si la cadena llega a usarlas. Cualquier otra rama sigue sin ejecutar el CI.
 
 | Trabajo | Cuándo | Qué comprueba |
 | --- | --- | --- |
@@ -27,6 +29,7 @@ El workflow `.github/workflows/ci.yml` se ejecuta en cada PR hacia `main` y en c
 Reglas:
 
 - **Local primero.** `composer ci` ejecuta las mismas comprobaciones de PHP. El e2e se ejecuta con `npm ci`, `npx playwright install chromium` y `npm run e2e`, que compila antes los estilos con Vite. Las pruebas e2e usan una base temporal fuera del repositorio y cuentas ficticias propias; no dependen de datos previos ni dejan archivos.
+- **Disparadores verificados.** El apartado `on:` del workflow es política, no un detalle: `scripts/test-ci-trigger.mjs` lo lee del propio `ci.yml`, evalúa sus patrones de rama con las reglas de GitHub (`*` no cruza `/` y `**` sí) y falla si una PR hacia `main` o hacia la cadena #44 deja de ejecutar el CI, si un push fuera de `main` lo ejecuta, o si cambian el filtro del e2e y la cancelación de ejecuciones obsoletas. Se ejecuta con `node --test scripts/test-ci-trigger.mjs`, también en el propio CI.
 - **Sin reintentos.** Una prueba que falla a veces es un defecto que se corrige, no se repite. El CI no reintenta ni marca pruebas como tolerables.
 - **Sin atajos en el análisis estático.** Larastan se ejecuta en el nivel más alto que el código ya cumple (hoy, el 1) sin `@phpstan-ignore` ni línea base. El nivel solo sube, y se sube corrigiendo los tipos.
 - **Un flujo e2e por funcionalidad crítica.** Cuando una funcionalidad añade un flujo con dinero, permisos o importación de datos, su PR añade el flujo e2e correspondiente.
