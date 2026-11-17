@@ -222,6 +222,41 @@ class ReconcileTest extends AuthTestCase
         $this->assertSame('paid', $due->fresh()->status());
     }
 
+    /** Spec S2: resending the same form after voiding its payment is refused, never a false success. */
+    public function test_resending_the_form_after_voiding_the_payment_is_refused_and_changes_nothing(): void
+    {
+        $due = $this->dueFor($this->member(), $this->year());
+        $movement = $this->movement(3000);
+        $form = ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']];
+
+        $this->actingAs($this->treasury())
+            ->post("/bank/movements/{$movement->id}/reconcile", $form)
+            ->assertSessionHasNoErrors();
+
+        $payment = Payment::firstOrFail();
+        $this->actingAs($this->treasury())
+            ->post("/bank/payments/{$payment->id}/void", ['reason' => 'Se concilió con la cuota equivocada.'])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->treasury())
+            ->post("/bank/movements/{$movement->id}/reconcile", $form)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        // The refusal is visible on the screen, not only in the session.
+        $this->from('/bank')->followingRedirects()
+            ->post("/bank/movements/{$movement->id}/reconcile", $form)
+            ->assertOk()
+            ->assertSee('anulaste un pago de este reparto');
+
+        // Nothing moved: one voided payment and nothing active.
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame(0, Payment::whereNull('voided_at')->count());
+        $this->assertSame('Se concilió con la cuota equivocada.', $payment->fresh()->void_reason);
+        $this->assertSame(0, $due->fresh()->paidCents());
+        $this->assertSame('pending', $due->fresh()->status());
+    }
+
     public function test_the_database_holds_the_movement_capacity(): void
     {
         // Models the simultaneous submission the verifier described: raw inserts for the same
