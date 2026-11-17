@@ -2,15 +2,22 @@
 
 namespace App\Modules\Fees\Actions;
 
+use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Fees\Support\Money;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class RegisterPayment
 {
+    /**
+     * Abort message of the SQLite capacity trigger (see migration 2026_01_01_000009).
+     */
+    private const MOVEMENT_CAPACITY = 'payments_bank_movement_capacity';
+
     public function handle(Due $due, int $amountCents, string $paidOn, string $method, ?string $note, string $submissionKey, ?int $bankMovementId = null): Payment
     {
         // The pending amount is read inside the transaction (immediate on SQLite)
@@ -28,19 +35,24 @@ class RegisterPayment
 
             $due = Due::with(['feeYear', 'exemptions', 'payments'])->findOrFail($due->id);
 
-            // Read inside the transaction: a movement can only feed one active payment.
+            // Read inside the transaction: the same movement and due pair is not paid twice.
             if ($bankMovementId !== null) {
-                $reconciled = Payment::query()
+                $pair = Payment::query()
                     ->where('bank_movement_id', $bankMovementId)
+                    ->where('due_id', $due->id)
                     ->whereNull('voided_at')
+                    ->orderBy('id')
                     ->first();
 
-                if ($reconciled !== null) {
-                    if ($reconciled->due_id !== $due->id) {
-                        throw ValidationException::withMessages(['due_id' => 'El movimiento ya está conciliado con otra cuota. Anula ese pago antes de conciliarlo de nuevo.']);
-                    }
+                if ($pair !== null) {
+                    return $pair;
+                }
 
-                    return $reconciled;
+                // A movement's capacity is its own amount: the sum of its active payments never exceeds it.
+                $free = $this->freeCentsOf($bankMovementId);
+
+                if ($amountCents > $free) {
+                    throw ValidationException::withMessages(['amount' => 'El movimiento no tiene importe libre suficiente: quedan '.Money::format($free).' por conciliar.']);
                 }
             }
 
@@ -63,22 +75,37 @@ class RegisterPayment
                     'note' => $note === null || trim($note) === '' ? null : trim($note),
                 ]);
             } catch (UniqueConstraintViolationException $e) {
-                // The unique index caught two simultaneous submissions; resolve to the winner.
-                $reconciled = $bankMovementId === null ? null : Payment::query()
-                    ->where('bank_movement_id', $bankMovementId)
-                    ->whereNull('voided_at')
-                    ->first();
+                // Two simultaneous submissions of the same form; resolve to the winner.
+                $winner = Payment::query()->where('submission_key', $submissionKey)->first();
 
-                if ($reconciled === null) {
+                if ($winner === null) {
                     throw $e;
                 }
 
-                if ($reconciled->due_id !== $due->id) {
-                    throw ValidationException::withMessages(['due_id' => 'El movimiento ya está conciliado con otra cuota. Anula ese pago antes de conciliarlo de nuevo.']);
+                return $winner;
+            } catch (QueryException $e) {
+                // The capacity trigger caught what the check above could not see in time.
+                if (! str_contains($e->getMessage(), self::MOVEMENT_CAPACITY)) {
+                    throw $e;
                 }
 
-                return $reconciled;
+                throw ValidationException::withMessages(['amount' => 'El movimiento no tiene importe libre suficiente: quedan '.Money::format($this->freeCentsOf((int) $bankMovementId)).' por conciliar.']);
             }
         });
+    }
+
+    /**
+     * What is left of a movement: its amount minus the payments still active.
+     */
+    private function freeCentsOf(int $bankMovementId): int
+    {
+        $movement = BankMovement::query()->findOrFail($bankMovementId);
+
+        $used = (int) Payment::query()
+            ->where('bank_movement_id', $bankMovementId)
+            ->whereNull('voided_at')
+            ->sum('amount_cents');
+
+        return max(0, $movement->amount_cents - $used);
     }
 }
