@@ -3,8 +3,11 @@ name: CI
 # Política completa en CONTRIBUTING.md (sección "Integración continua").
 on:
   pull_request:
-    branches: [main]
+    # main y las ramas de la cadena de la issue #44 (`feat/44-*`), para que la PR de
+    # cada rama reciba las mismas comprobaciones antes de integrarse en la siguiente.
+    branches: [main, 'feat/44-*']
   push:
+    # Solo main: las ramas de la cadena se comprueban en su PR, no en cada push.
     branches: [main]
 
 permissions:
@@ -43,6 +46,13 @@ jobs:
           else
             echo "e2e=false" >> "$GITHUB_OUTPUT"
           fi
+      # Los disparadores son política: esta comprobación los lee del propio workflow y
+      # falla si alguien los amplía o los recorta sin querer.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Disparadores del CI
+        run: node --test scripts/test-ci-trigger.mjs
 
   checks:
     name: Comprobaciones (PHP ${{ matrix.php }})
