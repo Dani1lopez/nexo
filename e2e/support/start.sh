@@ -6,7 +6,7 @@ cd "$(dirname "$0")/../.."
 : "${E2E_TMP:?E2E_TMP must point to a temporary directory}"
 : "${E2E_PORT:=8010}"
 
-mkdir -p "$E2E_TMP"
+node e2e/support/create-run-directory.mjs
 touch "$E2E_TMP/e2e.sqlite"
 
 export XDEBUG_MODE=off

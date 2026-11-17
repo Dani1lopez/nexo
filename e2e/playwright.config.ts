@@ -1,11 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
-import os from 'node:os';
 import path from 'node:path';
+import { newRunIdentity } from './support/run-directory.mjs';
 import { accounts } from './support/accounts';
 
 const port = Number(process.env.E2E_PORT ?? 8010);
-// A fresh database per run, outside the repository; the teardown removes it.
-process.env.E2E_TMP ??= path.join(os.tmpdir(), `nexo-e2e-${process.pid}`);
+// Never accept a caller-provided cleanup target or ownership token.
+const run = newRunIdentity();
+process.env.E2E_TMP = run.directory;
+process.env.E2E_RUN_TOKEN = run.token;
 
 export default defineConfig({
   testDir: './tests',
@@ -33,7 +35,8 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       E2E_PORT: String(port),
-      E2E_TMP: process.env.E2E_TMP,
+      E2E_TMP: run.directory,
+      E2E_RUN_TOKEN: run.token,
       E2E_TREASURY_EMAIL: accounts.treasury.email,
       E2E_TREASURY_PASSWORD: accounts.treasury.password,
       E2E_BOARD_EMAIL: accounts.board.email,
