@@ -1,0 +1,49 @@
+{
+  "title": "Nexo · subir la interfaz de nivel",
+  "brief": "Tres direcciones para que la aplicación de tesorería parezca producto de empresa grande sin perder la calma ni el peso: diseño con carácter, animaciones nativas, CSS propio sobre los tokens existentes y presupuesto de rendimiento estricto.",
+  "feature": "odd/tasks/visual-redesign.md",
+  "artboards": [
+    {
+      "file": "01-panel-de-mando.html",
+      "title": "Panel de mando",
+      "tradeoff": "Máxima densidad y contexto permanente; exige cuidar la jerarquía para que no parezca un cuadro de mandos genérico.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-hoja-de-cuentas.html",
+      "title": "Hoja de cuentas",
+      "tradeoff": "Fuerza editorial y lectura clarísima; muestra menos datos a la vez y obliga a navegar entre hojas.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-espacio-partido.html",
+      "title": "Espacio partido",
+      "tradeoff": "Encaja con el trabajo real de conciliar y funciona con teclado; es la más densa de construir y la más exigente en móvil.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "04-sintesis-conciliacion.html",
+      "title": "Síntesis: conciliación",
+      "tradeoff": "Reúne los patrones con fuente del benchmark (cuadre a cero, resumen de importación, pestañas con contador, chips, confianza, detalle en la fila); concentra mucha información sin un panel deslizante.",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "05-socias.html",
+      "title": "Socias",
+      "tradeoff": "Lista densa con pestañas, chips, selección por lotes y acciones por fila; exige mantener los contadores y el filtro coherentes con la URL.",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "file": "06-movil-y-estados.html",
+      "title": "Móvil y estados",
+      "tradeoff": "Demuestra el reflujo real en 390 px y los estados que suelen olvidarse; no enseña escritorio, así que se revisa junto a la 04.",
+      "width": 1440,
+      "height": 1000
+    }
+  ]
+}

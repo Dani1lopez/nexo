@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexo · sistema de diseño</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --canvas: light-dark(#dde3ec, #202634);
+    --surface: light-dark(#f2f5f9, #2a3142);
+    --raised: light-dark(#fbfcfe, #333b50);
+    --ink: light-dark(#172033, #eceff6);
+    --muted: light-dark(#4b566e, #aab3c7);
+    --rule: color-mix(in srgb, var(--ink) 8%, transparent);
+    --line: light-dark(#3a50c8, #8b9cff);
+    --ok: light-dark(#067647, #47cd89);
+    --warn: light-dark(#93370d, #fec84b);
+    --danger: light-dark(#b42318, #f97066);
+    --info: light-dark(#3538cd, #a4bcfd);
+    --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --ring: 0 0 0 1px color-mix(in srgb, var(--ink) 9%, transparent), 0 1px 2px rgb(0 0 0 / .18);
+    --lift: 0 0 0 1px color-mix(in srgb, var(--ink) 9%, transparent), 0 16px 40px -14px rgb(0 0 0 / .55);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink);
+    font: 400 14px/1.55 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 1200px; margin: 0 auto; padding: 48px 32px 80px; }
+  h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: -0.02em; }
+  .lede { margin: 0 0 40px; color: var(--muted); }
+  h2 {
+    margin: 44px 0 16px; font-size: 12px; font-weight: 650; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .swatch { background: var(--surface); border-radius: 12px; padding: 12px; box-shadow: var(--ring); }
+  .chip { height: 44px; border-radius: 8px; margin-bottom: 10px; box-shadow: inset 0 0 0 1px rgb(128 128 128 / .18); }
+  .name { font-weight: 600; font-size: 13px; }
+  .value { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .scale { display: grid; gap: 12px; }
+  .row { display: flex; align-items: baseline; gap: 16px; }
+  .row small { color: var(--muted); min-width: 128px; font-variant-numeric: tabular-nums; }
+  .s1 { font-size: 30px; font-weight: 640; letter-spacing: -0.02em; }
+  .s2 { font-size: 22px; font-weight: 620; letter-spacing: -0.01em; }
+  .s3 { font-size: 16px; font-weight: 600; }
+  .s4 { font-size: 14px; }
+  .s5 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .money { font-variant-numeric: tabular-nums; font-size: 24px; font-weight: 640; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card { background: var(--raised); border-radius: 14px; padding: 16px; box-shadow: var(--ring); }
+  .card .label { font-size: 12px; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px;
+    font: inherit; font-weight: 600; cursor: pointer; border: 0;
+    background: var(--line); color: light-dark(#fff, #141925);
+    transition: transform .16s var(--ease), box-shadow .16s var(--ease);
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: var(--lift); }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+  :focus-visible { outline: 2px solid var(--line); outline-offset: 2px; border-radius: 6px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+  .pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+  .pill.danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .pill.info { color: var(--info); background: color-mix(in srgb, var(--info) 14%, transparent); }
+  .space { display: flex; align-items: flex-end; gap: 10px; }
+  .space i { display: block; width: 10px; background: color-mix(in srgb, var(--line) 55%, transparent); border-radius: 3px; }
+  .meta { color: var(--muted); font-size: 12px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 760px) { main { padding: 32px 20px 64px; } .cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Nexo · sistema de diseño</h1>
+  <p class="lede">Tokens leídos de <code>resources/css/app.css</code>. Cada color se declara una vez con <code>light-dark()</code> y sigue <code>color-scheme</code>.</p>
+
+  <h2>Color de base</h2>
+  <div class="swatches">
+    <div class="swatch"><div class="chip" style="background:var(--canvas)"></div><div class="name">canvas</div><div class="value">#dde3ec / #202634</div></div>
+    <div class="swatch"><div class="chip" style="background:var(--surface)"></div><div class="name">surface</div><div class="value">#f2f5f9 / #2a3142</div></div>
+    <div class="swatch"><div class="chip" style="background:var(--raised)"></div><div class="name">raised</div><div class="value">#fbfcfe / #333b50</div></div>
+    <div class="swatch"><div class="chip" style="background:var(--ink)"></div><div class="name">ink</div><div class="value">#172033 / #eceff6</div></div>
+    <div class="swatch"><div class="chip" style="background:var(--muted)"></div><div class="name">muted</div><div class="value">#4b566e / #aab3c7</div></div>
+    <div class="swatch"><div class="chip" style="background:var(--line)"></div><div class="name">line · panel</div><div class="value">#3a50c8 / #8b9cff</div></div>
+  </div>
+
+  <h2>Acentos de sección</h2>
+  <div class="swatches">
+    <div class="swatch"><div class="chip" style="background:light-dark(#0f766e,#2dd4bf)"></div><div class="name">line · socios</div><div class="value">#0f766e / #2dd4bf</div></div>
+    <div class="swatch"><div class="chip" style="background:light-dark(#b45309,#fbbf24)"></div><div class="name">line · cuotas</div><div class="value">#b45309 / #fbbf24</div></div>
+    <div class="swatch"><div class="chip" style="background:light-dark(#6d28d9,#b79cff)"></div><div class="name">line · movimientos</div><div class="value">#6d28d9 / #b79cff</div></div>
+  </div>
+
+  <h2>Semánticos y estados</h2>
+  <div class="pills">
+    <span class="pill ok">Cobrado</span>
+    <span class="pill warn">Pendiente</span>
+    <span class="pill danger">Vencido</span>
+    <span class="pill info">Sin conciliar</span>
+  </div>
+
+  <h2>Tipografía</h2>
+  <div class="scale">
+    <div class="row"><small>30 / 640</small><span class="s1">Saldo de tesorería</span></div>
+    <div class="row"><small>22 / 620</small><span class="s2">Cuotas del ejercicio 2026</span></div>
+    <div class="row"><small>16 / 600</small><span class="s3">Ana Alcaraz · socia 014</span></div>
+    <div class="row"><small>14 / 400</small><span class="s4">Cuota anual 120,00 €, pagada en dos plazos.</span></div>
+    <div class="row"><small>12 / 650 · versalitas</small><span class="s5">Pendiente de conciliar</span></div>
+    <div class="row"><small>cifras</small><span class="money">3.482,50 €</span></div>
+  </div>
+
+  <h2>Espacio</h2>
+  <div class="space">
+    <i style="height:4px"></i><i style="height:8px"></i><i style="height:12px"></i><i style="height:16px"></i>
+    <i style="height:24px"></i><i style="height:32px"></i><i style="height:48px"></i><i style="height:64px"></i>
+  </div>
+  <p class="meta">Escala de Tailwind 4 (base 4 px). El proyecto no define escala propia.</p>
+
+  <h2>Sombras y movimiento</h2>
+  <div class="cards">
+    <div class="card" style="box-shadow:var(--ring)"><div class="label">shadow-ring</div><div class="name">Anillo + 1 px de sombra</div></div>
+    <div class="card" style="box-shadow:var(--lift)"><div class="label">shadow-lift</div><div class="name">Elevación para elementos flotantes</div></div>
+    <div class="card"><div class="label">--ease-out</div><div class="name">cubic-bezier(.23, 1, .32, 1)</div></div>
+  </div>
+
+  <h2>Componentes</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="label">Botón primario y secundario</div>
+      <p><button class="btn" type="button">Añadir socia</button> <button class="btn ghost" type="button">Exportar</button></p>
+    </div>
+    <div class="card">
+      <div class="label">Cifra con estado</div>
+      <p class="money">120,00 €</p>
+      <p><span class="pill ok">Cobrado</span></p>
+    </div>
+    <div class="card">
+      <div class="label">Ficha elevada</div>
+      <p class="name">Ana Alcaraz</p>
+      <p class="meta">Alta el 4 de febrero de 2026 · exenta por ingreso bajo</p>
+    </div>
+  </div>
+</main>
+</body>
+</html>
