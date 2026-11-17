@@ -4,6 +4,7 @@ use App\Modules\Access\Http\Controllers\SessionController;
 use App\Modules\Bank\Http\Controllers\BankImportController;
 use App\Modules\Bank\Http\Controllers\ReconcileController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
+use App\Modules\Dashboard\Http\Controllers\SummaryController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
 use App\Modules\Fees\Http\Controllers\FeeYearController;
 use App\Modules\Fees\Http\Controllers\PaymentController;
@@ -14,6 +15,7 @@ Route::get('/login', [SessionController::class, 'create'])->name('login');
 Route::post('/login', [SessionController::class, 'store']);
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::get('/dashboard', [DashboardController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('dashboard');
+Route::get('/saldos', [SummaryController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('summary.show');
 
 Route::middleware(['auth', 'can:view-treasury'])->prefix('members')->name('members.')->group(function (): void {
     Route::get('/', [MemberController::class, 'index'])->name('index');

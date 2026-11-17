@@ -36,6 +36,7 @@ test.describe('base visual', () => {
 
     for (const [path, name] of [
       ['/dashboard', 'Panel'],
+      ['/saldos', 'Saldos'],
       ['/members', 'Socios'],
       ['/fees', 'Cuotas'],
       ['/bank', 'Movimientos'],
@@ -57,7 +58,7 @@ test.describe('base visual', () => {
     }
 
     await logIn(page, 'treasury');
-    for (const path of ['/dashboard', '/members', '/members/create', '/fees', '/fees/create', '/bank']) {
+    for (const path of ['/dashboard', '/saldos', '/members', '/members/create', '/fees', '/fees/create', '/bank']) {
       await page.goto(path);
       expect(await overflow(), path).toBeLessThanOrEqual(0);
     }
