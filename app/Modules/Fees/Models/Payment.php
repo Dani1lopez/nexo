@@ -2,6 +2,7 @@
 
 namespace App\Modules\Fees\Models;
 
+use App\Modules\Bank\Models\BankMovement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +18,11 @@ class Payment extends Model
     public function due(): BelongsTo
     {
         return $this->belongsTo(Due::class);
+    }
+
+    public function bankMovement(): BelongsTo
+    {
+        return $this->belongsTo(BankMovement::class);
     }
 
     public function isActive(): bool

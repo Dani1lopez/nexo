@@ -2,8 +2,10 @@
 
 namespace App\Modules\Bank\Models;
 
+use App\Modules\Fees\Models\Payment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BankMovement extends Model
 {
@@ -21,6 +23,19 @@ class BankMovement extends Model
     public function bankImport(): BelongsTo
     {
         return $this->belongsTo(BankImport::class);
+    }
+
+    /**
+     * Payments created from this movement; at most one is active.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function activePayment(): ?Payment
+    {
+        return $this->payments()->whereNull('voided_at')->first();
     }
 
     protected function casts(): array

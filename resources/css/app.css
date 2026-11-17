@@ -1410,3 +1410,37 @@
         }
     }
 }
+
+/*
+ * Conciliación dentro de la lista de movimientos (issue #28).
+ *
+ * El movimiento es una rejilla de dos columnas para fecha/importe; el formulario
+ * ocupa la fila completa para no quedar comprimido en una celda.
+ */
+@layer components {
+    .reconcile {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 0.5rem;
+        justify-items: start;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid color-mix(in srgb, var(--color-ink) 7%, transparent);
+    }
+
+    .reconcile label {
+        margin: 0;
+    }
+
+    .reconcile select,
+    .reconcile input[type='text'] {
+        width: 100%;
+        max-width: 30rem;
+    }
+
+    .reconcile .linked {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 0.8125rem;
+    }
+}

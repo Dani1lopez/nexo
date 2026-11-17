@@ -72,6 +72,36 @@
                         <dt>Fecha</dt><dd>{{ $movement->occurred_on->format('d/m/Y') }}</dd>
                         <dt>Importe</dt><dd @class(['amount', 'amount-out' => $movement->amount_cents < 0, 'amount-in' => $movement->amount_cents > 0])>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>
                     </dl>
+                    @php($linkedPayment = $linked->get($movement->id))
+                    @if ($linkedPayment !== null)
+                        <p class="notice linked">Conciliado con {{ $linkedPayment->due->member->name }} · {{ $linkedPayment->due->feeYear->year }} · {{ \App\Modules\Fees\Support\Money::format($linkedPayment->amount_cents) }}</p>
+                        @can('edit-treasury')
+                            <form method="post" action="/bank/payments/{{ $linkedPayment->id }}/void" class="form-block reconcile">
+                                @csrf
+                                <label for="void-movement-{{ $movement->id }}" class="mt-0">Motivo de la anulación</label>
+                                <input id="void-movement-{{ $movement->id }}" name="reason" type="text" maxlength="500" required>
+                                <button type="submit" class="btn-danger btn-sm mt-3">Anular y liberar el movimiento</button>
+                            </form>
+                        @endcan
+                    @elseif ($movement->amount_cents > 0)
+                        @can('edit-treasury')
+                            @if ($pendingDues->isNotEmpty())
+                                <form method="post" action="/bank/movements/{{ $movement->id }}/reconcile" class="form-block reconcile">
+                                    @csrf
+                                    <label for="due-movement-{{ $movement->id }}" class="mt-0">Cuota a la que corresponde este abono</label>
+                                    <select id="due-movement-{{ $movement->id }}" name="due_id" required>
+                                        <option value="">Elige una cuota pendiente</option>
+                                        @foreach ($pendingDues as $due)
+                                            <option value="{{ $due->id }}">{{ $due->member->name }} · {{ $due->feeYear->year }} · pendiente {{ \App\Modules\Fees\Support\Money::format($due->pendingCents()) }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="btn-secondary btn-sm mt-3">Conciliar este abono</button>
+                                </form>
+                            @else
+                                <p class="notice">No hay cuotas pendientes a las que asignar este abono.</p>
+                            @endif
+                        @endcan
+                    @endif
                 </article>
             @endforeach
         </div>
