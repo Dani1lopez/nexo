@@ -286,6 +286,78 @@ class SplitReconcileTest extends AuthTestCase
         $this->assertSame(3, Payment::where('bank_movement_id', $movement->id)->count());
     }
 
+    /** Spec S2: resending a split whose part was voided is refused and leaves amounts and history untouched. */
+    public function test_resending_the_split_after_voiding_one_part_is_refused_and_changes_nothing(): void
+    {
+        $year = $this->year(2026, 1000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+        $allocations = [$ana->id => '10', $luis->id => '10'];
+        $key = (string) Str::uuid();
+
+        $this->split($movement->id, $allocations, $key)->assertSessionHasNoErrors();
+
+        $anaPayment = Payment::where('due_id', $ana->id)->firstOrFail();
+        $this->actingAs($this->treasury())
+            ->post("/bank/payments/{$anaPayment->id}/void", ['reason' => 'Se repartió mal.'])
+            ->assertSessionHasNoErrors();
+
+        $this->split($movement->id, $allocations, $key)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        // The refusal is visible on the screen, not only in the session.
+        $this->from('/bank')->followingRedirects()
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => $key, 'allocations' => $allocations])
+            ->assertOk()
+            ->assertSee('anulaste un pago de este reparto');
+
+        // The voided part stays voided and the active part keeps its amount: nothing was replayed.
+        $this->assertSame(2, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame('Se repartió mal.', $anaPayment->fresh()->void_reason);
+        $this->assertSame(0, $ana->fresh()->paidCents());
+        $this->assertSame('pending', $ana->fresh()->status());
+        $this->assertSame(1000, $luis->fresh()->paidCents());
+        $this->assertSame('paid', $luis->fresh()->status());
+    }
+
+    /** Spec S2 and S3: a fully voided split is also refused, and a fresh form reconciles again. */
+    public function test_a_fresh_form_after_voiding_the_whole_split_reconciles_again(): void
+    {
+        $year = $this->year(2026, 1000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+        $allocations = [$ana->id => '10', $luis->id => '10'];
+        $key = (string) Str::uuid();
+
+        $this->split($movement->id, $allocations, $key)->assertSessionHasNoErrors();
+
+        foreach (Payment::where('bank_movement_id', $movement->id)->get() as $payment) {
+            $this->actingAs($this->treasury())
+                ->post("/bank/payments/{$payment->id}/void", ['reason' => 'Se repartió mal.'])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->split($movement->id, $allocations, $key)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        $this->assertSame(0, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+
+        $this->split($movement->id, $allocations)
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Reparto conciliado desde el extracto.');
+
+        $this->assertSame(4, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(2000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame('paid', $ana->fresh()->status());
+        $this->assertSame('paid', $luis->fresh()->status());
+    }
+
     /** Rule 5: the capacity is the movement amount, not a single payment. */
     public function test_a_split_beyond_the_movement_amount_is_refused(): void
     {
