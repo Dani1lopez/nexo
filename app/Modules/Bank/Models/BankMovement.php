@@ -34,6 +34,15 @@ class BankMovement extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Classifications of this credit as other income. Since #44 at most one is active, and never
+     * together with an active payment: the whole credit goes to one destination.
+     */
+    public function otherIncomes(): HasMany
+    {
+        return $this->hasMany(OtherIncome::class);
+    }
+
     protected function casts(): array
     {
         return ['occurred_on' => 'date'];

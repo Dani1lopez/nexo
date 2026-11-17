@@ -3,6 +3,7 @@
 namespace App\Modules\Bank\Actions;
 
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Bank\Models\OtherIncome;
 use App\Modules\Fees\Actions\RegisterPayment;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
@@ -52,6 +53,9 @@ class ReconcileMovement
 
         // All or nothing: a guard refusing one line undoes the whole split.
         return DB::transaction(function () use ($dues, $allocations, $keys, $movement): array {
+            // The whole credit already went to the other destination, so this money is not free.
+            $this->refuseIfClassifiedElsewhere($movement);
+
             // Read inside the transaction: a concurrent void must not leave the equality stale.
             $this->refuseUnlessAllocationsMatch($movement, $allocations);
             $this->refuseDuesAlreadyPaidBy($movement, array_keys($allocations));
@@ -146,6 +150,26 @@ class ReconcileMovement
         if ($alreadyPaid) {
             throw ValidationException::withMessages([
                 'allocations' => 'Una de las cuotas elegidas ya tiene un pago vigente de este movimiento. Anula ese pago antes de repartirlo de nuevo o elige otra cuota.',
+            ]);
+        }
+    }
+
+    /**
+     * The other destination of the same money: a credit already classified as other income cannot
+     * also pay dues. Voiding the classification is what frees it again.
+     *
+     * @throws ValidationException
+     */
+    private function refuseIfClassifiedElsewhere(BankMovement $movement): void
+    {
+        $classified = OtherIncome::query()
+            ->where('bank_movement_id', $movement->id)
+            ->whereNull('voided_at')
+            ->exists();
+
+        if ($classified) {
+            throw ValidationException::withMessages([
+                'allocations' => 'El abono está clasificado como otro ingreso. Anula esa clasificación antes de asignarlo a cuotas.',
             ]);
         }
     }
