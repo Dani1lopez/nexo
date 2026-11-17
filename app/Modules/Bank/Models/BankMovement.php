@@ -26,16 +26,12 @@ class BankMovement extends Model
     }
 
     /**
-     * Payments created from this movement; at most one is active.
+     * Payments created from this movement. Since #34 it can feed several at once: its capacity
+     * is its own amount, so the sum of the active ones never exceeds it.
      */
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
-    }
-
-    public function activePayment(): ?Payment
-    {
-        return $this->payments()->whereNull('voided_at')->first();
     }
 
     protected function casts(): array

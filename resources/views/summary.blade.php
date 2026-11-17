@@ -39,6 +39,7 @@
                 Última importación el {{ $balances['lastImportAt']->format('d/m/Y') }}.
             @endif
             Los abonos sin conciliar se resuelven en <a href="/bank">Movimientos</a>.
+            Un abono puede estar conciliado en parte: aquí cuenta solo lo que falta.
         </p>
     @else
         <div class="empty">

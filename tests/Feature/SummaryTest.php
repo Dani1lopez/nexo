@@ -14,6 +14,7 @@ use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\FeeYear;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Members\Models\Member;
+use Illuminate\Support\Str;
 use Tests\Support\AuthTestCase;
 
 class SummaryTest extends AuthTestCase
@@ -127,7 +128,7 @@ class SummaryTest extends AuthTestCase
         $reconciled = $this->movement(3000, 'TRANSFERENCIA ANA');
         $this->movement(4000, 'INGRESO SUELTO');
         $this->movement(-2500, 'ALQUILER LOCAL');
-        app(ReconcileMovement::class)->handle($reconciled, $this->dueFor($ana, $year));
+        app(ReconcileMovement::class)->handle($reconciled, [$this->dueFor($ana, $year)->id => 3000], (string) Str::uuid());
 
         $this->actingAs($this->board())->get('/saldos')
             ->assertOk()
@@ -144,7 +145,7 @@ class SummaryTest extends AuthTestCase
         $ana = $this->member('ana@example.test');
         $year = $this->year(2026, 3000);
         $movement = $this->movement(3000, 'TRANSFERENCIA ANA');
-        $payment = app(ReconcileMovement::class)->handle($movement, $this->dueFor($ana, $year));
+        $payment = app(ReconcileMovement::class)->handle($movement, [$this->dueFor($ana, $year)->id => 3000], (string) Str::uuid())[0];
 
         $this->actingAs($this->treasury())->get('/saldos')
             ->assertSee('0 abonos sin conciliar')
@@ -189,9 +190,27 @@ class SummaryTest extends AuthTestCase
         $ana = $this->member('ana@example.test');
         $year = $this->year(2026, 3000);
         $movement = $this->movement(3000, 'TRANSFERENCIA ANA');
-        app(ReconcileMovement::class)->handle($movement, $this->dueFor($ana, $year));
+        app(ReconcileMovement::class)->handle($movement, [$this->dueFor($ana, $year)->id => 3000], (string) Str::uuid());
 
         $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->count());
         $this->actingAs($this->board())->get('/saldos')->assertSee('0 abonos sin conciliar');
+    }
+
+    /** Rule 8 of issue #34: a credit reconciled in part counts only what is still left. */
+    public function test_a_partially_reconciled_credit_counts_only_what_is_left(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $luis = $this->member('luis@example.test', 'Luis ficticio');
+        $year = $this->year(2026, 1000);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+        app(ReconcileMovement::class)->handle($movement, [
+            $this->dueFor($ana, $year)->id => 1000,
+            $this->dueFor($luis, $year)->id => 1000,
+        ], (string) Str::uuid());
+        app(VoidPayment::class)->handle(Payment::where('due_id', $this->dueFor($ana, $year)->id)->firstOrFail(), 'Se anula una parte.');
+
+        $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSeeInOrder(['Sin conciliar', '10,00 €', '1 abono sin conciliar']);
     }
 }

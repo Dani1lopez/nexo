@@ -12,6 +12,9 @@ use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\FeeYear;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Members\Models\Member;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\Support\AuthTestCase;
 
 class ReconcileTest extends AuthTestCase
@@ -73,7 +76,7 @@ class ReconcileTest extends AuthTestCase
         $due = $this->dueFor($this->member(), $this->year());
         $movement = $this->movement(3000);
 
-        $this->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+        $this->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']])
             ->assertRedirect('/login');
 
         $this->assertDatabaseCount('payments', 0);
@@ -86,7 +89,7 @@ class ReconcileTest extends AuthTestCase
 
         $this->actingAs($this->board())->get('/bank')->assertOk();
         $this->actingAs($this->board())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']])
             ->assertForbidden();
 
         $this->assertDatabaseCount('payments', 0);
@@ -98,7 +101,7 @@ class ReconcileTest extends AuthTestCase
         $movement = $this->movement(3000, 'TRANSFERENCIA ANA CUOTA');
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']])
             ->assertRedirect('/bank')
             ->assertSessionHas('status', 'Pago conciliado desde el extracto.');
 
@@ -112,39 +115,46 @@ class ReconcileTest extends AuthTestCase
         $this->assertSame('paid', $due->fresh()->status());
     }
 
-    public function test_resubmitting_the_same_pair_does_not_create_a_second_payment(): void
+    public function test_resubmitting_the_same_form_does_not_create_a_second_payment(): void
     {
         $due = $this->dueFor($this->member(), $this->year());
         $movement = $this->movement(1000);
+        $form = ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '10']];
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", $form)
             ->assertSessionHasNoErrors();
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", $form)
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseCount('payments', 1);
         $this->assertSame(1000, $due->fresh()->paidCents());
     }
 
-    public function test_a_reconciled_movement_cannot_jump_to_another_due_while_its_payment_is_active(): void
+    public function test_a_movement_used_up_to_its_capacity_cannot_pay_another_due(): void
     {
+        // The capacity of a movement is its own amount (#34): a 10,00 € credit already spent
+        // leaves nothing behind for a second due, and the payment guard says so on the amount.
         $year = $this->year();
         $first = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
         $second = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
         $movement = $this->movement(1000);
+        $register = app(RegisterPayment::class);
 
-        $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $first->id])
-            ->assertSessionHasNoErrors();
+        $payment = $register->handle($first, 1000, '2026-02-14', Payment::BANK, null, 'capacity-key-1', $movement->id);
 
-        $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $second->id])
-            ->assertSessionHasErrors('due_id');
+        try {
+            $register->handle($second, 1000, '2026-02-14', Payment::BANK, null, 'capacity-key-2', $movement->id);
+            $this->fail('El movimiento no tenía importe libre y el pago se aceptó.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('amount', $e->errors());
+        }
 
-        $this->assertDatabaseCount('payments', 1);
+        $this->assertTrue($payment->isActive());
+        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->count());
+        $this->assertSame(1000, $first->fresh()->paidCents());
         $this->assertSame(0, $second->fresh()->paidCents());
     }
 
@@ -154,8 +164,8 @@ class ReconcileTest extends AuthTestCase
         $movement = $this->movement(-1500, 'RECIBO DEVUELTO');
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
-            ->assertSessionHasErrors('due_id');
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '15']])
+            ->assertSessionHasErrors('allocations');
 
         $this->assertDatabaseCount('payments', 0);
     }
@@ -167,7 +177,7 @@ class ReconcileTest extends AuthTestCase
         $movement = $this->movement(3000);
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']])
             ->assertSessionHasErrors('amount');
 
         $this->assertDatabaseCount('payments', 0);
@@ -179,7 +189,7 @@ class ReconcileTest extends AuthTestCase
         $movement = $this->movement(5000);
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '50']])
             ->assertSessionHasErrors('amount');
 
         $this->assertDatabaseCount('payments', 0);
@@ -192,7 +202,7 @@ class ReconcileTest extends AuthTestCase
         $movement = $this->movement(3000);
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']])
             ->assertSessionHasNoErrors();
 
         $payment = Payment::firstOrFail();
@@ -204,7 +214,7 @@ class ReconcileTest extends AuthTestCase
         $this->assertNotNull($payment->fresh()->voided_at);
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$movement->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$movement->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '30']])
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseCount('payments', 2);
@@ -212,20 +222,41 @@ class ReconcileTest extends AuthTestCase
         $this->assertSame('paid', $due->fresh()->status());
     }
 
-    public function test_the_database_allows_only_one_active_payment_per_movement(): void
+    public function test_the_database_holds_the_movement_capacity(): void
     {
-        // Models the simultaneous submission the verifier described: two inserts for the
-        // same movement, each with its own submission key, bypassing the early check.
-        $due = $this->dueFor($this->member(), $this->year());
+        // Models the simultaneous submission the verifier described: raw inserts for the same
+        // movement, each with its own submission key, bypassing every check in PHP.
+        $year = $this->year(2026, 1000);
+        $due = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $other = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
         $movement = $this->movement(1000);
-        $register = app(RegisterPayment::class);
 
-        $first = $register->handle($due, 1000, '2026-02-14', Payment::BANK, null, 'probe-key-1', $movement->id);
-        $second = $register->handle($due, 1000, '2026-02-14', Payment::BANK, null, 'probe-key-2', $movement->id);
+        // A movement can be split: two active payments inside its capacity are allowed.
+        foreach ([[$due, 400, 'probe-key-1'], [$other, 600, 'probe-key-2']] as [$target, $cents, $key]) {
+            Payment::forceCreate([
+                'due_id' => $target->id,
+                'bank_movement_id' => $movement->id,
+                'amount_cents' => $cents,
+                'paid_on' => '2026-02-14',
+                'method' => Payment::BANK,
+                'submission_key' => $key,
+            ]);
+        }
 
-        $this->assertSame($first->id, $second->id);
-        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->count());
-        $this->assertSame(1000, $due->fresh()->paidCents());
+        $this->assertSame(2, Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->count());
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+
+        $this->expectException(QueryException::class);
+
+        // One more active payment would take the movement above its own amount.
+        Payment::forceCreate([
+            'due_id' => $due->id,
+            'bank_movement_id' => $movement->id,
+            'amount_cents' => 100,
+            'paid_on' => '2026-02-14',
+            'method' => Payment::BANK,
+            'submission_key' => 'probe-key-3',
+        ]);
     }
 
     public function test_the_bank_void_refuses_a_payment_that_did_not_come_from_a_movement(): void
@@ -254,7 +285,7 @@ class ReconcileTest extends AuthTestCase
         $charge = $this->movement(-500, 'RECIBO DEVUELTO');
 
         $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$credit->id}/reconcile", ['due_id' => $due->id])
+            ->post("/bank/movements/{$credit->id}/reconcile", ['submission_key' => (string) Str::uuid(), 'allocations' => [$due->id => '10']])
             ->assertSessionHasNoErrors();
 
         $this->actingAs($this->treasury())->get('/bank')

@@ -72,30 +72,32 @@
                         <dt>Fecha</dt><dd>{{ $movement->occurred_on->format('d/m/Y') }}</dd>
                         <dt>Importe</dt><dd @class(['amount', 'amount-out' => $movement->amount_cents < 0, 'amount-in' => $movement->amount_cents > 0])>{{ \App\Modules\Fees\Support\Money::format($movement->amount_cents) }}</dd>
                     </dl>
-                    @php($linkedPayment = $linked->get($movement->id))
-                    @if ($linkedPayment !== null)
+                    @php($linkedPayments = $linked->get($movement->id, collect()))
+                    @php($left = $remaining[$movement->id] ?? 0)
+                    @foreach ($linkedPayments as $linkedPayment)
                         <p class="notice linked">Conciliado con {{ $linkedPayment->due->member->name }} · {{ $linkedPayment->due->feeYear->year }} · {{ \App\Modules\Fees\Support\Money::format($linkedPayment->amount_cents) }}</p>
                         @can('edit-treasury')
                             <form method="post" action="/bank/payments/{{ $linkedPayment->id }}/void" class="form-block reconcile">
                                 @csrf
-                                <label for="void-movement-{{ $movement->id }}" class="mt-0">Motivo de la anulación</label>
-                                <input id="void-movement-{{ $movement->id }}" name="reason" type="text" maxlength="500" required>
-                                <button type="submit" class="btn-danger btn-sm mt-3">Anular y liberar el movimiento</button>
+                                <label for="void-payment-{{ $linkedPayment->id }}" class="mt-0">Motivo de la anulación</label>
+                                <input id="void-payment-{{ $linkedPayment->id }}" name="reason" type="text" maxlength="500" required>
+                                <button type="submit" class="btn-danger btn-sm mt-3">Anular y liberar esta parte</button>
                             </form>
                         @endcan
-                    @elseif ($movement->amount_cents > 0)
+                    @endforeach
+                    @if ($movement->amount_cents > 0 && $left > 0)
                         @can('edit-treasury')
                             @if ($pendingDues->isNotEmpty())
                                 <form method="post" action="/bank/movements/{{ $movement->id }}/reconcile" class="form-block reconcile">
                                     @csrf
-                                    <label for="due-movement-{{ $movement->id }}" class="mt-0">Cuota a la que corresponde este abono</label>
-                                    <select id="due-movement-{{ $movement->id }}" name="due_id" required>
-                                        <option value="">Elige una cuota pendiente</option>
-                                        @foreach ($pendingDues as $due)
-                                            <option value="{{ $due->id }}">{{ $due->member->name }} · {{ $due->feeYear->year }} · pendiente {{ \App\Modules\Fees\Support\Money::format($due->pendingCents()) }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="submit" class="btn-secondary btn-sm mt-3">Conciliar este abono</button>
+                                    <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+                                    <p class="notice linked">Quedan {{ \App\Modules\Fees\Support\Money::format($left) }} por conciliar</p>
+                                    <p class="notice">Escribe el importe de cada cuota que pague este abono. Una cuota vacía no participa y la suma debe dar exactamente lo que queda por conciliar.</p>
+                                    @foreach ($pendingDues as $due)
+                                        <label for="split-{{ $movement->id }}-{{ $due->id }}">{{ $due->member->name }} · {{ $due->feeYear->year }} · pendiente {{ \App\Modules\Fees\Support\Money::format($due->pendingCents()) }}</label>
+                                        <input id="split-{{ $movement->id }}-{{ $due->id }}" name="allocations[{{ $due->id }}]" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
+                                    @endforeach
+                                    <button type="submit" class="btn-secondary btn-sm mt-3">Conciliar el reparto</button>
                                 </form>
                             @else
                                 <p class="notice">No hay cuotas pendientes a las que asignar este abono.</p>
