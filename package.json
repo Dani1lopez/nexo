@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "pree2e": "npm run build",
+    "pree2e": "node --test e2e/support/run-directory.test.mjs && npm run build",
     "e2e": "playwright test --config e2e/playwright.config.ts",
     "check:weight": "node scripts/check-weight.mjs"
   },
