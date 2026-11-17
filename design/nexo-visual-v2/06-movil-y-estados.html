@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexo · móvil y estados</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --font: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --canvas: light-dark(#dfe4ec, #10151d);
+    --surface: light-dark(#f8fafc, #1d2330);
+    --raised: light-dark(#ffffff, #262d3a);
+    --ink: light-dark(#101828, #eef2f8);
+    --muted: light-dark(#4b5568, #9aa4b6);
+    --rule: color-mix(in srgb, var(--ink) 10%, transparent);
+    --line: light-dark(#3348c6, #9aabff);
+    --ok: light-dark(#067647, #4ed99b);
+    --warn: light-dark(#8a4b0f, #f7c65a);
+    --danger: light-dark(#a4231b, #ff9b93);
+    --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --ring: 0 0 0 1px color-mix(in srgb, var(--ink) 9%, transparent);
+  }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  :root[data-theme="light"] { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink);
+    font: 400 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+    padding: 28px 20px 72px;
+  }
+  .label-top { max-width: 1000px; margin: 0 auto 18px; color: var(--muted); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 650; }
+  .rack { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 390px 1fr; gap: 24px; align-items: start; }
+
+  .phone { width: 390px; border-radius: 28px; overflow: hidden; background: var(--surface); box-shadow: 0 30px 80px -40px rgb(0 0 0 / .7), var(--ring); display: grid; grid-template-rows: auto 1fr auto; }
+  .phone .bar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--rule); }
+  .brand { font-weight: 750; letter-spacing: -0.03em; }
+  .bar .grow { flex: 1; }
+  .menu-btn { font: 640 13px/1 var(--font); padding: 10px 12px; min-height: 40px; border-radius: 8px; border: 0; cursor: pointer; background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+  .phone .content { padding: 16px; display: grid; gap: 14px; align-content: start; }
+  h1 { margin: 0; font-size: 20px; letter-spacing: -0.02em; font-weight: 700; }
+  .sub { margin: 0; color: var(--muted); font-size: 12px; }
+
+  .square { border-radius: 12px; background: var(--raised); box-shadow: var(--ring); padding: 13px 14px; display: grid; gap: 2px; }
+  .square .k { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+  .square .v { font-size: 21px; font-weight: 690; letter-spacing: -0.02em; }
+  .square.warn .v { color: var(--warn); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--rule); padding-bottom: 0; }
+  .tabs a { color: var(--muted); text-decoration: none; font-weight: 620; font-size: 13px; padding: 10px 10px; white-space: nowrap; min-height: 42px; display: inline-flex; align-items: center; border-bottom: 2px solid transparent; }
+  .tabs a[aria-current="page"] { color: var(--ink); border-color: var(--line); }
+  .tabs .count { color: var(--muted); margin-left: 5px; font-weight: 500; }
+
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 12px 14px; border-radius: 10px; background: var(--raised); box-shadow: var(--ring); }
+  .row b { font-weight: 620; font-size: 13px; }
+  .row small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+  .row .amt { font-weight: 680; text-align: right; }
+  .tag { font: 650 10px/1 var(--font); border-radius: 999px; padding: 4px 8px; white-space: nowrap; justify-self: end; }
+  .tag.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .tag.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+
+  .docked { border-top: 1px solid var(--rule); padding: 12px 16px 16px; display: grid; gap: 8px; background: color-mix(in srgb, var(--surface) 92%, transparent); }
+  .btn { border: 0; font: 650 14px/1 var(--font); padding: 14px 16px; min-height: 48px; border-radius: 10px; cursor: pointer; background: var(--line); color: light-dark(#fff, #111726); }
+  .btn.quiet { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+  .btn[disabled] { cursor: not-allowed; opacity: .55; }
+  .docked .why { color: var(--muted); font-size: 11px; text-align: center; }
+
+  .states { display: grid; gap: 14px; align-content: start; }
+  .card { background: var(--surface); border-radius: 12px; box-shadow: var(--ring); padding: 16px; display: grid; gap: 8px; }
+  .card h2 { margin: 0; font-size: 13px; font-weight: 660; }
+  .card p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .skeleton { display: grid; gap: 8px; }
+  .skeleton i { display: block; height: 13px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 10%, transparent); position: relative; overflow: hidden; }
+  .skeleton i::after {
+    content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 12%, transparent), transparent);
+    animation: sweep 1.4s var(--ease) infinite;
+  }
+  @keyframes sweep { to { transform: translateX(100%); } }
+  .skeleton i:nth-child(2) { width: 82%; }
+  .skeleton i:nth-child(3) { width: 64%; }
+  .err { border-left: 3px solid var(--danger); padding-left: 11px; }
+  .zero { display: flex; gap: 18px; flex-wrap: wrap; }
+  .zero div { display: grid; gap: 2px; }
+  .zero .n { font-size: 19px; font-weight: 690; }
+  .zero .k { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+  :focus-visible { outline: 2px solid var(--line); outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .skeleton i::after { display: none; } }
+  @media (max-width: 860px) { .rack { grid-template-columns: 1fr; } .phone { width: 100%; max-width: 390px; margin: 0 auto; } }
+</style>
+</head>
+<body>
+  <p class="label-top">Móvil · misma pantalla, misma jerarquía, sin raíl convertido en cajón</p>
+  <div class="rack">
+    <div class="phone">
+      <div class="bar">
+        <span class="brand">Nexo</span>
+        <span class="grow"></span>
+        <button class="menu-btn" type="button" aria-label="Abrir navegación: movimientos, socias, cuotas">Menú</button>
+      </div>
+      <div class="content">
+        <div>
+          <h1>Conciliar febrero</h1>
+          <p class="sub">18 movimientos · 6 pendientes</p>
+        </div>
+
+        <div class="pair">
+          <div class="square">
+            <span class="k">Saldo extracto</span>
+            <span class="v">2.980,50 €</span>
+          </div>
+          <div class="square warn">
+            <span class="k">Diferencia</span>
+            <span class="v">120,00 €</span>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Estado">
+          <a href="#" aria-current="page" role="tab">Todos <span class="count">18</span></a>
+          <a href="#" role="tab">Pendientes <span class="count">6</span></a>
+          <a href="#" role="tab">Sugeridos <span class="count">4</span></a>
+        </div>
+
+        <div class="row">
+          <b>Transferencia recibida</b>
+          <span class="amt">120,00 €</span>
+          <small>14 feb · LUIS FERRER CUOTA · 96 % Luis Ferrer</small>
+          <span class="tag warn">Sugerido</span>
+        </div>
+        <div class="row">
+          <b>Cena de socias</b>
+          <span class="amt">−86,40 €</span>
+          <small>12 feb · sin justificante, motivo registrado</small>
+          <span class="tag ok">Conciliado</span>
+        </div>
+        <div class="row">
+          <b>Transferencia sin nombre</b>
+          <span class="amt">90,00 €</span>
+          <small>11 feb · 42 % · dos socias posibles</small>
+          <span class="tag warn">Sugerido</span>
+        </div>
+      </div>
+      <div class="docked">
+        <button class="btn" type="button">Confirmar 4 sugerencias</button>
+        <button class="btn quiet" type="button" disabled>Cerrar mes</button>
+        <span class="why">Se activa cuando la diferencia sea 0,00 €</span>
+      </div>
+    </div>
+
+    <div class="states">
+      <div class="card">
+        <h2>Cargando</h2>
+        <p>Se reserva el espacio del contenido y se dice qué se está cargando; no hay pantalla en blanco.</p>
+        <div class="skeleton" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="card">
+        <h2>Error de importación</h2>
+        <p class="err">No pudimos leer el archivo: la columna «importe» viene vacía en 3 filas. <b>No se guardó nada.</b></p>
+        <p>Puedes reintentar con el mismo archivo corregido: la operación es segura.</p>
+        <button class="btn quiet" type="button" style="min-height:40px">Elegir otro archivo</button>
+      </div>
+
+      <div class="card">
+        <h2>Datos de hace 12 minutos</h2>
+        <p>El total es real pero no actual: se dice cuándo se actualizó en lugar de presentarlo como un hecho de ahora.</p>
+        <button class="btn quiet" type="button" style="min-height:40px">Actualizar</button>
+      </div>
+
+      <div class="card">
+        <h2>Cero no es lo mismo que sin datos</h2>
+        <div class="zero">
+          <div><span class="k">Pendiente</span><span class="n">0,00 €</span><p>Hay cero deuda: es un cero real.</p></div>
+          <div><span class="k">Caja</span><span class="n">Sin datos</span><p>Todavía no existe el registro de caja.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
