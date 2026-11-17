@@ -35,17 +35,17 @@ class RegisterPayment
 
             $due = Due::with(['feeYear', 'exemptions', 'payments'])->findOrFail($due->id);
 
-            // Read inside the transaction: the same movement and due pair is not paid twice.
+            // A movement can feed several payments, but not two active ones for the same due.
+            // This is a guard, never a silent success: dropping the line would keep the money unassigned.
             if ($bankMovementId !== null) {
                 $pair = Payment::query()
                     ->where('bank_movement_id', $bankMovementId)
                     ->where('due_id', $due->id)
                     ->whereNull('voided_at')
-                    ->orderBy('id')
-                    ->first();
+                    ->exists();
 
-                if ($pair !== null) {
-                    return $pair;
+                if ($pair) {
+                    throw ValidationException::withMessages(['amount' => 'La cuota ya tiene un pago vigente de este movimiento: anula ese pago antes de volver a repartir el abono.']);
                 }
 
                 // A movement's capacity is its own amount: the sum of its active payments never exceeds it.

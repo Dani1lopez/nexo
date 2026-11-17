@@ -7,11 +7,12 @@ test('tesorería reparte un abono entre dos socios y la suma tiene que cuadrar',
   const stamp = Date.now();
   const ana = `Ana reparto ${stamp}`;
   const luis = `Luis reparto ${stamp}`;
+  const sinPagar = `Socia sin pagar ${stamp}`;
   const concept = `Transferencia conjunta ${stamp}`;
 
   await logIn(page, 'treasury');
 
-  for (const name of [ana, luis]) {
+  for (const name of [ana, luis, sinPagar]) {
     await page.goto('/members/create');
     await page.getByLabel('Nombre completo').fill(name);
     await page.getByLabel('Correo ficticio (.test)').fill(`${name.replace(/\s+/g, '.')}@example.test`);
@@ -37,6 +38,8 @@ test('tesorería reparte un abono entre dos socios y la suma tiene que cuadrar',
 
   const anaInput = movement.getByLabel(new RegExp(`${ana} · 2031 · pendiente`));
   const luisInput = movement.getByLabel(new RegExp(`${luis} · 2031 · pendiente`));
+  // A third pending due stays untouched in every submission: an empty row must not take part.
+  await expect(movement.getByLabel(new RegExp(`${sinPagar} · 2031 · pendiente`))).toHaveValue('');
 
   // A split that does not add up is refused and changes nothing.
   await anaInput.fill('5');

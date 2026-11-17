@@ -36,9 +36,11 @@ return new class extends Migration
             END
             SQL);
 
+        // Voiding a payment frees exactly that part of the movement again, so un-voiding it
+        // must be checked too: without `voided_at` in this list an un-void could exceed the capacity.
         DB::statement(<<<SQL
             CREATE TRIGGER payments_bank_movement_capacity_update
-            BEFORE UPDATE OF amount_cents, bank_movement_id ON payments
+            BEFORE UPDATE OF amount_cents, bank_movement_id, voided_at ON payments
             WHEN NEW.bank_movement_id IS NOT NULL AND NEW.voided_at IS NULL
             BEGIN
                 SELECT RAISE(ABORT, '{$abort}')
@@ -55,6 +57,12 @@ return new class extends Migration
             SQL);
     }
 
+    /**
+     * Restores the old "one active payment per movement" index, which cannot hold real data:
+     * since #34 a movement may carry several active payments, so this can fail on such a database.
+     * Nothing is deleted to force it: the limit is documented, not repaired, because rolling back
+     * the split feature means going back to a schema that cannot represent the stored rows.
+     */
     public function down(): void
     {
         DB::statement('DROP TRIGGER IF EXISTS payments_bank_movement_capacity_update');

@@ -12,6 +12,7 @@ use App\Modules\Fees\Models\FeeYear;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Members\Models\Member;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\AuthTestCase;
@@ -61,9 +62,10 @@ class SplitReconcileTest extends AuthTestCase
     }
 
     /**
-     * Posts one split; the map is due id => amount in euros as typed in the form.
+     * Posts one split; the map is due id => amount in euros as typed in the form. An untouched
+     * row arrives as null once Laravel turns the empty string into null.
      *
-     * @param  array<int, string>  $allocations
+     * @param  array<int, string|null>  $allocations
      */
     private function split(int $movementId, array $allocations, ?string $submissionKey = null): TestResponse
     {
@@ -122,6 +124,95 @@ class SplitReconcileTest extends AuthTestCase
         $this->split($movement->id, [$ana->id => 'diez'])->assertSessionHasErrors('allocations');
 
         $this->assertDatabaseCount('payments', 0);
+    }
+
+    /**
+     * Rule 2: the screen renders one row per pending due, so an untouched row arrives empty.
+     * An empty amount is a due that does not take part, never a format error.
+     */
+    public function test_an_empty_amount_for_an_untouched_due_does_not_take_part(): void
+    {
+        // The reported reproduction: a 20,00 € credit, a due of 20,00 € and a 5,00 € due left untouched.
+        $large = $this->year(2025, 2000);
+        $small = $this->year(2026, 500);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $large);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $small);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->split($movement->id, [$ana->id => '20,00', $luis->id => ''])
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Pago conciliado desde el extracto.');
+
+        $this->assertDatabaseHas('payments', [
+            'due_id' => $ana->id,
+            'bank_movement_id' => $movement->id,
+            'amount_cents' => 2000,
+        ]);
+        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(0, $luis->fresh()->paidCents());
+        $this->assertSame('paid', $ana->fresh()->status());
+    }
+
+    /** Rule 2: an amount that arrives as null is the same untouched row, not a format error. */
+    public function test_a_null_amount_for_an_untouched_due_does_not_take_part(): void
+    {
+        $large = $this->year(2025, 2000);
+        $small = $this->year(2026, 500);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $large);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $small);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->split($movement->id, [$ana->id => '20,00', $luis->id => null])
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame(0, $luis->fresh()->paidCents());
+    }
+
+    /** Rule 2: an empty amount never rescues a typed amount that cannot be parsed. */
+    public function test_an_empty_amount_does_not_hide_a_value_that_cannot_be_parsed(): void
+    {
+        $large = $this->year(2025, 2000);
+        $small = $this->year(2026, 500);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $large);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $small);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->split($movement->id, [$ana->id => 'diez', $luis->id => ''])->assertSessionHasErrors('allocations');
+        $this->split($movement->id, [$ana->id => '0', $luis->id => ''])->assertSessionHasErrors('allocations');
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    /**
+     * Rule 5 and 3: a line for a due this very movement already pays is refused on the split,
+     * because the existing payment guard would otherwise drop it and keep the money unassigned.
+     */
+    public function test_a_line_for_a_due_already_paid_by_this_movement_is_refused(): void
+    {
+        $year = $this->year(2026, 10000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $carmen = $this->dueFor($this->member('carmen@example.test', 'Carmen ficticia'), $year);
+        $movement = $this->movement(10000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->split($movement->id, [$ana->id => '30', $luis->id => '70'])->assertSessionHasNoErrors();
+
+        $luisPayment = Payment::where('due_id', $luis->id)->firstOrFail();
+        $this->actingAs($this->treasury())
+            ->post("/bank/payments/{$luisPayment->id}/void", ['reason' => 'Se repartió mal.'])
+            ->assertSessionHasNoErrors();
+
+        // 70,00 € are free again, so this split adds up but reuses a due the movement already pays.
+        $this->split($movement->id, [$ana->id => '20', $carmen->id => '50'])
+            ->assertSessionHasErrors('allocations');
+
+        $this->assertSame(3000, (int) Payment::where('due_id', $ana->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(0, Payment::where('due_id', $carmen->id)->count());
+        $this->assertSame(3000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(0, $carmen->fresh()->paidCents());
     }
 
     /** Rule 1: a charge never produces a payment, not even inside a split. */
@@ -238,6 +329,35 @@ class SplitReconcileTest extends AuthTestCase
             'method' => Payment::BANK,
             'submission_key' => (string) Str::uuid(),
         ]);
+    }
+
+    /** Rule 5, in the database: un-voiding a payment cannot push the movement above its capacity. */
+    public function test_the_database_refuses_un_voiding_a_payment_beyond_the_movement_amount(): void
+    {
+        $year = $this->year(2026, 1000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $carmen = $this->dueFor($this->member('carmen@example.test', 'Carmen ficticia'), $year);
+        $movement = $this->movement(1000, 'TRANSFERENCIA CONJUNTA');
+
+        foreach ([[$ana, 600, null], [$luis, 400, null], [$carmen, 600, '2026-02-15 10:00:00']] as [$due, $cents, $voidedAt]) {
+            Payment::forceCreate([
+                'due_id' => $due->id,
+                'bank_movement_id' => $movement->id,
+                'amount_cents' => $cents,
+                'paid_on' => '2026-02-14',
+                'method' => Payment::BANK,
+                'submission_key' => (string) Str::uuid(),
+                'voided_at' => $voidedAt,
+            ]);
+        }
+
+        $voided = Payment::where('due_id', $carmen->id)->firstOrFail();
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+
+        $this->expectException(QueryException::class);
+
+        DB::table('payments')->where('id', $voided->id)->update(['voided_at' => null]);
     }
 
     public function test_the_bank_screen_offers_only_what_is_left_of_each_credit(): void

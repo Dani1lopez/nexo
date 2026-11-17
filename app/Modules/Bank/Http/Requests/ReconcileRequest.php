@@ -56,6 +56,12 @@ class ReconcileRequest extends FormRequest
             $decided = 0;
 
             foreach ($allocations as $value) {
+                // An untouched row arrives as null once Laravel turns the empty string into null:
+                // that due does not take part, it is never a format error.
+                if ($value === null) {
+                    continue;
+                }
+
                 if (! is_string($value) && ! is_numeric($value)) {
                     $validator->errors()->add('allocations', 'Cada importe se escribe en euros, con hasta dos decimales.');
 

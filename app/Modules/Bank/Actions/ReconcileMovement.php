@@ -63,6 +63,8 @@ class ReconcileMovement
 
         // All or nothing: a guard refusing one line undoes the whole split.
         return DB::transaction(function () use ($dues, $allocations, $keys, $movement): array {
+            $this->refuseDuesAlreadyPaidBy($movement, array_keys($allocations));
+
             $created = [];
 
             foreach ($allocations as $dueId => $cents) {
@@ -108,6 +110,30 @@ class ReconcileMovement
         }
 
         return $payments;
+    }
+
+    /**
+     * A line whose due this very movement already pays would be dropped by the payment guard,
+     * so the money would be announced and left unassigned: refuse the whole split instead.
+     * A replay of the same form never reaches this point, it returns before the transaction.
+     *
+     * @param  list<int>  $dueIds
+     *
+     * @throws ValidationException
+     */
+    private function refuseDuesAlreadyPaidBy(BankMovement $movement, array $dueIds): void
+    {
+        $alreadyPaid = Payment::query()
+            ->where('bank_movement_id', $movement->id)
+            ->whereIn('due_id', $dueIds)
+            ->whereNull('voided_at')
+            ->exists();
+
+        if ($alreadyPaid) {
+            throw ValidationException::withMessages([
+                'allocations' => 'Una de las cuotas elegidas ya tiene un pago vigente de este movimiento. Anula ese pago antes de repartirlo de nuevo o elige otra cuota.',
+            ]);
+        }
     }
 
     /**
