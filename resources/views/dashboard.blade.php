@@ -80,5 +80,5 @@
         {{ auth()->user()->email }}
     </p>
 
-    <p class="alert alert-info">Este panel es de consulta. Las operaciones económicas todavía no están disponibles.</p>
+    <p class="alert alert-info">Las cifras de cobro son del último ejercicio fijado. El saldo del banco, la deuda por ejercicio y los abonos sin conciliar están en <a href="/saldos">Saldos</a>.</p>
 @endsection
