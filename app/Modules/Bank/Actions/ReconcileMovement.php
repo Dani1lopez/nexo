@@ -48,21 +48,12 @@ class ReconcileMovement
             return $replayed;
         }
 
-        $remaining = $this->remainingCents($movement);
-        $allocated = array_sum($allocations);
-
-        if ($allocated !== $remaining) {
-            throw ValidationException::withMessages([
-                'allocations' => $remaining === 0
-                    ? 'El movimiento ya está conciliado por completo. Anula el pago que sobra antes de repartirlo de nuevo.'
-                    : 'El reparto suma '.Money::format($allocated).' y quedan '.Money::format($remaining).' por conciliar en este movimiento. Ajusta los importes.',
-            ]);
-        }
-
         $dues = $this->dues(array_keys($allocations));
 
         // All or nothing: a guard refusing one line undoes the whole split.
         return DB::transaction(function () use ($dues, $allocations, $keys, $movement): array {
+            // Read inside the transaction: a concurrent void must not leave the equality stale.
+            $this->refuseUnlessAllocationsMatch($movement, $allocations);
             $this->refuseDuesAlreadyPaidBy($movement, array_keys($allocations));
 
             $created = [];
@@ -139,6 +130,30 @@ class ReconcileMovement
     /**
      * What is left to reconcile: the movement amount minus its active payments.
      */
+    /**
+     * The split has to use exactly what is left of the movement, read inside the transaction so a
+     * concurrent void cannot leave the comparison stale and close the split with money unassigned.
+     *
+     * @param  array<int, int>  $allocations
+     *
+     * @throws ValidationException
+     */
+    private function refuseUnlessAllocationsMatch(BankMovement $movement, array $allocations): void
+    {
+        $remaining = $this->remainingCents($movement);
+        $allocated = array_sum($allocations);
+
+        if ($allocated === $remaining) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'allocations' => $remaining === 0
+                ? 'El movimiento ya está conciliado por completo. Anula el pago que sobra antes de repartirlo de nuevo.'
+                : 'El reparto suma '.Money::format($allocated).' y quedan '.Money::format($remaining).' por conciliar en este movimiento. Ajusta los importes.',
+        ]);
+    }
+
     private function remainingCents(BankMovement $movement): int
     {
         $used = (int) $movement->payments()->whereNull('voided_at')->sum('amount_cents');
