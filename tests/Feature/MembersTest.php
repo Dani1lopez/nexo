@@ -64,7 +64,7 @@ class MembersTest extends AuthTestCase
 
     public function test_users_with_an_unknown_role_are_denied_the_whole_module(): void
     {
-        $this->actingAs($this->account('otro@example.test', 'admin', 'unknown-secret-value'));
+        $this->actingAs($this->accountWithStoredRole('otro@example.test', 'admin', 'unknown-secret-value'));
 
         $this->get('/members')->assertForbidden();
         $this->get('/members/create')->assertForbidden();

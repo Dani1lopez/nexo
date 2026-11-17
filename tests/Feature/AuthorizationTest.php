@@ -11,7 +11,7 @@ class AuthorizationTest extends AuthTestCase
     {
         $treasury = $this->account('tesoreria@example.test', 'treasury', 'password-one', 'Ana ficticia');
         $board = $this->account('junta@example.test', 'board', 'password-two', 'Luis ficticio');
-        $unknown = $this->account('otro@example.test', 'admin', 'password-three');
+        $unknown = $this->accountWithStoredRole('otro@example.test', 'admin', 'password-three');
 
         $this->assertTrue(Gate::forUser($treasury)->allows('view-treasury'));
         $this->assertTrue(Gate::forUser($treasury)->allows('edit-treasury'));

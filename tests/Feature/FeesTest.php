@@ -85,7 +85,7 @@ class FeesTest extends AuthTestCase
 
     public function test_unknown_roles_are_denied_the_whole_module(): void
     {
-        $this->actingAs($this->account('otro@example.test', 'admin', 'unknown-secret-value'));
+        $this->actingAs($this->accountWithStoredRole('otro@example.test', 'admin', 'unknown-secret-value'));
 
         $this->get('/fees')->assertForbidden();
         $this->get('/fees/create')->assertForbidden();

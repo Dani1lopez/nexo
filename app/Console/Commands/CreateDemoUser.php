@@ -43,7 +43,7 @@ class CreateDemoUser extends Command
 
             return self::FAILURE;
         }
-        User::create([...compact('name', 'email', 'role'), 'password' => $input]);
+        User::provision($name, $email, $input, $role);
         $this->info('Cuenta ficticia creada.');
 
         return self::SUCCESS;
