@@ -92,6 +92,8 @@ class ReconcileMovement
      *
      * @param  array<int, string>  $keys  due id => submission key
      * @return list<Payment>|null
+     *
+     * @throws ValidationException when the form was already used and any of its payments was voided
      */
     private function replayed(array $keys): ?array
     {
@@ -100,6 +102,15 @@ class ReconcileMovement
             ->orderBy('id')
             ->get()
             ->keyBy('submission_key');
+
+        // A voided payment still holds its submission key, so this form can no longer be honoured:
+        // replaying it would announce a reconciliation that no longer exists, and retrying it as a
+        // new split would collide with the unique key of the voided row. Reject it as expired.
+        if ($found->contains(fn (Payment $payment): bool => ! $payment->isActive())) {
+            throw ValidationException::withMessages([
+                'submission_key' => 'El formulario ha caducado: anulaste un pago de este reparto. Recarga la página y concílialo de nuevo.',
+            ]);
+        }
 
         if ($found->count() !== count($keys)) {
             return null;
