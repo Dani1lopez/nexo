@@ -47,6 +47,22 @@
     --topbar-bg: light-dark(rgb(242 245 249 / 0.82), rgb(32 38 52 / 0.78));
 
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+    /* Radio: un juego único para componentes, nunca decidido página a página. */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+
+    /* Movimiento: duración por intención, no por gusto; siempre con salida suave. */
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 320ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    /* Estado: piezas que no son marca ni significado de negocio. */
+    --color-skeleton: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    --color-overlay: light-dark(rgb(15 23 42 / 0.45), rgb(0 0 0 / 0.6));
     --shadow-ring:
         0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
         inset 0 1px 0 light-dark(transparent, color-mix(in srgb, var(--color-ink) 6%, transparent)),
