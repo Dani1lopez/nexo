@@ -37,7 +37,7 @@
         </li>
         <li class="stop-next">
             <strong>Conciliación</strong>
-            <span>Casar cada movimiento con su cuota. Próxima parada.</span>
+            <span>Conciliar abonos con cuotas y repartir un abono entre varias cuotas.</span>
         </li>
     </ol>
 
@@ -49,8 +49,9 @@
         </section>
 
         <section aria-labelledby="status">
-            <h2 id="status">Primera entrega: base de la aplicación</h2>
-            <p>La gestión de socios, cuotas y conciliación todavía no está disponible.</p>
+            <h2 id="status">Qué incluye la demo</h2>
+            <p>Acceso con dos roles (tesorería y junta), socios, cuota anual con exenciones y pagos, importación de extractos en CSV, conciliación manual con reparto de un abono entre varias cuotas y un resumen de saldos con la deuda por ejercicio.</p>
+            <p>No hay cobros reales ni conexión bancaria: el extracto se importa desde un archivo.</p>
             <p>Esta demo no garantiza cumplimiento fiscal, contable o legal.</p>
         </section>
     </div>
