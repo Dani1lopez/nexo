@@ -35,7 +35,7 @@ class DashboardTest extends AuthTestCase
             ->assertOk()
             ->assertSee('Todavía no hay cuotas fijadas')
             ->assertSee('Hay 1 socio activo')
-            ->assertSee('Todavía no se ha importado ningún extracto bancario.');
+            ->assertSee('Sin extracto importado todavía');
     }
 
     public function test_the_overview_sums_what_is_payable_paid_and_pending_for_the_latest_year(): void
@@ -50,12 +50,13 @@ class DashboardTest extends AuthTestCase
         $this->actingAs($this->board())->get('/dashboard')
             ->assertOk()
             ->assertSeeInOrder(['Socios activos', '2'])
-            ->assertSee('Pendiente de cobro en 2026')
+            ->assertSee('Pendiente de cobro')
             ->assertSee('50,00 €')
             ->assertSee('2 cuotas pendientes')
-            ->assertSee('Cobrado en 2026')
+            ->assertSee('Cobrado')
             ->assertSee('10,00 €')
-            ->assertSee('de 60,00 € a cobrar');
+            ->assertSee('de 60,00 € a cobrar')
+            ->assertSee('Cobrado el 17 % de lo previsto');
     }
 
     public function test_an_exempt_due_is_neither_payable_nor_pending(): void
@@ -80,7 +81,7 @@ class DashboardTest extends AuthTestCase
         app(VoidPayment::class)->handle($payment, 'Error de importe');
 
         $this->actingAs($this->board())->get('/dashboard')
-            ->assertSee('Cobrado en 2026')
+            ->assertSee('Cobrado')
             ->assertSee('0,00 €')
             ->assertSee('de 30,00 € a cobrar')
             ->assertSee('1 cuota pendiente');
