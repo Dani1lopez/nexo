@@ -11,10 +11,10 @@ $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 foreach (['TREASURY' => 'treasury', 'BOARD' => 'board'] as $prefix => $role) {
-    User::create([
-        'name' => 'Persona ficticia '.$role,
-        'email' => getenv("E2E_{$prefix}_EMAIL"),
-        'role' => $role,
-        'password' => getenv("E2E_{$prefix}_PASSWORD"),
-    ]);
+    User::provision(
+        'Persona ficticia '.$role,
+        (string) getenv("E2E_{$prefix}_EMAIL"),
+        (string) getenv("E2E_{$prefix}_PASSWORD"),
+        $role,
+    );
 }

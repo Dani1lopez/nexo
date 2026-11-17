@@ -73,6 +73,14 @@ El código se organiza como un monolito modular: cada área de negocio vive en `
 
 La estructura y la configuración inicial proceden de `laravel/laravel` v13.11.0 (MIT); se conserva su licencia en `LICENSE.framework.md`. La aplicación no tiene todavía una licencia de reutilización concedida.
 
+## Acceso y roles
+
+El login responde siempre con el mismo mensaje, `Las credenciales no son válidas.`, tanto si los datos son incorrectos como si el par correo/IP está bloqueado por exceso de intentos: el bloqueo no se revela al cliente. El límite es de 5 fallos por correo normalizado e IP, con una ventana de 60 segundos.
+
+La IP del cliente es `REMOTE_ADDR` por defecto: el encabezado `X-Forwarded-For` no se tiene en cuenta, de modo que no se puede mover el límite de intentos falsificando una cabecera. Si la aplicación se despliega detrás de un proxy propio, define `TRUSTED_PROXIES` con las IPs de esos proxies, separadas por comas, para que el límite use la IP real. Sin esa variable no se confía en ningún proxy: la lista vacía es intencionada, porque un valor nulo haría que el framework confiara en todos los proxies cuando el `Host` termina en `.on-forge.com` o `.on-vapor.com`, y esa cabecera la controla el cliente.
+
+Los roles son solo `treasury` y `board`. No son asignables en masa: la única forma de escribirlos es `User::assignRole()` o `User::provision()`, y cualquier cambio de rol con otro valor lanza una excepción antes de guardar. La columna `role` de SQLite sigue siendo texto libre porque añadir una restricción `CHECK` exige reconstruir la tabla, y una actualización con el constructor de consultas no pasa por el modelo; esos dos riesgos se aceptan de forma explícita y las puertas de autorización deniegan cualquier valor desconocido, con pruebas que lo fijan.
+
 ## Desarrollo y versiones
 
 El flujo de issues, ramas, pull requests hacia `main` y releases está en [CONTRIBUTING.md](CONTRIBUTING.md). Los cambios de cada versión se registran en [CHANGELOG.md](CHANGELOG.md). La base actual todavía no es una release `v0.1.0`.

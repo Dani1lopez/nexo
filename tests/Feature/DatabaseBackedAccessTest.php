@@ -51,12 +51,7 @@ class DatabaseBackedAccessTest extends TestCase
 
     public function test_login_persists_the_database_session_and_logout_ends_access(): void
     {
-        $user = User::create([
-            'name' => 'Persona ficticia',
-            'email' => 'ana@example.test',
-            'role' => 'treasury',
-            'password' => 'treasury-secret-value',
-        ]);
+        $user = User::provision('Persona ficticia', 'ana@example.test', 'treasury-secret-value', 'treasury');
 
         $this->get('/login')->assertOk();
 
@@ -77,12 +72,7 @@ class DatabaseBackedAccessTest extends TestCase
 
     public function test_failed_login_throttling_uses_the_database_cache(): void
     {
-        User::create([
-            'name' => 'Persona ficticia',
-            'email' => 'ana@example.test',
-            'role' => 'board',
-            'password' => 'correct-secret-value',
-        ]);
+        User::provision('Persona ficticia', 'ana@example.test', 'correct-secret-value', 'board');
 
         for ($i = 0; $i < 5; $i++) {
             $this->post('/login', ['email' => 'ana@example.test', 'password' => 'wrong-secret-value']);
