@@ -32,11 +32,12 @@ class BuildBalances
      */
     public function handle(): array
     {
-        // Only credits can feed a payment, so only a credit can stay unreconciled (see ReconcileMovement).
-        $unreconciled = BankMovement::query()
+        // Only credits can feed a payment, and a credit reconciled in part still has a remainder.
+        $remainders = BankMovement::query()
             ->where('amount_cents', '>', 0)
-            ->whereDoesntHave('payments', fn ($query) => $query->whereNull('voided_at'))
-            ->pluck('amount_cents');
+            ->with(['payments' => fn ($query) => $query->whereNull('voided_at')])
+            ->get()
+            ->map(fn (BankMovement $movement): int => max(0, $movement->amount_cents - (int) $movement->payments->sum('amount_cents')));
 
         $years = FeeYear::query()
             ->with(['dues.exemptions', 'dues.payments'])
@@ -48,8 +49,8 @@ class BuildBalances
         return [
             'balanceCents' => (int) BankMovement::query()->sum('amount_cents'),
             'movements' => BankMovement::query()->count(),
-            'unreconciledCents' => (int) $unreconciled->sum(),
-            'unreconciledCount' => $unreconciled->count(),
+            'unreconciledCents' => (int) $remainders->sum(),
+            'unreconciledCount' => $remainders->filter(fn (int $cents): bool => $cents > 0)->count(),
             'lastImportAt' => BankImport::query()->latest('id')->value('created_at'),
             'years' => $years,
             'totalPendingCents' => (int) array_sum(array_column($years, 'pendingCents')),
