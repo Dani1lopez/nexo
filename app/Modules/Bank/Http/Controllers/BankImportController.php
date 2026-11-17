@@ -8,6 +8,8 @@ use App\Modules\Bank\Http\Requests\ImportRequest;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Bank\Support\InvalidStatement;
+use App\Modules\Fees\Models\Due;
+use App\Modules\Fees\Models\Payment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -16,9 +18,29 @@ class BankImportController extends Controller
 {
     public function index(): View
     {
+        $movements = BankMovement::query()->orderByDesc('occurred_on')->orderByDesc('id')->simplePaginate(50);
+
+        // A movement links to at most one active payment; voided ones no longer count as reconciled.
+        $linked = Payment::query()
+            ->with('due.member')
+            ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
+            ->whereNull('voided_at')
+            ->get()
+            ->keyBy('bank_movement_id');
+
+        // Demo scale: dues carry computed status, so filtering happens on the loaded year.
+        $pendingDues = Due::query()
+            ->with(['member', 'feeYear', 'payments', 'exemptions'])
+            ->get()
+            ->filter(fn (Due $due): bool => $due->activeExemption() === null && $due->pendingCents() > 0)
+            ->sortBy(fn (Due $due): string => $due->member->name)
+            ->values();
+
         return view('bank.index', [
-            'movements' => BankMovement::query()->orderByDesc('occurred_on')->orderByDesc('id')->simplePaginate(50),
+            'movements' => $movements,
             'imports' => BankImport::query()->with('user')->latest('id')->limit(10)->get(),
+            'linked' => $linked,
+            'pendingDues' => $pendingDues,
         ]);
     }
 

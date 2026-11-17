@@ -2,6 +2,7 @@
 
 use App\Modules\Access\Http\Controllers\SessionController;
 use App\Modules\Bank\Http\Controllers\BankImportController;
+use App\Modules\Bank\Http\Controllers\ReconcileController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
 use App\Modules\Fees\Http\Controllers\FeeYearController;
@@ -47,4 +48,6 @@ Route::middleware(['auth', 'can:view-treasury'])->group(function (): void {
 Route::middleware(['auth', 'can:view-treasury'])->prefix('bank')->name('bank.')->group(function (): void {
     Route::get('/', [BankImportController::class, 'index'])->name('index');
     Route::post('/imports', [BankImportController::class, 'store'])->middleware('can:edit-treasury')->name('imports.store');
+    Route::post('/movements/{movement}/reconcile', [ReconcileController::class, 'store'])->middleware('can:edit-treasury')->name('movements.reconcile');
+    Route::post('/payments/{payment}/void', [ReconcileController::class, 'void'])->middleware('can:edit-treasury')->name('payments.void');
 });
