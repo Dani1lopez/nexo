@@ -331,6 +331,40 @@ class SplitReconcileTest extends AuthTestCase
         ]);
     }
 
+    /**
+     * Rule 3 under a concurrent void: the split must verify the end state, not just the read it made
+     * before writing. The void is simulated with a model event, so the test is deterministic.
+     */
+    public function test_a_void_that_lands_mid_split_rolls_the_whole_split_back(): void
+    {
+        $year = $this->year(2026, 1000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $released = false;
+        Payment::created(function (Payment $payment) use (&$released, $movement): void {
+            if ($released || $payment->bank_movement_id !== $movement->id) {
+                return;
+            }
+
+            // A concurrent void that lands between the equality check and the inserts.
+            $released = true;
+            Payment::withoutEvents(fn () => $payment->forceFill([
+                'voided_at' => now(),
+                'void_reason' => 'Anulación simultánea',
+            ])->save());
+        });
+
+        $this->split($movement->id, [$ana->id => '10', $luis->id => '10'])
+            ->assertSessionHasErrors('allocations');
+
+        $this->assertTrue($released);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame(0, $ana->fresh()->paidCents());
+        $this->assertSame(0, $luis->fresh()->paidCents());
+    }
+
     /** Rule 5, in the database: un-voiding a payment cannot push the movement above its capacity. */
     public function test_the_database_refuses_un_voiding_a_payment_beyond_the_movement_amount(): void
     {

@@ -71,6 +71,18 @@ class ReconcileMovement
                 );
             }
 
+            // Post-condition: this split must leave the movement fully reconciled. A void committed
+            // between the check above and these inserts would leave a remainder behind, and the
+            // capacity trigger only enforces an upper bound, so the end state is verified here and
+            // the whole split rolls back when it does not hold.
+            $left = $this->remainingCents($movement);
+
+            if ($left !== 0) {
+                throw ValidationException::withMessages([
+                    'allocations' => 'El movimiento ha cambiado mientras se repartía: quedan '.Money::format($left).' por conciliar. Vuelve a intentarlo.',
+                ]);
+            }
+
             return $created;
         });
     }
