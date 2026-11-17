@@ -20,13 +20,22 @@ class BankImportController extends Controller
     {
         $movements = BankMovement::query()->orderByDesc('occurred_on')->orderByDesc('id')->simplePaginate(50);
 
-        // A movement links to at most one active payment; voided ones no longer count as reconciled.
+        // A credit can be split over several dues, so a movement lists every active payment it fed;
+        // voided ones no longer count as reconciled.
         $linked = Payment::query()
-            ->with('due.member')
+            ->with(['due.member', 'due.feeYear'])
             ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
             ->whereNull('voided_at')
+            ->orderBy('id')
             ->get()
-            ->keyBy('bank_movement_id');
+            ->groupBy('bank_movement_id');
+
+        // What is left of each movement: its amount minus the payments already linked to it.
+        $remaining = [];
+        foreach ($movements->items() as $movement) {
+            $used = (int) $linked->get($movement->id, collect())->sum('amount_cents');
+            $remaining[$movement->id] = max(0, $movement->amount_cents - $used);
+        }
 
         // Demo scale: dues carry computed status, so filtering happens on the loaded year.
         $pendingDues = Due::query()
@@ -40,6 +49,7 @@ class BankImportController extends Controller
             'movements' => $movements,
             'imports' => BankImport::query()->with('user')->latest('id')->limit(10)->get(),
             'linked' => $linked,
+            'remaining' => $remaining,
             'pendingDues' => $pendingDues,
         ]);
     }
