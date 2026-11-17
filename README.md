@@ -41,6 +41,8 @@ npx playwright install chromium
 npm run e2e
 ```
 
+Cada ejecución crea su propia base temporal. `E2E_TMP` no permite elegir la ruta de limpieza: se genera internamente y solo se eliminan los archivos conocidos de esa ejecución. Si quedan archivos inesperados, la limpieza falla y conserva el directorio para inspección.
+
 La política del CI está en [CONTRIBUTING.md](CONTRIBUTING.md#integración-continua).
 
 `composer test` ejecuta PHPUnit directamente. `php artisan test` puede mostrar una advertencia de phpdotenv por la ausencia deliberada del archivo de entorno. No uses datos ni credenciales reales.
