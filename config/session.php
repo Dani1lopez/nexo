@@ -45,6 +45,10 @@ return [
     | should be encrypted before it's stored. All encryption is performed
     | automatically by Laravel and you may use the session like normal.
     |
+    | Kept off: with the database driver the payload never leaves the server,
+    | and the session cookie itself is already encrypted and signed with the
+    | application key, so encrypting here would only add a second layer.
+    |
     */
 
     'encrypt' => env('SESSION_ENCRYPT', false),
@@ -122,8 +126,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may change the name of the session cookie that is created by
-    | the framework. Typically, you should not need to change this value
-    | since doing so does not grant a meaningful security improvement.
+    | the framework. The name is derived from the application name, so
+    | APP_NAME=Nexo yields the "nexo-session" cookie and no environment can
+    | leave it at a generic default.
     |
     */
 
@@ -167,6 +172,9 @@ return [
     | to the server if the browser has a HTTPS connection. This will keep
     | the cookie from being sent to you when it can't be done securely.
     |
+    | Unset by default so the local http demo keeps working; a production
+    | deployment served over HTTPS must set SESSION_SECURE_COOKIE=true.
+    |
     */
 
     'secure' => env('SESSION_SECURE_COOKIE'),
@@ -180,6 +188,8 @@ return [
     | value of the cookie and the cookie will only be accessible through
     | the HTTP protocol. It's unlikely you should disable this option.
     |
+    | Kept true: no script in Nexo reads the session cookie.
+    |
     */
 
     'http_only' => env('SESSION_HTTP_ONLY', true),
@@ -190,8 +200,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | This option determines how your cookies behave when cross-site requests
-    | take place, and can be used to mitigate CSRF attacks. By default, we
-    | will set this value to "lax" to permit secure cross-site requests.
+    | take place, and can be used to mitigate CSRF attacks.
+    |
+    | Strict: Nexo has no cross-site POST navigation or cross-site entry point,
+    | every form is served and posted on this same site, so the cookie never
+    | needs to travel on a cross-site request. Relax it only if a future
+    | integration (an external checkout returning a POST, for example) needs it.
     |
     | See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesite-value
     |
@@ -199,7 +213,7 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', 'lax'),
+    'same_site' => env('SESSION_SAME_SITE', 'strict'),
 
     /*
     |--------------------------------------------------------------------------
@@ -209,6 +223,11 @@ return [
     | Setting this value to true will tie the cookie to the top-level site for
     | a cross-site context. Partitioned cookies are accepted by the browser
     | when flagged "secure" and the Same-Site attribute is set to "none".
+    |
+    | Kept false because it is incompatible with this configuration: browsers
+    | ignore Partitioned unless the cookie is Secure and SameSite=None, and
+    | Nexo uses SameSite=strict. It would also hide the session from browsers
+    | that do not implement partitioned cookies (Safari before 18.4).
     |
     */
 
