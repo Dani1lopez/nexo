@@ -4,6 +4,7 @@ namespace App\Modules\Access\Actions;
 
 use App\Modules\Access\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
@@ -59,6 +60,12 @@ class AttemptLogin
         if ($pending !== null) {
             // The password was right; only the code attempts are throttled now.
             RateLimiter::clear($key);
+
+            // The challenge never sees the plaintext password, so this is the only moment
+            // an outdated hash can be upgraded without asking for it again.
+            if (Hash::needsRehash($pending->getAuthPassword())) {
+                $pending->forceFill(['password' => $credentials['password']])->save();
+            }
 
             return $pending;
         }

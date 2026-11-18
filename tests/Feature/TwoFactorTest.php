@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Modules\Access\Models\User;
 use App\Modules\Access\Support\Totp;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Tests\Support\AuthTestCase;
 
 class TwoFactorTest extends AuthTestCase
@@ -201,6 +202,46 @@ class TwoFactorTest extends AuthTestCase
     public function test_the_challenge_page_is_not_reachable_without_a_pending_login(): void
     {
         $this->get('/login/segundo-factor')->assertRedirect('/login');
+    }
+
+    public function test_confirm_and_disable_share_a_code_limiter(): void
+    {
+        $user = $this->account('ana@example.test', 'treasury', 'correct-password');
+        $secret = $this->enableTwoFactor($user);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post('/access/two-factor/disable', ['code' => $this->wrongCode($secret)])
+                ->assertSessionHasErrors(['code' => self::GENERIC_CODE_ERROR]);
+        }
+
+        // The sixth attempt is rejected even with the right code, and the factor stays on.
+        $this->post('/access/two-factor/disable', ['code' => $this->code($secret)])
+            ->assertSessionHasErrors(['code' => self::GENERIC_CODE_ERROR]);
+
+        $user->refresh();
+        $this->assertNotNull($user->two_factor_confirmed_at);
+        $this->assertNotNull($user->two_factor_secret);
+    }
+
+    public function test_the_pending_password_submission_upgrades_an_outdated_hash(): void
+    {
+        $user = $this->account('ana@example.test', 'treasury', 'correct-password');
+        $this->enableTwoFactor($user);
+        $this->post('/logout');
+
+        // A hash written when the cost was lower, straight through the database so the
+        // hashed cast does not re-hash it on the way in.
+        DB::table('users')->where('id', $user->id)
+            ->update(['password' => Hash::make('correct-password', ['rounds' => 4])]);
+        config(['hashing.bcrypt.rounds' => 8]);
+        app('hash')->forgetDrivers();
+
+        $this->attemptLogin('ana@example.test', 'correct-password')->assertRedirect('/login/segundo-factor');
+        $this->assertGuest();
+
+        $upgraded = (string) $user->fresh()->password;
+        $this->assertStringStartsWith('$2y$08$', $upgraded);
+        $this->assertTrue(Hash::check('correct-password', $upgraded));
     }
 
     /**

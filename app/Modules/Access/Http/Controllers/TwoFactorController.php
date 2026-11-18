@@ -68,10 +68,17 @@ class TwoFactorController extends Controller
                 ->withErrors(['code' => 'No hay una activación pendiente.']);
         }
 
-        if (! (new Totp)->verify($secret, (string) $request->validated('code'))) {
+        if ($this->managementAttemptsExhausted($request, $user)) {
             return redirect('/access/two-factor')->withErrors(['code' => self::REJECTED_MESSAGE]);
         }
 
+        if (! (new Totp)->verify($secret, (string) $request->validated('code'))) {
+            $this->hitManagementAttempt($request, $user);
+
+            return redirect('/access/two-factor')->withErrors(['code' => self::REJECTED_MESSAGE]);
+        }
+
+        RateLimiter::clear($this->managementKey($request, $user));
         $user->two_factor_confirmed_at = now();
         $user->save();
 
@@ -88,10 +95,17 @@ class TwoFactorController extends Controller
                 ->withErrors(['code' => 'La verificación en dos pasos no está activada.']);
         }
 
-        if (! (new Totp)->verify($secret, (string) $request->validated('code'))) {
+        if ($this->managementAttemptsExhausted($request, $user)) {
             return redirect('/access/two-factor')->withErrors(['code' => self::REJECTED_MESSAGE]);
         }
 
+        if (! (new Totp)->verify($secret, (string) $request->validated('code'))) {
+            $this->hitManagementAttempt($request, $user);
+
+            return redirect('/access/two-factor')->withErrors(['code' => self::REJECTED_MESSAGE]);
+        }
+
+        RateLimiter::clear($this->managementKey($request, $user));
         $user->two_factor_secret = null;
         $user->two_factor_confirmed_at = null;
         $user->save();
@@ -146,6 +160,25 @@ class TwoFactorController extends Controller
         $request->session()->regenerate();
 
         return redirect()->intended('/dashboard');
+    }
+
+    /**
+     * Confirming and disabling share one limiter, so switching endpoint does not
+     * multiply the attempts available to a hijacked session.
+     */
+    private function managementKey(Request $request, User $user): string
+    {
+        return 'two-factor-management:'.hash('sha256', $user->getKey().'|'.$request->ip());
+    }
+
+    private function managementAttemptsExhausted(Request $request, User $user): bool
+    {
+        return RateLimiter::tooManyAttempts($this->managementKey($request, $user), self::CODE_MAX_ATTEMPTS);
+    }
+
+    private function hitManagementAttempt(Request $request, User $user): void
+    {
+        RateLimiter::hit($this->managementKey($request, $user), self::CODE_DECAY_SECONDS);
     }
 
     private function currentUser(Request $request): User
