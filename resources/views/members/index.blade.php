@@ -45,4 +45,11 @@
             @endcan
         </div>
     @endif
+    @if ($members->hasPages())
+        <nav aria-label="Páginas de socios" class="filters">
+            @if ($members->previousPageUrl())<a href="{{ $members->previousPageUrl() }}">Anterior</a>@endif
+            <span>Página {{ $members->currentPage() }} de {{ $members->lastPage() }}</span>
+            @if ($members->nextPageUrl())<a href="{{ $members->nextPageUrl() }}">Siguiente</a>@endif
+        </nav>
+    @endif
 @endsection

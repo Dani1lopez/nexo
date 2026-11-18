@@ -3,6 +3,7 @@
 namespace App\Modules\Fees\Models;
 
 use App\Modules\Members\Models\Member;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -50,6 +51,26 @@ class Due extends Model
     public function pendingCents(): int
     {
         return max(0, $this->payableCents() - $this->paidCents());
+    }
+
+    /**
+     * SQL mirror of pendingCents() > 0, so a listing can be bounded and chunked before it
+     * is loaded: no active exemption and the active payments do not reach the year amount.
+     * ListingLimitsTest pins it against the PHP rule.
+     *
+     * @param  Builder<Due>  $query
+     * @return Builder<Due>
+     */
+    public function scopePending(Builder $query): Builder
+    {
+        return $query
+            ->join('fee_years', 'fee_years.id', '=', 'dues.fee_year_id')
+            ->select('dues.*')
+            ->whereDoesntHave('exemptions', fn (Builder $exemptions): Builder => $exemptions->whereNull('revoked_at'))
+            ->where('fee_years.amount_cents', '>', Payment::query()
+                ->selectRaw('coalesce(sum(payments.amount_cents), 0)')
+                ->whereColumn('payments.due_id', 'dues.id')
+                ->whereNull('payments.voided_at'));
     }
 
     /** One of pending, partial, paid or exempt. */
