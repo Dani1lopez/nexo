@@ -197,7 +197,8 @@ class TwoFactorController extends Controller
         $id = $request->session()->get('two_factor.pending_user_id');
         $expires = $request->session()->get('two_factor.expires_at');
 
-        if (! is_int($id) || ! is_int($expires) || $expires < now()->getTimestamp()) {
+        // The window closes exactly at its timestamp: at five minutes the pending login is gone.
+        if (! is_int($id) || ! is_int($expires) || $expires <= now()->getTimestamp()) {
             return null;
         }
 
