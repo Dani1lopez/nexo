@@ -196,6 +196,25 @@ class SummaryTest extends AuthTestCase
         $this->actingAs($this->board())->get('/saldos')->assertSee('0 abonos sin conciliar');
     }
 
+    /**
+     * Preserve (#44): with no classification the summary keeps the same figures and offers no
+     * other-income card; the new total only appears when something was classified.
+     */
+    public function test_the_summary_keeps_its_figures_when_nothing_is_classified(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $year = $this->year(2026, 3000);
+        $movement = $this->movement(3000, 'TRANSFERENCIA ANA');
+        app(ReconcileMovement::class)->handle($movement, [$this->dueFor($ana, $year)->id => 3000], (string) Str::uuid());
+
+        $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSeeInOrder(['Saldo en el banco', '30,00 €'])
+            ->assertSeeInOrder(['Sin conciliar', '0,00 €', '0 abonos sin conciliar'])
+            ->assertDontSee('Otros ingresos')
+            ->assertSeeInOrder(['Total pendiente', '0,00 €', '0 cuotas pendientes']);
+    }
+
     /** Rule 8 of issue #34: a credit reconciled in part counts only what is still left. */
     public function test_a_partially_reconciled_credit_counts_only_what_is_left(): void
     {

@@ -312,6 +312,36 @@ class ReconcileTest extends AuthTestCase
         $this->assertNull($manual->fresh()->voided_at);
     }
 
+    /**
+     * Preserve (#44): a manual payment has no movement, so the other-income rules never reach it.
+     * The form of the due screen keeps working exactly as before.
+     */
+    public function test_a_manual_payment_without_a_movement_is_still_registered(): void
+    {
+        $year = $this->year(2026, 3000);
+        $due = $this->dueFor($this->member(), $year);
+
+        $this->actingAs($this->treasury())
+            ->post("/dues/{$due->id}/payments", [
+                'amount' => '10',
+                'paid_on' => '2026-02-01',
+                'method' => Payment::CASH,
+                'note' => 'Cuota en efectivo',
+                'submission_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect("/fees/{$year->id}")
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Pago registrado.');
+
+        $this->assertDatabaseHas('payments', [
+            'due_id' => $due->id,
+            'bank_movement_id' => null,
+            'amount_cents' => 1000,
+            'method' => Payment::CASH,
+        ]);
+        $this->assertSame(1000, $due->fresh()->paidCents());
+    }
+
     public function test_the_movements_screen_shows_the_form_only_for_credit_movements_and_the_linked_payment(): void
     {
         $member = $this->member('ana@example.test', 'Ana Alcaraz');
