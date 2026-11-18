@@ -52,7 +52,7 @@ class ClassifyOtherIncome
         }
 
         // Resending the same form finds its classification instead of creating a second one.
-        $replayed = $this->replayed($submissionKey, $movement);
+        $replayed = $this->replayed($submissionKey, $movement, $category, $description);
 
         if ($replayed !== null) {
             return $replayed;
@@ -80,9 +80,12 @@ class ClassifyOtherIncome
     /**
      * The classification an earlier submission of the same form already created, or null when this is new.
      *
-     * @throws ValidationException when the form was already used and its classification was voided
+     * Only an identical payload counts as the same submission: the form key survives a reload, so the
+     * same key carrying other values is a second, different classification attempt.
+     *
+     * @throws ValidationException when the form was already used (and voided, or resubmitted with other values)
      */
-    private function replayed(string $submissionKey, BankMovement $movement): ?OtherIncome
+    private function replayed(string $submissionKey, BankMovement $movement, string $category, string $description): ?OtherIncome
     {
         $existing = OtherIncome::query()->where('submission_key', $submissionKey)->first();
 
@@ -102,6 +105,14 @@ class ClassifyOtherIncome
         if (! $existing->isActive()) {
             throw ValidationException::withMessages([
                 'submission_key' => 'El formulario ha caducado: anulaste esta clasificación. Recarga la página y clasifícalo de nuevo.',
+            ]);
+        }
+
+        // The key identifies one payload. Accepting other values here would store neither of them
+        // and still report success, so the credit keeps what it already has until it is voided.
+        if ($existing->category !== $category || $existing->description !== $description) {
+            throw ValidationException::withMessages([
+                'submission_key' => 'El formulario ya se usó con otra categoría o descripción. El abono conserva su clasificación original: anula la clasificación antes de volver a clasificarlo.',
             ]);
         }
 

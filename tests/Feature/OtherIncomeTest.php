@@ -391,6 +391,116 @@ class OtherIncomeTest extends AuthTestCase
         $this->assertSame(1500, (int) OtherIncome::sum('amount_cents'));
     }
 
+    /**
+     * S5 and S7: the same form replayed with another category is refused, not reported as success,
+     * and the credit keeps the classification it already had.
+     */
+    public function test_resending_the_form_with_another_category_is_refused_and_keeps_the_original(): void
+    {
+        $movement = $this->movement(1500);
+        $form = [
+            'submission_key' => (string) Str::uuid(),
+            'category' => 'donations',
+            'description' => 'Donación del mercadillo',
+        ];
+
+        $this->actingAs($this->treasury())->post("/bank/movements/{$movement->id}/incomes", $form)
+            ->assertSessionHasNoErrors();
+
+        $income = $this->income();
+
+        $this->from('/bank')->actingAs($this->treasury())
+            ->post("/bank/movements/{$movement->id}/incomes", ['category' => 'activities'] + $form)
+            ->assertRedirect('/bank')
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        $this->from('/bank')->followingRedirects()
+            ->actingAs($this->treasury())
+            ->post("/bank/movements/{$movement->id}/incomes", ['category' => 'activities'] + $form)
+            ->assertOk()
+            ->assertSee('El abono conserva su clasificación original')
+            ->assertSee('anula la clasificación');
+
+        $stored = $income->fresh();
+        $this->assertNotNull($stored);
+        $this->assertSame('donations', $stored->category);
+        $this->assertSame('Donación del mercadillo', $stored->description);
+        $this->assertNull($stored->voided_at);
+        $this->assertSame($income->updated_at?->toDateTimeString(), $stored->updated_at?->toDateTimeString());
+        $this->assertDatabaseCount('other_incomes', 1);
+
+        // The bank screen still shows the original classification, not the refused one.
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Donaciones')
+            ->assertSee('Donación del mercadillo')
+            ->assertDontSee('Actividades');
+    }
+
+    /** S5 and S7: the same form replayed with another description is refused the same way. */
+    public function test_resending_the_form_with_another_description_is_refused_and_keeps_the_original(): void
+    {
+        $movement = $this->movement(2000);
+        $form = [
+            'submission_key' => (string) Str::uuid(),
+            'category' => 'grants',
+            'description' => 'Subvención municipal',
+        ];
+
+        $this->actingAs($this->treasury())->post("/bank/movements/{$movement->id}/incomes", $form)
+            ->assertSessionHasNoErrors();
+
+        $income = $this->income();
+
+        $this->from('/bank')->actingAs($this->treasury())
+            ->post("/bank/movements/{$movement->id}/incomes", ['description' => 'Subvención provincial'] + $form)
+            ->assertRedirect('/bank')
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        $this->from('/bank')->followingRedirects()
+            ->actingAs($this->treasury())
+            ->post("/bank/movements/{$movement->id}/incomes", ['description' => 'Subvención provincial'] + $form)
+            ->assertOk()
+            ->assertSee('El abono conserva su clasificación original');
+
+        $stored = $income->fresh();
+        $this->assertNotNull($stored);
+        $this->assertSame('grants', $stored->category);
+        $this->assertSame('Subvención municipal', $stored->description);
+        $this->assertNull($stored->voided_at);
+        $this->assertSame($income->updated_at?->toDateTimeString(), $stored->updated_at?->toDateTimeString());
+        $this->assertDatabaseCount('other_incomes', 1);
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Subvención municipal')
+            ->assertDontSee('Subvención provincial');
+    }
+
+    /** S5: a form key rendered for another credit is still refused and classifies nothing there. */
+    public function test_a_form_key_from_another_credit_is_refused(): void
+    {
+        $first = $this->movement(1500, 'DONACION UNO');
+        $second = $this->movement(1500, 'DONACION DOS');
+        $form = [
+            'submission_key' => (string) Str::uuid(),
+            'category' => 'donations',
+            'description' => 'Donación del mercadillo',
+        ];
+
+        $this->actingAs($this->treasury())->post("/bank/movements/{$first->id}/incomes", $form)
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->treasury())->post("/bank/movements/{$second->id}/incomes", $form)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        $this->assertDatabaseCount('other_incomes', 1);
+        $this->assertDatabaseMissing('other_incomes', ['bank_movement_id' => $second->id]);
+    }
+
     /** S5: replaying a form whose classification was voided is refused, not silently repeated. */
     public function test_resending_the_form_after_voiding_is_refused_and_changes_nothing(): void
     {
