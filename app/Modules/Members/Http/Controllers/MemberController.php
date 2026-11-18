@@ -11,6 +11,9 @@ use Illuminate\View\View;
 
 class MemberController extends Controller
 {
+    /** Hard cap of rendered members, so the list keeps paging instead of growing forever. */
+    private const MEMBERS_PER_PAGE = 25;
+
     private const FILTERS = [
         'activos' => Member::ACTIVE,
         'bajas' => Member::INACTIVE,
@@ -27,7 +30,8 @@ class MemberController extends Controller
                 ->when($status !== null, fn ($query) => $query->where('status', $status))
                 ->orderBy('name')
                 ->orderBy('id')
-                ->get(),
+                ->paginate(self::MEMBERS_PER_PAGE)
+                ->withQueryString(),
             'filter' => $filter,
         ]);
     }

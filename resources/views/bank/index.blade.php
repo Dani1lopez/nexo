@@ -62,6 +62,20 @@
     @endif
 
     <h2>Movimientos</h2>
+    @can('edit-treasury')
+        <form method="get" action="/bank" class="form-block">
+            <label for="socio" class="mt-0">Buscar las cuotas pendientes de un socio</label>
+            <input id="socio" name="socio" type="search" value="{{ $memberFilter }}" maxlength="100" placeholder="Nombre del socio">
+            <p class="notice">Los formularios de conciliación muestran como máximo {{ $pendingCap }} cuotas pendientes por abono, de cualquier año. Si la cuota que buscas no aparece, escribe el nombre del socio.</p>
+            <button type="submit" class="btn-secondary btn-sm">Filtrar</button>
+            @if ($memberFilter !== '')
+                <a href="/bank" class="btn btn-secondary btn-sm">Quitar el filtro</a>
+            @endif
+        </form>
+    @endcan
+    @if ($pendingTotal !== null)
+        <p class="notice">Se muestran las primeras {{ $pendingCap }} cuotas pendientes de {{ $pendingTotal }}. Filtra por socio para encontrar otra.</p>
+    @endif
     @if ($movements->isNotEmpty())
         <div class="board">
             <div class="board-head" aria-hidden="true"><span>Fecha</span><span>Concepto</span><span>Importe</span></div>

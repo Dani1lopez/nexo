@@ -11,9 +11,9 @@
     </div>
     <p>Importe: <strong>{{ $money($feeYear->amount_cents) }}</strong></p>
     <div class="tally" role="group" aria-label="Resumen del año">
-        <p><span>Total a cobrar</span><strong>{{ $money($dues->sum(fn ($d) => $d->payableCents())) }}</strong></p>
-        <p><span>Cobrado</span><strong>{{ $money($dues->sum(fn ($d) => $d->paidCents())) }}</strong></p>
-        <p><span>Por cobrar</span><strong>{{ $money($dues->sum(fn ($d) => $d->pendingCents())) }}</strong></p>
+        <p><span>Total a cobrar</span><strong>{{ $money($totals['payableCents']) }}</strong></p>
+        <p><span>Cobrado</span><strong>{{ $money($totals['paidCents']) }}</strong></p>
+        <p><span>Por cobrar</span><strong>{{ $money($totals['pendingCents']) }}</strong></p>
     </div>
     @if ($errors->any())
         <div class="alert alert-error" role="alert">
@@ -122,4 +122,11 @@
     @empty
         <p>Ningún socio tiene asignada esta cuota.</p>
     @endforelse
+    @if ($dues->hasPages())
+        <nav aria-label="Páginas de cuotas" class="filters">
+            @if ($dues->previousPageUrl())<a href="{{ $dues->previousPageUrl() }}">Anterior</a>@endif
+            <span>Página {{ $dues->currentPage() }} de {{ $dues->lastPage() }}</span>
+            @if ($dues->nextPageUrl())<a href="{{ $dues->nextPageUrl() }}">Siguiente</a>@endif
+        </nav>
+    @endif
 @endsection
