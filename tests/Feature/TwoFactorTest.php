@@ -91,6 +91,21 @@ class TwoFactorTest extends AuthTestCase
         $this->assertNull(session('two_factor.pending_user_id'));
     }
 
+    public function test_a_challenge_expires_exactly_at_the_five_minute_boundary(): void
+    {
+        $user = $this->account('ana@example.test', 'treasury', 'correct-password');
+        $this->enableTwoFactor($user);
+        $this->post('/logout');
+
+        $this->attemptLogin('ana@example.test', 'correct-password')->assertRedirect('/login/segundo-factor');
+
+        // Exactly at the boundary the pending login is already expired, not still valid.
+        $this->withSession(['two_factor.expires_at' => now()->getTimestamp()]);
+
+        $this->get('/login/segundo-factor')->assertRedirect('/login');
+        $this->assertGuest();
+    }
+
     public function test_a_wrong_code_at_the_challenge_keeps_the_visitor_as_guest(): void
     {
         $user = $this->account('ana@example.test', 'board', 'correct-password');
