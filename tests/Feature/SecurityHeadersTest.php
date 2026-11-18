@@ -145,6 +145,8 @@ class SecurityHeadersTest extends TestCase
     public function test_a_maintenance_rejection_still_carries_the_security_headers(): void
     {
         $down = storage_path('framework/down');
+        $existed = is_file($down);
+        $backup = $existed ? (string) file_get_contents($down) : null;
         file_put_contents($down, '{}');
 
         try {
@@ -155,7 +157,12 @@ class SecurityHeadersTest extends TestCase
             $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
             $this->assertSame(self::STRICT_CSP, $response->headers->get('Content-Security-Policy'));
         } finally {
-            @unlink($down);
+            // Preserve whatever maintenance state the environment had before the test.
+            if ($existed) {
+                file_put_contents($down, $backup);
+            } else {
+                @unlink($down);
+            }
         }
     }
 
