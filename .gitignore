@@ -40,3 +40,6 @@ secrets/
 # Playwright output
 /test-results/
 /playwright-report/
+
+# Local ODD worktrees
+/.worktrees/
