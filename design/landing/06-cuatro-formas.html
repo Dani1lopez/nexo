@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Nexo · dirección 06 · Cuatro formas</title>
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  /* =========================================================================
+     DIRECCIÓN 06 — CUATRO FORMAS
+     Una única escultura de partículas en el centro de la portada. Las partículas
+     se ordenan en cuatro formas —cuota, extracto, conciliación, saldos— cuando
+     se elige una etapa, y el cursor las atrae y las afina a su paso. Con el
+     botón pulsado se gira la escultura.
+     Lusion como referencia: oscuro, inmersivo, tipografía con carácter, la
+     escena como protagonista y no como decoración.
+
+     SIMULACIÓN: canvas 2D con proyección en perspectiva y muelles por
+     partícula. En la implementación, Three.js montaría un sistema de partículas
+     con morph targets entre las cuatro formas (o GPGPU), un shader de tamaño
+     por profundidad y postproceso de bloom; GSAP encadenaría el cambio de
+     forma, el cursor y los rótulos, y Lenis el scroll. Solo la portada cargaría
+     la librería.
+
+     TOKENS: valores oscuros de design/system.md. Extensión local: --field-*
+     (mezclas del canvas con negro), justificada en el informe.
+     TIPOGRAFÍA: Fraunces (display) + Instrument Sans (texto), propuesta
+     autoalojada con @fontsource; aquí simuladas con pilas locales.
+    ========================================================================= */
+  :root {
+    color-scheme: dark;
+    --font-display: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', ui-serif, Georgia, serif;
+    --font-text: 'Instrument Sans', 'Instrument Sans Variable', 'Helvetica Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+    --color-canvas: #202634;
+    --color-surface: #2a3142;
+    --color-raised: #333b50;
+    --color-ink: #eceff6;
+    --color-muted: #aab3c7;
+    --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-on-accent: #141925;
+    --color-line-panel: #8b9cff;
+    --color-line-saldos: #f9a8d4;
+    --color-line-socios: #2dd4bf;
+    --color-line-cuotas: #fbbf24;
+    --color-line-movimientos: #b79cff;
+    --color-danger: #f97066;
+    --color-warn: #fec84b;
+    --color-ok: #47cd89;
+    --color-info: #a4bcfd;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-pill: 999px;
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 320ms;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    --field-void: color-mix(in srgb, var(--color-canvas) 15%, #000);
+    --field-deep: color-mix(in srgb, var(--color-canvas) 30%, #000);
+    --field-edge: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--field-void);
+    color: var(--color-ink);
+    font-family: var(--font-text);
+    font-size: 1rem;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: color-mix(in srgb, var(--color-line-panel) 45%, transparent); }
+  :focus-visible { outline: 2px solid var(--color-line-panel); outline-offset: 3px; border-radius: 2px; }
+  h1, h2, h3 { margin: 0; font-weight: 500; text-wrap: balance; }
+  p { margin: 0.5rem 0; max-width: 44ch; }
+  .wrap { width: 100%; max-width: 82rem; margin-inline: auto; padding-inline: clamp(1.25rem, 4vw, 3.5rem); }
+  .skip { position: fixed; top: 0; left: 1.25rem; z-index: 90; padding: 0.5rem 1rem;
+    color: var(--color-on-accent); background: var(--color-line-panel); text-decoration: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); transform: translateY(-140%); }
+  .skip:focus { transform: translateY(0); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.028em;
+    font-variation-settings: 'opsz' 120, 'SOFT' 30, 'WONK' 1; }
+  .label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted); }
+  .mono { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted); }
+
+  .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 52% 46% at 64% 40%, color-mix(in srgb, var(--color-line-panel) 16%, transparent), transparent 70%),
+      radial-gradient(ellipse 42% 48% at 24% 76%, color-mix(in srgb, var(--color-line-movimientos) 12%, transparent), transparent 72%),
+      var(--field-void); }
+  .grain { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.5;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 13%, transparent) 0.5px, transparent 0.6px);
+    background-size: 3px 3px;
+    -webkit-mask-image: radial-gradient(ellipse 86% 76% at 50% 45%, #000 20%, transparent 88%);
+    mask-image: radial-gradient(ellipse 86% 76% at 50% 45%, #000 20%, transparent 88%); }
+
+  /* Cursor acompañante: no sustituye al nativo */
+  .cursor { position: fixed; left: 0; top: 0; z-index: 60; width: 2.25rem; height: 2.25rem;
+    margin: -1.125rem 0 0 -1.125rem; border-radius: var(--radius-pill); pointer-events: none;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 40%, transparent);
+    background: color-mix(in srgb, var(--color-line-panel) 8%, transparent);
+    opacity: 0; mix-blend-mode: screen;
+    transition: width 220ms var(--ease-out), height 220ms var(--ease-out), margin 220ms var(--ease-out),
+                opacity 300ms linear, border-color 220ms var(--ease-out); }
+  @media (hover: hover) and (pointer: fine) { .cursor.on { opacity: 1; } }
+  .cursor.hot { width: 3.25rem; height: 3.25rem; margin: -1.625rem 0 0 -1.625rem; border-color: var(--color-line-panel); }
+
+  .nav { position: fixed; inset: 0 0 auto; z-index: 40; display: flex; align-items: center; gap: 0.75rem;
+    padding: 1rem clamp(1.25rem, 4vw, 3.5rem);
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--field-void) 84%, transparent), transparent); }
+  .nav { transition: background-color 240ms var(--ease-out), box-shadow 240ms var(--ease-out); }
+  .nav.scrolled { background: color-mix(in srgb, var(--field-void) 94%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+    box-shadow: 0 1px 0 var(--field-edge); }
+  .brand { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1.0625rem; font-weight: 650;
+    letter-spacing: -0.02em; color: var(--color-ink); text-decoration: none; }
+  .brand svg { color: var(--color-line-panel); }
+  .nav .status { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+  .pause { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+    min-height: 2.75rem; min-width: 2.75rem; padding: 0.3125rem 0.875rem;
+    font: inherit; font-size: 0.75rem; font-weight: 550; color: var(--color-ink); cursor: pointer;
+    background: color-mix(in srgb, var(--color-ink) 7%, transparent); border: 0; border-radius: var(--radius-pill);
+    box-shadow: inset 0 0 0 1px var(--field-edge); transition: background-color var(--dur-fast) var(--ease-out); }
+  .pause:hover { background: color-mix(in srgb, var(--color-ink) 12%, transparent); }
+
+  /* Portada: la escultura */
+  .hero { position: relative; min-height: 100svh; display: grid; align-content: end;
+    padding: clamp(6rem, 9vh, 8rem) 0 clamp(1rem, 2.5vh, 1.75rem); overflow: clip; }
+  .field { display: none; position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
+  .js .field { display: block; }
+  .hero::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      linear-gradient(100deg, color-mix(in srgb, var(--field-void) 94%, transparent) 0%,
+        color-mix(in srgb, var(--field-void) 58%, transparent) 46%, transparent 76%),
+      linear-gradient(0deg, color-mix(in srgb, var(--field-void) 88%, transparent), transparent 46%); }
+  .hero-grid { position: relative; z-index: 3; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 0.875rem 1rem; align-items: end; }
+  .hero-copy { grid-column: 1 / span 5; align-self: start; }
+  .hero-copy h1 { font-size: clamp(2.5rem, 5.4vw, 5rem); line-height: 0.96; letter-spacing: -0.034em;
+    margin: 0.75rem 0 0; max-width: 13ch; }
+  .hero-copy h1 em { font-style: italic; color: color-mix(in srgb, var(--color-ink) 60%, var(--color-line-panel)); }
+  .hero-copy .lead { margin-top: 1.25rem; max-width: 30ch; color: var(--color-muted); font-size: 1rem; line-height: 1.6; }
+  .hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem 1rem; margin-top: 1.5rem; }
+  .btn { display: inline-flex; align-items: center; gap: 0.625rem; min-height: 3rem; padding: 0.75rem 1.5rem;
+    font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--color-on-accent); text-decoration: none;
+    background: var(--color-line-panel); border: 0; border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: 0 12px 44px -14px color-mix(in srgb, var(--color-line-panel) 72%, transparent);
+    transition: transform 240ms var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+  .btn:hover { background: color-mix(in srgb, var(--color-line-panel) 86%, white); }
+  .btn .arrow { transition: transform 240ms var(--ease-out); }
+  .btn:hover .arrow { transform: translateX(4px); }
+  .note { font-size: 0.8125rem; color: var(--color-muted); }
+
+  /* Ficha de la forma activa */
+  .stage-panel { grid-column: 1 / span 5; align-self: end; padding-top: 1rem; }
+  .stage-count { display: flex; align-items: baseline; gap: 0.5rem; font-family: var(--font-mono);
+    font-size: 0.6875rem; letter-spacing: 0.08em; color: var(--color-muted); }
+  .stage-count b { color: var(--color-ink); font-weight: 600; }
+  .stage-word { font-size: clamp(2.5rem, 5.6vw, 4.75rem); line-height: 0.95; letter-spacing: -0.035em; margin: 0.25rem 0 0.5rem; }
+  .stage-desc { color: var(--color-muted); font-size: 0.9375rem; max-width: 34ch; min-height: 4.2em; }
+  .stage-meta { display: flex; flex-wrap: wrap; gap: 0.375rem 1.25rem; margin: 0.875rem 0 0; padding: 0;
+    font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--color-muted); }
+  .stage-meta b { color: var(--color-ink); font-weight: 600; }
+  .stage-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-top: 1rem; }
+  .text-btn { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.25rem; padding: 0.25rem 0.5rem;
+    font: inherit; font-size: 0.8125rem; font-weight: 550; color: var(--color-ink); cursor: pointer;
+    background: transparent; border: 0; border-bottom: 1px solid var(--field-edge); border-radius: 0; }
+  .text-btn:hover { border-bottom-color: var(--color-line-panel); }
+
+  /* Índice de formas */
+  .index { grid-column: 10 / span 3; align-self: center; display: grid; gap: 0.25rem; }
+  .index button { position: relative; display: grid; grid-template-columns: 2.25rem 1fr; gap: 0.5rem;
+    align-items: baseline; padding: 0.625rem 0.25rem 0.625rem 0.75rem; text-align: left; cursor: pointer;
+    font: inherit; color: var(--color-muted); background: transparent; border: 0;
+    border-top: 1px solid var(--field-edge);
+    transition: color var(--dur-base) var(--ease-out), padding-left var(--dur-base) var(--ease-out); }
+  .index button:last-child { border-bottom: 1px solid var(--field-edge); }
+  .index button::before { content: ''; position: absolute; left: 0; top: 50%; width: 2px; height: 0;
+    background: var(--color-line-panel); transform: translateY(-50%);
+    transition: height var(--dur-slow) var(--ease-out); }
+  .index button:hover { color: var(--color-ink); padding-left: 1rem; }
+  .index button[aria-pressed="true"] { color: var(--color-ink); padding-left: 1rem; }
+  .index button[aria-pressed="true"]::before { height: 1.75rem; }
+  .index .in { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.06em; }
+  .index .it { font-size: 0.9375rem; font-weight: 550; }
+  .index .is { grid-column: 2; font-size: 0.75rem; color: var(--color-muted); }
+
+  .hint-inline { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-muted); }
+  @media (hover: none) { .hint-inline { display: none; } }
+
+  /* Composición estática de respaldo */
+  .field-fallback { display: none; position: absolute; z-index: 2; right: 4%; top: 18%;
+    width: min(40rem, 48vw); aspect-ratio: 1; }
+  .field-fallback svg { width: 100%; height: 100%; }
+  html:not(.js) .field-fallback, .no-canvas .field-fallback { display: block; }
+  html:not(.js) .index, .no-canvas .index, html:not(.js) .stage-tools, .no-canvas .stage-tools { display: none; }
+  .js:not(.no-canvas) .field-fallback { display: none; }
+
+  /* Secciones editoriales */
+  .forms { position: relative; z-index: 3; background: var(--field-deep); border-top: 1px solid var(--field-edge);
+    padding: clamp(3.5rem, 7vw, 6rem) 0; }
+  .forms .head { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; align-items: end; }
+  .forms .head h2 { grid-column: 1 / span 6; font-size: clamp(2rem, 4.4vw, 3.75rem);
+    line-height: 1.02; letter-spacing: -0.03em; max-width: 14ch; }
+  .forms .head p { grid-column: 8 / span 5; color: var(--color-muted); font-size: 1.0625rem; max-width: 38ch; }
+  .form-list { margin: clamp(2rem, 4vw, 3rem) 0 0; padding: 0; list-style: none; display: grid; }
+  .form-item { display: grid; grid-template-columns: 5rem minmax(0, 1.1fr) minmax(0, 1fr) minmax(10rem, 0.9fr);
+    gap: 1rem 1.5rem; align-items: center; padding: 1.5rem 0; border-top: 1px solid var(--field-edge); }
+  .form-item:last-child { border-bottom: 1px solid var(--field-edge); }
+  .form-item .n { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.08em; color: var(--color-muted); }
+  .form-item h3 { font-family: var(--font-display); font-size: clamp(1.375rem, 2.2vw, 1.875rem);
+    line-height: 1.1; letter-spacing: -0.02em; }
+  .form-item p { margin: 0; color: var(--color-muted); font-size: 0.9375rem; }
+  .form-item .diagram { justify-self: end; width: 100%; max-width: 15rem; }
+  .form-item .diagram svg { display: block; width: 100%; height: auto; }
+  .form-item .diagram .d-dot { fill: color-mix(in srgb, var(--color-line-panel) 80%, var(--color-ink)); }
+  .form-item[data-c="socios"] .diagram .d-dot { fill: var(--color-line-socios); }
+  .form-item[data-c="cuotas"] .diagram .d-dot { fill: var(--color-line-cuotas); }
+  .form-item[data-c="conciliacion"] .diagram .d-dot { fill: var(--color-line-movimientos); }
+  .form-item[data-c="saldos"] .diagram .d-dot { fill: var(--color-line-saldos); }
+
+  .ficha { position: relative; z-index: 3; background: var(--field-deep); padding: 0 0 clamp(3rem, 6vw, 5rem); }
+  .ficha .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem 1rem;
+    padding-top: clamp(2.5rem, 5vw, 4rem); border-top: 1px solid var(--field-edge); }
+  .ficha h2 { grid-column: 1 / span 5; font-size: clamp(1.75rem, 3.4vw, 2.875rem); line-height: 1.06; letter-spacing: -0.03em; }
+  .ficha .facts { grid-column: 7 / span 6; margin: 0; padding: 0; display: grid; }
+  .ficha .facts div { display: grid; grid-template-columns: 7.5rem 1fr; gap: 1rem; padding: 0.75rem 0;
+    border-top: 1px solid var(--field-edge); }
+  .ficha .facts dt { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-muted); padding-top: 0.2rem; }
+  .ficha .facts dd { margin: 0; font-size: 0.9375rem; }
+  .ficha .facts b { font-weight: 600; }
+  .ficha .out { grid-column: 1 / span 5; margin-top: 2rem; }
+  .ficha .out ul { margin: 0.75rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
+  .ficha .out li { display: grid; grid-template-columns: 0.875rem 1fr; gap: 0.5rem; color: var(--color-muted); font-size: 0.875rem; }
+  .ficha .out li::before { content: '—'; color: color-mix(in srgb, var(--color-ink) 40%, transparent); }
+  .ficha .out b { color: var(--color-ink); font-weight: 600; }
+
+  .end { position: relative; z-index: 3; background: var(--field-deep); padding: 0 0 clamp(3rem, 6vw, 5rem); }
+  .end .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem;
+    padding-top: clamp(2.5rem, 5vw, 4rem); border-top: 1px solid var(--field-edge); }
+  .end .copy { grid-column: 1 / span 4; }
+  .end .copy p { color: var(--color-muted); font-size: 0.9375rem; }
+  .end .action { grid-column: 6 / span 7; align-self: center; }
+  .mega { display: inline-flex; align-items: flex-start; gap: 0.625rem; font-family: var(--font-display);
+    font-size: clamp(2.375rem, 6vw, 5rem); line-height: 0.96; letter-spacing: -0.035em;
+    color: var(--color-ink); text-decoration: none; border-bottom: 2px solid var(--color-line-panel);
+    padding-bottom: 0.1em; transition: color 200ms var(--ease-out); }
+  .mega:hover { color: var(--color-line-panel); }
+  .mega .arrow { font-family: var(--font-text); font-size: 0.5em; padding-top: 0.35em; transition: transform 300ms var(--ease-out); }
+  .mega:hover .arrow { transform: translate(6px, -6px); }
+  .end .note2 { margin-top: 1rem; font-size: 0.8125rem; color: var(--color-muted); }
+  .footer { position: relative; z-index: 3; background: var(--field-deep); padding: 0 0 2rem;
+    color: var(--color-muted); font-size: 0.8125rem; }
+  .footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
+  .footer p { margin: 0; }
+
+  @media (max-width: 62rem) {
+    .hero::before { background: linear-gradient(180deg, color-mix(in srgb, var(--field-void) 96%, transparent) 0%,
+      color-mix(in srgb, var(--field-void) 84%, transparent) 44%, color-mix(in srgb, var(--field-void) 46%, transparent) 74%, transparent 100%); }
+    .hero-copy { grid-column: 1 / -1; }
+    .stage-panel { grid-column: 1 / span 7; }
+    .index { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.25rem; }
+    .index button { grid-template-columns: 1fr; gap: 0.125rem; padding: 0.5rem 0.25rem;
+      border-top: 0; border-bottom: 0; border-left: 1px solid var(--field-edge); }
+    .index button:last-child { border-bottom: 0; }
+    .index button::before { left: 0; top: 0; width: 0; height: 2px; transform: none;
+      transition: width var(--dur-slow) var(--ease-out); }
+    .index button[aria-pressed="true"] { padding-left: 0.25rem; }
+    .index button[aria-pressed="true"]::before { width: 1.5rem; height: 2px; }
+    .index .is { display: none; }
+    .field-fallback { right: -12%; top: 10%; width: 96vw; opacity: 0.5; }
+    .forms .head h2, .forms .head p { grid-column: 1 / -1; }
+    .form-item { grid-template-columns: 3rem minmax(0, 1fr); gap: 0.5rem 1rem; }
+    .form-item p { grid-column: 2; }
+    .form-item .diagram { grid-column: 2; justify-self: start; max-width: 13rem; }
+    .ficha h2, .ficha .facts, .ficha .out { grid-column: 1 / -1; }
+    .end .copy, .end .action { grid-column: 1 / -1; }
+  }
+  @media (max-width: 34rem) {
+    .hero { padding-top: 5.5rem; }
+    .stage-desc { min-height: 0; }
+    .nav .status .pause .txt { display: none; }
+    .ficha .facts div { grid-template-columns: 1fr; gap: 0.25rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .cursor { display: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div class="atmosphere" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="cursor" id="cursor" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="#inicio" aria-label="Nexo, volver al inicio">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="7" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="17" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M10.4 12h3.2" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    Nexo
+  </a>
+  <div class="status">
+    <span class="mono">Demo · datos ficticios</span>
+    <button class="pause" id="pause" type="button" aria-pressed="false" aria-label="Pausar la escena">
+      <span class="txt">Pausar</span><span aria-hidden="true">❚❚</span>
+    </button>
+  </div>
+</header>
+
+<main id="contenido">
+  <!-- ============ PORTADA: la escultura de partículas ============ -->
+  <section class="hero" id="inicio" aria-labelledby="titular">
+    <canvas class="field" id="field" aria-hidden="true"></canvas>
+
+    <div class="field-fallback" aria-hidden="true">
+      <svg viewBox="0 0 640 640" role="presentation" focusable="false">
+        <circle cx="320" cy="320" r="196" fill="none" stroke="var(--field-edge)" stroke-width="1"/>
+        <circle cx="320" cy="320" r="128" fill="none" stroke="var(--field-edge)" stroke-width="1"/>
+        <g>
+          <circle cx="516" cy="320" r="6" fill="var(--color-line-socios)"/><circle cx="510" cy="356" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="492" cy="389" r="4" fill="var(--color-line-socios)"/><circle cx="467" cy="417" r="5" fill="var(--color-line-socios)"/>
+          <circle cx="435" cy="438" r="4" fill="var(--color-line-socios)"/><circle cx="398" cy="452" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="359" cy="458" r="6" fill="var(--color-line-socios)"/><circle cx="320" cy="456" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="281" cy="446" r="4" fill="var(--color-line-socios)"/><circle cx="245" cy="428" r="5" fill="var(--color-line-socios)"/>
+          <circle cx="214" cy="403" r="4" fill="var(--color-line-socios)"/><circle cx="190" cy="372" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="174" cy="337" r="6" fill="var(--color-line-socios)"/><circle cx="168" cy="299" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="172" cy="261" r="4" fill="var(--color-line-socios)"/><circle cx="186" cy="225" r="5" fill="var(--color-line-socios)"/>
+          <circle cx="209" cy="194" r="4" fill="var(--color-line-socios)"/><circle cx="239" cy="169" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="274" cy="152" r="6" fill="var(--color-line-socios)"/><circle cx="312" cy="143" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="351" cy="143" r="4" fill="var(--color-line-socios)"/><circle cx="388" cy="153" r="5" fill="var(--color-line-socios)"/>
+          <circle cx="422" cy="171" r="4" fill="var(--color-line-socios)"/><circle cx="451" cy="197" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="473" cy="229" r="6" fill="var(--color-line-socios)"/><circle cx="488" cy="264" r="4" fill="var(--color-line-socios)"/>
+          <circle cx="496" cy="301" r="4" fill="var(--color-line-socios)"/><circle cx="511" cy="286" r="3" fill="var(--color-line-socios)"/>
+          <circle cx="486" cy="414" r="3" fill="var(--color-line-socios)"/><circle cx="414" cy="480" r="3" fill="var(--color-line-socios)"/>
+          <circle cx="320" cy="500" r="3" fill="var(--color-line-socios)"/><circle cx="226" cy="478" r="3" fill="var(--color-line-socios)"/>
+          <circle cx="152" cy="400" r="3" fill="var(--color-line-socios)"/><circle cx="140" cy="300" r="3" fill="var(--color-line-socios)"/>
+        </g>
+        <text x="320" y="600" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13"
+          letter-spacing="2" fill="var(--color-muted)">34 SOCIOS · 2 EXENTOS</text>
+      </svg>
+    </div>
+
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="label">Tesorería para asociaciones</p>
+        <h1 id="titular" class="display">El dinero de la asociación, <em>en cuatro formas.</em></h1>
+        <p class="lead">Socios, cuotas y movimientos del banco en un solo sitio. Cuatro formas para mirar el mismo hilo: de la cuota al saldo conciliado.</p>
+        <div class="hero-cta">
+          <a class="btn" href="/login">Entrar a la demo <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="note">Demo en construcción · datos ficticios</span>
+        </div>
+      </div>
+
+      <div class="stage-panel">
+        <p class="stage-count"><b id="stage-n">01</b> / 04 · forma</p>
+        <h2 class="stage-word display" id="stage-word">Cuota</h2>
+        <p class="stage-desc" id="stage-desc" aria-live="polite">Un anillo de 34 socios. Ana paga 10,00 € porque se dio de alta en septiembre; Luis, 15,00 €. Dos socios están exentos.</p>
+        <p class="stage-meta" id="stage-meta"><span><b>34</b> socios</span><span><b>15,00 €</b> al año</span><span><b>2</b> exentos</span></p>
+        <div class="stage-tools">
+          <button class="text-btn" id="replay" type="button">Recorrer las cuatro formas →</button>
+          <span class="hint-inline">Mueve el cursor · arrastra para girar</span>
+        </div>
+      </div>
+
+      <div class="index" role="group" aria-label="Formas de la escena" id="index">
+        <button type="button" data-stage="0" aria-pressed="true" aria-controls="stage-desc">
+          <span class="in">01</span><span class="it">Cuota</span><span class="is">34 socios, cuotas y exenciones</span>
+        </button>
+        <button type="button" data-stage="1" aria-pressed="false" aria-controls="stage-desc">
+          <span class="in">02</span><span class="it">Extracto</span><span class="is">18 líneas del banco en CSV</span>
+        </button>
+        <button type="button" data-stage="2" aria-pressed="false" aria-controls="stage-desc">
+          <span class="in">03</span><span class="it">Conciliación</span><span class="is">30,00 € repartidos en dos cuotas</span>
+        </button>
+        <button type="button" data-stage="3" aria-pressed="false" aria-controls="stage-desc">
+          <span class="in">04</span><span class="it">Saldos</span><span class="is">Banco, deuda y sin conciliar</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LAS CUATRO FORMAS: explicación estable ============ -->
+  <section class="forms" aria-labelledby="formas-t">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="formas-t" class="display">Cuatro formas, un mismo hilo.</h2>
+        <p>La cuota entra, el banco la cuenta, la tesorería la reparte y la junta lee el saldo. Cada etapa deja rastro para el equipo que venga después.</p>
+      </div>
+      <ol class="form-list">
+        <li class="form-item" data-c="socios">
+          <span class="n">01 · Cuota</span>
+          <h3>Quién está y cuánto debe</h3>
+          <p>34 socios, cuota anual de 15,00 € con dos exenciones. Cada pago queda en la cuota de su ejercicio: Ana entra en septiembre y paga 10,00 €.</p>
+          <span class="diagram" aria-hidden="true">
+            <svg viewBox="0 0 240 120" role="presentation">
+              <g fill="none" stroke="var(--field-edge)">
+                <circle cx="120" cy="60" r="44"/><circle cx="120" cy="60" r="30"/>
+              </g>
+              <g class="d-dot">
+                <circle cx="164" cy="60" r="4"/><circle cx="158" cy="79" r="3"/><circle cx="142" cy="95" r="3"/>
+                <circle cx="120" cy="102" r="4"/><circle cx="98" cy="95" r="3"/><circle cx="82" cy="79" r="3"/>
+                <circle cx="76" cy="60" r="4"/><circle cx="82" cy="41" r="3"/><circle cx="98" cy="25" r="3"/>
+                <circle cx="120" cy="18" r="4"/><circle cx="142" cy="25" r="3"/><circle cx="158" cy="41" r="3"/>
+                <circle cx="171" cy="75" r="2"/><circle cx="148" cy="104" r="2"/><circle cx="120" cy="114" r="2"/>
+                <circle cx="92" cy="104" r="2"/><circle cx="69" cy="75" r="2"/><circle cx="69" cy="45" r="2"/>
+                <circle cx="92" cy="16" r="2"/><circle cx="148" cy="16" r="2"/><circle cx="171" cy="45" r="2"/>
+              </g>
+            </svg>
+          </span>
+        </li>
+        <li class="form-item" data-c="cuotas">
+          <span class="n">02 · Extracto</span>
+          <h3>Lo que dice el banco</h3>
+          <p>18 líneas importadas de <b>extracto-enero.csv</b>, con fecha, concepto e importe. No hay cobros reales ni conexión bancaria: solo el archivo.</p>
+          <span class="diagram" aria-hidden="true">
+            <svg viewBox="0 0 240 120" role="presentation">
+              <g class="d-dot">
+                <g id="row1"><circle cx="16" cy="26" r="1.5"/><circle cx="32" cy="26" r="1.5"/><circle cx="48" cy="26" r="1.5"/><circle cx="64" cy="26" r="1.5"/><circle cx="80" cy="26" r="1.5"/><circle cx="96" cy="26" r="1.5"/><circle cx="112" cy="26" r="1.5"/><circle cx="128" cy="26" r="1.5"/><circle cx="144" cy="26" r="1.5"/><circle cx="160" cy="26" r="1.5"/><circle cx="176" cy="26" r="1.5"/><circle cx="192" cy="26" r="1.5"/><circle cx="208" cy="26" r="1.5"/><circle cx="224" cy="26" r="1.5"/></g>
+                <g><circle cx="16" cy="46" r="1.5"/><circle cx="32" cy="46" r="1.5"/><circle cx="48" cy="46" r="1.5"/><circle cx="64" cy="46" r="1.5"/><circle cx="80" cy="46" r="1.5"/><circle cx="96" cy="46" r="1.5"/><circle cx="112" cy="46" r="1.5"/><circle cx="128" cy="46" r="1.5"/><circle cx="144" cy="46" r="1.5"/><circle cx="160" cy="46" r="1.5"/><circle cx="176" cy="46" r="1.5"/><circle cx="192" cy="46" r="1.5"/><circle cx="208" cy="46" r="1.5"/><circle cx="224" cy="46" r="1.5"/></g>
+                <g><circle cx="16" cy="66" r="1.5"/><circle cx="32" cy="66" r="1.5"/><circle cx="48" cy="66" r="1.5"/><circle cx="64" cy="66" r="1.5"/><circle cx="80" cy="66" r="1.5"/><circle cx="96" cy="66" r="1.5"/><circle cx="112" cy="66" r="1.5"/><circle cx="128" cy="66" r="1.5"/><circle cx="144" cy="66" r="1.5"/><circle cx="160" cy="66" r="1.5"/><circle cx="176" cy="66" r="1.5"/><circle cx="192" cy="66" r="1.5"/><circle cx="208" cy="66" r="1.5"/><circle cx="224" cy="66" r="1.5"/></g>
+                <g><circle cx="16" cy="86" r="1.5"/><circle cx="32" cy="86" r="1.5"/><circle cx="48" cy="86" r="1.5"/><circle cx="64" cy="86" r="1.5"/><circle cx="80" cy="86" r="1.5"/><circle cx="96" cy="86" r="1.5"/><circle cx="112" cy="86" r="1.5"/><circle cx="128" cy="86" r="1.5"/><circle cx="144" cy="86" r="1.5"/><circle cx="160" cy="86" r="1.5"/><circle cx="176" cy="86" r="1.5"/><circle cx="192" cy="86" r="1.5"/><circle cx="208" cy="86" r="1.5"/><circle cx="224" cy="86" r="1.5"/></g>
+              </g>
+              <text x="16" y="112" font-family="ui-monospace, monospace" font-size="8" letter-spacing="1" fill="var(--color-muted)">18 LÍNEAS · CSV</text>
+            </svg>
+          </span>
+        </li>
+        <li class="form-item" data-c="conciliacion">
+          <span class="n">03 · Conciliación</span>
+          <h3>El reparto, a mano</h3>
+          <p>Un abono de 30,00 € cubre dos cuotas de 15,00 €. Lo que sobrara quedaría como «sin asignar», visible en la lista y nunca escondido.</p>
+          <span class="diagram" aria-hidden="true">
+            <svg viewBox="0 0 240 120" role="presentation">
+              <path d="M12 60H96M96 60C140 60 148 30 224 30M96 60C140 60 148 90 224 90"
+                fill="none" stroke="var(--field-edge)" stroke-width="1"/>
+              <g class="d-dot">
+                <circle cx="12" cy="60" r="3"/><circle cx="28" cy="60" r="2"/><circle cx="44" cy="60" r="2"/>
+                <circle cx="60" cy="60" r="2"/><circle cx="76" cy="60" r="2"/><circle cx="92" cy="60" r="3"/>
+                <circle cx="112" cy="55" r="2"/><circle cx="132" cy="49" r="2"/><circle cx="152" cy="43" r="2"/>
+                <circle cx="172" cy="36" r="2"/><circle cx="194" cy="32" r="2"/><circle cx="216" cy="30" r="3"/>
+                <circle cx="112" cy="65" r="2"/><circle cx="132" cy="71" r="2"/><circle cx="152" cy="77" r="2"/>
+                <circle cx="172" cy="84" r="2"/><circle cx="194" cy="88" r="2"/><circle cx="216" cy="90" r="3"/>
+              </g>
+              <text x="12" y="104" font-family="ui-monospace, monospace" font-size="8" letter-spacing="1" fill="var(--color-muted)">30,00 € → 15 + 15</text>
+            </svg>
+          </span>
+        </li>
+        <li class="form-item" data-c="saldos">
+          <span class="n">04 · Saldos</span>
+          <h3>El cierre, a la vista</h3>
+          <p>1.842,50 € en banco, 180,00 € de deuda por ejercicio y 0,00 € sin conciliar. La junta lo lee con su rol; la tesorería sigue donde lo dejó.</p>
+          <span class="diagram" aria-hidden="true">
+            <svg viewBox="0 0 240 120" role="presentation">
+              <path d="M10 104H230" stroke="var(--field-edge)" stroke-width="1"/>
+              <g class="d-dot">
+                <circle cx="52" cy="94" r="2"/><circle cx="52" cy="84" r="2"/><circle cx="52" cy="74" r="2"/>
+                <circle cx="52" cy="64" r="2"/><circle cx="52" cy="54" r="2"/><circle cx="52" cy="44" r="2"/>
+                <circle cx="52" cy="34" r="2"/><circle cx="52" cy="24" r="3"/>
+                <circle cx="120" cy="94" r="2"/><circle cx="120" cy="84" r="2"/><circle cx="120" cy="74" r="2"/>
+                <circle cx="120" cy="64" r="2"/><circle cx="120" cy="56" r="3"/>
+                <circle cx="188" cy="94" r="2"/><circle cx="188" cy="88" r="3"/>
+              </g>
+              <text x="10" y="116" font-family="ui-monospace, monospace" font-size="8" letter-spacing="1" fill="var(--color-muted)">1.842,50 · 180,00 · 0,00</text>
+            </svg>
+          </span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ FICHA ============ -->
+  <section class="ficha" aria-labelledby="ficha-t">
+    <div class="wrap grid">
+      <h2 id="ficha-t" class="display">Cuentas claras para el siguiente equipo.</h2>
+      <dl class="facts">
+        <div><dt>Qué incluye</dt><dd>Socios, cuota anual con exenciones y pagos, importación de extractos en CSV, conciliación con reparto y resumen de saldos con la deuda por ejercicio.</dd></div>
+        <div><dt>Roles</dt><dd><b>Tesorería</b> edita socios, cuotas y conciliación. <b>Junta</b> consulta el panel y los saldos. Acceso con contraseña y código TOTP de seis cifras.</dd></div>
+        <div><dt>Banco</dt><dd><b>Sin conexión bancaria:</b> el extracto se importa desde un archivo CSV. No hay cobros reales.</dd></div>
+        <div><dt>Saldos</dt><dd>Banco, deuda por ejercicio y lo que sigue sin conciliar, en la misma pantalla.</dd></div>
+      </dl>
+      <div class="out">
+        <p class="mono">Lo que esta demo no hace</p>
+        <ul>
+          <li><span><b>No usa dinero real.</b> Todo es de una asociación cultural ficticia; no introduzcas datos personales.</span></li>
+          <li><span><b>No garantiza cumplimiento fiscal, contable ni legal.</b> Ordena las cuentas; no sustituye a una asesoría.</span></li>
+          <li><span><b>Está en construcción.</b> La conciliación es manual, movimiento a movimiento, para no adivinar.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="end" aria-labelledby="fin">
+    <div class="wrap grid">
+      <div class="copy">
+        <h2 id="fin" class="display" style="font-size:clamp(1.375rem,2.2vw,1.875rem);line-height:1.15">Las cuatro formas están en la demo.</h2>
+        <p>Entra con datos ficticios y elige una cuota, una línea o un saldo.</p>
+      </div>
+      <div class="action">
+        <a class="mega" href="/login">Entrar a la demo <span class="arrow" aria-hidden="true">↗</span></a>
+        <p class="note2">Demo en construcción · Datos ficticios · Sin cobros reales ni conexión bancaria</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>Nexo · Tesorería para asociaciones</p>
+    <p>Demo con datos ficticios · No uses datos personales ni dinero real</p>
+  </div>
+</footer>
+
+<!-- Sonda de color: la escultura usa los tokens del sistema -->
+<div class="sr-only" aria-hidden="true">
+  <span id="p-ink" style="color:var(--color-ink)"></span>
+  <span id="p-socios" style="color:var(--color-line-socios)"></span>
+  <span id="p-cuotas" style="color:var(--color-line-cuotas)"></span>
+  <span id="p-movimientos" style="color:var(--color-line-movimientos)"></span>
+  <span id="p-saldos" style="color:var(--color-line-saldos)"></span>
+  <span id="p-panel" style="color:var(--color-line-panel)"></span>
+  <span id="p-ok" style="color:var(--color-ok)"></span>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    var canvas = document.getElementById('field');
+    var hero = document.getElementById('inicio');
+    var indexButtons = Array.prototype.slice.call(document.querySelectorAll('#index button'));
+    var stageN = document.getElementById('stage-n');
+    var stageWord = document.getElementById('stage-word');
+    var stageDesc = document.getElementById('stage-desc');
+    var stageMeta = document.getElementById('stage-meta');
+    var replay = document.getElementById('replay');
+    var pause = document.getElementById('pause');
+    var cursor = document.getElementById('cursor');
+    var ctx = null, dpr = 1, W = 0, H = 0, raf = 0, last = 0, time = 0, paused = false;
+    var cycling = false, cycleTimer = 0;
+    var stage = 0;
+    var STAGES = 4;
+
+    var COPY = [
+      { n: '01', word: 'Cuota',
+        desc: 'Un anillo de 34 socios. Ana paga 10,00 € porque se dio de alta en septiembre; Luis, 15,00 €. Dos socios están exentos.',
+        meta: '<span><b>34</b> socios</span><span><b>15,00 €</b> al año</span><span><b>2</b> exentos</span>' },
+      { n: '02', word: 'Extracto',
+        desc: 'Las líneas del banco, importadas de un CSV: 18 movimientos con fecha, concepto e importe. Sin conexión bancaria ni cobros reales.',
+        meta: '<span><b>18</b> líneas</span><span><b>1</b> archivo</span><span><b>0</b> conexiones</span>' },
+      { n: '03', word: 'Conciliación',
+        desc: 'Un abono de 30,00 € que se abre en dos cuotas de 15,00 €. La tesorería decide el reparto y lo que sobra queda «sin asignar», a la vista.',
+        meta: '<span><b>30,00 €</b> abono</span><span><b>15 + 15 €</b> cuotas</span><span><b>0,00 €</b> sin asignar</span>' },
+      { n: '04', word: 'Saldos',
+        desc: '1.842,50 € en banco, 180,00 € de deuda por ejercicio y 0,00 € sin conciliar. La junta lo lee con su rol; la tesorería sigue donde lo dejó.',
+        meta: '<span><b>1.842,50 €</b> banco</span><span><b>180,00 €</b> deuda</span><span><b>0,00 €</b> sin conciliar</span>' }
+    ];
+
+    var pal = {};
+    function readPalette() {
+      ['ink', 'socios', 'cuotas', 'movimientos', 'saldos', 'panel', 'ok'].forEach(function (k) {
+        var el = document.getElementById('p-' + k);
+        pal[k] = el ? getComputedStyle(el).color : (pal.ink || 'rgb(236,239,246)');
+      });
+    }
+
+    var N = 1800;
+    var parts = [];
+    var formed = [];   /* copia de los objetivos por etapa, para el modo estático */
+
+    function targetFor(s, i) {
+      var t = i / N;
+      if (s === 0) {
+        if (i < 34) {
+          var a = (i / 34) * Math.PI * 2 - Math.PI / 2;
+          return [Math.cos(a) * 0.66, Math.sin(a) * 0.66, 0.35];
+        }
+        var a2 = t * Math.PI * 2 * 3 + (i % 11) * 0.22;
+        var r = 0.74 + (i % 9) * 0.035;
+        return [Math.cos(a2) * r, Math.sin(a2) * r * 0.92, -0.5 + (i % 7) * 0.13];
+      }
+      if (s === 1) {
+        var cols = 36, rows = 22;
+        var r2 = Math.floor(i / cols) % rows;
+        var c = i % cols;
+        return [-0.9 + (c / (cols - 1)) * 1.8,
+          -0.66 + (r2 / (rows - 1)) * 1.32,
+          (r2 % 2 ? 0.22 : -0.22) + (c % 5) * 0.01];
+      }
+      if (s === 2) {
+        var upper = i % 2 === 0;
+        var u = ((i * 0.6180339887) % 1);
+        var x = -0.92 + u * 1.84;
+        var bend = Math.max(0, x);
+        var y = (upper ? 1 : -1) * bend * bend * 0.34;
+        return [x, y, (i % 5 - 2) * 0.12];
+      }
+      /* Saldos: tres barras */
+      var bars = [[-0.46, 0.62], [0, 0.3], [0.46, 0.07]];
+      var b = bars[i % 3];
+      var row = Math.floor(i / 3) % 34;
+      return [b[0] + ((i % 5) - 2) * 0.008,
+        -0.56 + (row / 33) * b[1],
+        (i % 3 - 1) * 0.14];
+    }
+
+    function seed() {
+      parts = [];
+      formed = [];
+      for (var i = 0; i < N; i++) {
+        var tx = targetFor(0, i);
+        parts.push({
+          x: (Math.random() - 0.5) * 1.4,
+          y: (Math.random() - 0.5) * 1.2,
+          z: Math.random() * 2 - 1,
+          vx: 0, vy: 0,
+          tx: tx[0], ty: tx[1], tz: tx[2],
+          r: 0.55 + Math.random() * 1.62,
+          ph: Math.random() * 6.28,
+          hero: i < 34,
+          bright: Math.random() < 0.3
+        });
+        formed.push(targetFor(0, i));
+      }
+    }
+
+    function resize() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    var pointer = { x: 0, y: 0, active: false, down: false, px: 0, py: 0 };
+    var yaw = 0, pitch = 0, yawTarget = 0, pitchTarget = 0;
+    var accent = null;
+
+    function stageColor() {
+      return [pal.socios, pal.cuotas, pal.movimientos, pal.saldos][stage];
+    }
+
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      if (!last) last = now;
+      var dt = Math.min(64, now - last);
+      last = now;
+      if (!paused) time += dt;
+      else dt = 0;
+
+      yaw += (yawTarget - yaw) * 0.06;
+      pitch += (pitchTarget - pitch) * 0.06;
+
+      if (reduce.matches) { drawStatic(); return; }
+
+      var cx = W * (W < 720 ? 0.5 : 0.62);
+      var cy = H * (W < 720 ? 0.56 : 0.46);
+      var R = Math.min(W * 0.34, H * 0.4);
+      accent = stageColor();
+
+      var cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+      var cosX = Math.cos(pitch * 0.6), sinX = Math.sin(pitch * 0.6);
+
+      ctx.clearRect(0, 0, W, H);
+
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        /* Muelle hacia la forma elegida; más firme cerca del cursor. */
+        var t = (p.tx * cosY + p.tz * sinY);
+        var z1 = -p.tx * sinY + p.tz * cosY;
+        var ty = p.ty * cosX - z1 * sinX;
+        var tz = p.ty * sinX + z1 * cosX;
+        var k = 0.028;
+        var order = 0;
+        if (pointer.active) {
+          var perspPre = 1 / (1.9 - tz * 0.26);
+          var sxPre = cx + t * R * perspPre;
+          var syPre = cy + ty * R * perspPre;
+          var dx = pointer.x - sxPre, dy = pointer.y - syPre;
+          if (dx * dx + dy * dy < 220 * 220) { k = 0.12; order = 1; }
+        }
+        p.vx += (t - p.x) * k;
+        p.vy += (ty - p.y) * k;
+        p.vx *= 0.86;
+        p.vy *= 0.86;
+        /* Dispersión ambiente cuando no se está ordenando */
+        if (!order) {
+          p.vx += Math.sin(time * 0.0006 + p.ph) * 0.00016;
+          p.vy += Math.cos(time * 0.0005 + p.ph * 1.3) * 0.00016;
+        }
+        p.x += p.vx;
+        p.y += p.vy;
+
+        var persp = 1 / (1.9 - tz * 0.26);
+        var sx = cx + p.x * R * persp;
+        var sy = cy + p.y * R * persp;
+        var alpha = Math.max(0.08, Math.min(0.95, persp * 0.9 - 0.18));
+        if (order) alpha = Math.min(1, alpha + 0.25);
+
+        /* El cursor repele ligeramente y enciende lo que toca */
+        if (pointer.active) {
+          var mdx = sx - pointer.x, mdy = sy - pointer.y;
+          var md = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
+          if (md < 150) {
+            sx += (mdx / md) * (150 - md) * 0.10;
+            sy += (mdy / md) * (150 - md) * 0.10;
+            alpha = Math.min(1, alpha + 0.2);
+          }
+        }
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = (i < 34 || p.bright) ? accent : pal.ink;
+        var radius = Math.max(0.5, p.r * persp * 1.65);
+        if (i < 34) radius *= 1.5;
+        if (i < 34 || p.bright) {
+          ctx.globalAlpha = alpha * 0.14;
+          ctx.beginPath();
+          ctx.arc(sx, sy, radius * 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = alpha;
+        }
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawStatic() {
+      var cx = W * (W < 720 ? 0.5 : 0.62);
+      var cy = H * (W < 720 ? 0.56 : 0.46);
+      var R = Math.min(W * 0.32, H * 0.38);
+      accent = stageColor();
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < parts.length; i++) {
+        var t = formed[i];
+        var persp = 1 / (1.9 - t[2] * 0.26);
+        var sx = cx + t[0] * R * persp;
+        var sy = cy + t[1] * R * persp;
+        ctx.globalAlpha = Math.max(0.1, Math.min(0.9, persp * 0.85 - 0.12));
+        ctx.fillStyle = (i < 34 || i % 3 === 0) ? accent : pal.ink;
+        var radius = Math.max(0.5, parts[i].r * persp * 1.5) * (i < 34 ? 1.5 : 1);
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function setStage(next) {
+      stage = ((next % STAGES) + STAGES) % STAGES;
+      indexButtons.forEach(function (b) {
+        b.setAttribute('aria-pressed', String(+b.getAttribute('data-stage') === stage));
+      });
+      stageN.textContent = COPY[stage].n;
+      stageWord.textContent = COPY[stage].word;
+      stageDesc.textContent = COPY[stage].desc;
+      stageMeta.innerHTML = COPY[stage].meta;
+      for (var i = 0; i < parts.length; i++) {
+        var target = targetFor(stage, i);
+        parts[i].tx = target[0];
+        parts[i].ty = target[1];
+        parts[i].tz = target[2];
+        formed[i] = target;
+      }
+      if (reduce.matches && ctx) drawStatic();
+    }
+
+    indexButtons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        stopCycle();
+        setStage(+b.getAttribute('data-stage'));
+      });
+      b.addEventListener('mouseenter', function () { if (reduce.matches) return; });
+    });
+
+    function stopCycle() {
+      cycling = false;
+      clearInterval(cycleTimer);
+      cycleTimer = 0;
+      replay.textContent = 'Recorrer las cuatro formas →';
+    }
+    replay.addEventListener('click', function () {
+      if (cycling) { stopCycle(); return; }
+      cycling = true;
+      startCycle();
+    });
+    function startCycle() {
+      if (cycling) {
+        replay.textContent = 'Parar el recorrido';
+      }
+      cycleTimer = setInterval(function () {
+        if (paused) return;
+        if (stage === STAGES - 1) { stopCycle(); return; }
+        setStage(stage + 1);
+      }, 2800);
+    }
+
+    pause.addEventListener('click', function () {
+      paused = !paused;
+      pause.setAttribute('aria-pressed', String(paused));
+      pause.querySelector('.txt').textContent = paused ? 'Reanudar' : 'Pausar';
+      if (paused) { cancelAnimationFrame(raf); raf = 0; if (ctx) drawStatic(); }
+      else if (!reduce.matches) { last = 0; raf = requestAnimationFrame(frame); }
+    });
+
+    /* Cursor: acompaña, atrae partículas y permite girar con arrastre */
+    var cursorX = 0, cursorY = 0;
+    if (fine.matches && !reduce.matches) {
+      window.addEventListener('pointermove', function (event) {
+        cursorX = event.clientX; cursorY = event.clientY;
+        cursor.style.transform = 'translate3d(' + cursorX + 'px,' + cursorY + 'px,0)';
+        cursor.classList.add('on');
+        cursor.classList.toggle('hot', Boolean(event.target.closest('a, button')));
+        var rect = canvas.getBoundingClientRect();
+        pointer.x = cursorX - rect.left;
+        pointer.y = cursorY - rect.top;
+        pointer.active = pointer.x > 0 && pointer.y > 0 && pointer.x < rect.width && pointer.y < rect.height;
+        if (pointer.down) {
+          yawTarget += (cursorX - pointer.px) * 0.004;
+          pitchTarget = Math.max(-0.5, Math.min(0.5, pitchTarget + (cursorY - pointer.py) * 0.0025));
+        }
+        pointer.px = cursorX; pointer.py = cursorY;
+      }, { passive: true });
+      canvas.addEventListener('pointerdown', function (event) {
+        pointer.down = true;
+        pointer.px = event.clientX; pointer.py = event.clientY;
+        cursor.classList.add('hot');
+      });
+      window.addEventListener('pointerup', function () {
+        pointer.down = false;
+        cursor.classList.remove('hot');
+      });
+      document.addEventListener('pointerleave', function () { cursor.classList.remove('on'); pointer.active = false; });
+    }
+
+    try {
+      ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('sin canvas 2d');
+      readPalette();
+      resize(); seed();
+      setStage(0);
+      if (reduce.matches) drawStatic();
+      else raf = requestAnimationFrame(frame);
+      window.addEventListener('resize', function () {
+        resize();
+        if (reduce.matches) drawStatic();
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
+        else if (!reduce.matches && !paused) { last = 0; raf = requestAnimationFrame(frame); }
+      });
+    } catch (error) {
+      root.classList.add('no-canvas');
+      if (pause) pause.hidden = true;
+    }
+
+    function applyMotion() {
+      if (reduce.matches) {
+        cancelAnimationFrame(raf); raf = 0;
+        stopCycle();
+        pause.hidden = true;
+        replay.hidden = true;
+        cursor.style.display = 'none';
+        pointer.active = false;
+        if (ctx) drawStatic();
+      } else if (ctx) {
+        pause.hidden = false;
+        replay.hidden = false;
+        cursor.style.display = '';
+        last = 0;
+        raf = requestAnimationFrame(frame);
+      }
+    }
+    applyMotion();
+    if (reduce.addEventListener) reduce.addEventListener('change', applyMotion);
+
+    /* La barra se vuelve opaca al bajar, para que el contenido no choque con ella. */
+    var nav = document.querySelector('.nav');
+    function navState() { if (nav) nav.classList.toggle('scrolled', window.scrollY > 24); }
+    window.addEventListener('scroll', navState, { passive: true });
+    navState();
+  })();
+</script>
+</body>
+</html>

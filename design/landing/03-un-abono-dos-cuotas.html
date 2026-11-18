@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexo · dirección 03 · Un abono, dos cuotas</title>
+<style>
+  /* ---------- Tokens del sistema (design/system.md, copiados de resources/css/app.css) ---------- */
+  :root {
+    color-scheme: light dark;
+    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --color-canvas: light-dark(#dde3ec, #202634);
+    --color-surface: light-dark(#f2f5f9, #2a3142);
+    --color-raised: light-dark(#fbfcfe, #333b50);
+    --color-ink: light-dark(#172033, #eceff6);
+    --color-muted: light-dark(#4b566e, #aab3c7);
+    --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-on-accent: light-dark(#ffffff, #141925);
+    --color-line-panel: light-dark(#3a50c8, #8b9cff);
+    --color-line-saldos: light-dark(#9d174d, #f9a8d4);
+    --color-line-socios: light-dark(#0f766e, #2dd4bf);
+    --color-line-cuotas: light-dark(#b45309, #fbbf24);
+    --color-line-movimientos: light-dark(#6d28d9, #b79cff);
+    --color-danger: light-dark(#b42318, #f97066);
+    --color-ok: light-dark(#067647, #47cd89);
+    --color-warn: light-dark(#93370d, #fec84b);
+    --color-info: light-dark(#3538cd, #a4bcfd);
+    --color-neutral-text: light-dark(#475467, #cbd2dd);
+    --color-neutral-soft: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-skeleton: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    --topbar-bg: light-dark(rgb(242 245 249 / 0.82), rgb(32 38 52 / 0.78));
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 320ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --shadow-ring:
+        0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
+        inset 0 1px 0 light-dark(transparent, color-mix(in srgb, var(--color-ink) 6%, transparent)),
+        0 1px 2px light-dark(rgb(15 23 42 / 0.06), rgb(0 0 0 / 0.25));
+    --shadow-lift:
+        0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
+        0 16px 40px -14px light-dark(rgb(15 23 42 / 0.3), rgb(0 0 0 / 0.7));
+    --line: var(--color-info);
+    --line-soft: color-mix(in srgb, var(--line) 12%, var(--color-surface));
+    --glow: light-dark(color-mix(in srgb, var(--line) 16%, transparent), color-mix(in srgb, var(--line) 26%, transparent));
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; font-family: var(--font-sans); font-size: 0.9375rem; line-height: 1.6;
+    color: var(--color-ink); background-color: var(--color-canvas);
+    background-image: radial-gradient(ellipse 62rem 24rem at 50% -8rem, var(--glow), transparent);
+    background-repeat: no-repeat; font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--line); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+      text-decoration-color: color-mix(in srgb, var(--line) 38%, transparent); }
+  a:hover { text-decoration-color: currentColor; }
+  :focus-visible { outline: 2px solid var(--line); outline-offset: 2px; border-radius: 0.25rem; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.125rem, 5.2vw, 3.5rem); line-height: 1.05; font-weight: 600; letter-spacing: -0.04em; }
+  h2 { font-size: 1.25rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+  h3 { font-size: 1rem; line-height: 1.4; font-weight: 600; }
+  p { margin: 0.5rem 0; max-width: 65ch; }
+  .wrap { width: 100%; max-width: 72rem; margin-inline: auto; padding-inline: 1rem; }
+  .skip { position: absolute; top: 0; left: 1rem; z-index: 60; padding: 0.5rem 1rem;
+    color: var(--color-canvas); text-decoration: none; background: var(--color-ink);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); transform: translateY(-120%); }
+  .skip:focus { transform: translateY(0); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; }
+  [hidden] { display: none !important; }
+
+  .topbar { position: sticky; top: 0; z-index: 40; background: var(--topbar-bg);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); }
+  .topbar-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem;
+    min-height: 3.5rem; padding-block: 0.5rem; }
+  .brand { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1.125rem;
+    font-weight: 650; letter-spacing: -0.02em; color: var(--color-ink); text-decoration: none; }
+  .brand svg { color: var(--line); }
+  .topbar .meta { margin-left: auto; color: var(--color-muted); font-size: 0.8125rem; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 2.75rem; padding: 0.5rem 1.25rem; font: inherit; font-size: 0.9375rem;
+    font-weight: 550; line-height: 1.25; color: var(--color-on-accent); text-decoration: none;
+    background: var(--line); border: 1px solid color-mix(in srgb, var(--line) 80%, white);
+    border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 1px 2px rgb(0 0 0 / 0.4);
+    transition: background-color var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out), transform 160ms var(--ease-out); }
+  .btn:hover { background: color-mix(in srgb, var(--line) 86%, white); }
+  .btn:active { transform: scale(0.97); }
+  .btn-secondary { color: var(--color-ink); background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+    border-color: transparent; box-shadow: var(--shadow-ring); }
+  .btn-secondary:hover { background: color-mix(in srgb, var(--color-ink) 10%, transparent); }
+  .btn-sm { min-height: 2.25rem; padding: 0.25rem 0.875rem; font-size: 0.875rem; }
+
+  .hero { padding: 2.5rem 0 0; }
+  .kicker { margin: 0 0 0.75rem; font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .hero h1 { max-width: 22ch; }
+  .lead { max-width: 40rem; margin: 0.75rem 0 0; font-size: 1.125rem; line-height: 1.55; color: var(--color-muted); }
+  .primer { max-width: 40rem; margin-top: 1rem; padding: 0.875rem 1rem;
+    background: color-mix(in srgb, var(--color-ink) 3%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-ink) 7%, transparent);
+    border-radius: var(--radius-md); }
+  .primer p { margin: 0; font-size: 0.875rem; color: var(--color-muted); }
+  .primer strong { color: var(--color-ink); }
+  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-top: 1.25rem; }
+  .notice { margin-top: 0.75rem; font-size: 0.875rem; color: var(--color-muted); }
+
+  /* Escena */
+  .scene-frame { position: relative; margin-top: 1.5rem; isolation: isolate; }
+  .scene-frame::before { content: ''; position: absolute; inset: -1.5rem -1rem auto; z-index: -1; height: 30rem;
+    pointer-events: none;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 18%, transparent) 1px, transparent 1.3px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 78% at 50% 0%, #000 20%, transparent 78%);
+    mask-image: radial-gradient(ellipse 70% 78% at 50% 0%, #000 20%, transparent 78%); }
+  .stage { position: relative; height: 24rem; background: var(--color-surface);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-lift); overflow: hidden; }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+  .stage-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; }
+  .stage-fallback svg { width: 100%; max-width: 46rem; height: auto; }
+  .fb-card { fill: var(--color-raised); stroke: var(--color-rule); stroke-width: 1.5; }
+  .fb-ink { fill: var(--color-ink); font: 600 14px var(--font-sans); }
+  .fb-muted { fill: var(--color-muted); font: 400 11px var(--font-sans); }
+  .fb-ok { fill: var(--color-ok); font: 600 15px var(--font-sans); }
+  .fb-line { stroke: var(--color-info); stroke-width: 2; fill: none; stroke-dasharray: 5 5; }
+  .fb-bar { fill: var(--color-ok); }
+  .fb-track { fill: color-mix(in srgb, var(--color-ink) 12%, transparent); }
+
+  .viz-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-top: 0.75rem; }
+  .viz-bar p { margin: 0; font-size: 0.8125rem; color: var(--color-muted); max-width: 46rem; }
+  .viz-bar .viz-pause { margin-left: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 0.375rem 1rem; margin: 0.5rem 0 0; padding: 0;
+    list-style: none; font-size: 0.8125rem; color: var(--color-muted); }
+  .legend li { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .legend li::before { content: ''; width: 0.5rem; height: 0.5rem; border-radius: var(--radius-pill);
+    background: var(--dot); }
+
+  /* La misma información que la escena, en una tabla accesible */
+  .data { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.875rem; }
+  .data caption { text-align: left; padding-bottom: 0.5rem; color: var(--color-muted); font-size: 0.8125rem; }
+  .data th, .data td { text-align: left; padding: 0.6rem 0.75rem;
+    box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent); }
+  .data th { font-size: 0.75rem; font-weight: 550; color: var(--color-muted);
+    background: color-mix(in srgb, var(--color-ink) 3%, transparent); }
+  .data td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .data tr:last-child td { box-shadow: none; }
+  .data .total td { background: color-mix(in srgb, var(--color-ink) 3%, transparent); }
+
+  /* Secciones */
+  section[id] { scroll-margin-top: 5rem; }
+  .band { padding: 3.5rem 0 0; }
+  .band > h2 { font-size: 1.75rem; font-weight: 650; letter-spacing: -0.025em; line-height: 1.2; }
+  .band .lede { color: var(--color-muted); margin-top: 0.5rem; max-width: 60ch; }
+
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; margin-top: 1.5rem;
+    overflow: hidden; background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-ring); }
+  .flow > div { padding: 1rem 1.1rem 1.15rem; background: var(--color-surface); }
+  .flow .n { display: flex; align-items: center; gap: 0.4rem; font-size: 0.625rem; font-weight: 650;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+  .flow .n::before { content: ''; width: 0.375rem; height: 0.375rem; border-radius: var(--radius-pill);
+    background: var(--dot); }
+  .flow h3 { margin: 0.35rem 0 0.15rem; font-size: 0.9375rem; }
+  .flow p { margin: 0; font-size: 0.8125rem; color: var(--color-muted); }
+  .flow .here { background: var(--line-soft); }
+  .flow .here h3 { color: var(--color-ink); }
+
+  .decisions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 1.5rem;
+    overflow: hidden; background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-ring); }
+  .decision { padding: 1.15rem 1.25rem 1.35rem; background: var(--color-surface); }
+  .decision .num { font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .decision h3 { margin: 0.35rem 0 0.25rem; }
+  .decision p { margin: 0; color: var(--color-muted); font-size: 0.875rem; }
+
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+  .role { padding: 1.25rem; background: var(--color-surface); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-ring); }
+  .badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.125rem 0.625rem;
+    font-size: 0.75rem; font-weight: 550; border-radius: var(--radius-pill); }
+  .badge::before { content: ''; width: 0.375rem; height: 0.375rem; background: currentColor;
+    border-radius: var(--radius-pill); }
+  .badge-ok { color: var(--color-ok); background: color-mix(in srgb, var(--color-ok) 14%, transparent); }
+  .badge-info { color: var(--color-info); background: color-mix(in srgb, var(--color-info) 14%, transparent); }
+  .role h3 { margin-bottom: 0.375rem; }
+  .role p { margin: 0; color: var(--color-muted); font-size: 0.875rem; }
+  .role ul { margin: 0.5rem 0 0; padding-left: 1.15rem; color: var(--color-muted); font-size: 0.875rem; }
+  .role li { margin: 0.2rem 0; }
+
+  .limits { margin: 2.5rem 0 0; padding: 1.25rem 1.25rem 1.25rem 1rem;
+    border-left: 2px solid var(--color-warn);
+    background: color-mix(in srgb, var(--color-warn) 7%, var(--color-surface));
+    border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .limits h2 { font-size: 1rem; margin-bottom: 0.375rem; }
+  .limits ul { margin: 0.25rem 0 0; padding-left: 1.15rem; color: var(--color-muted); font-size: 0.875rem; }
+  .footer { margin-top: 3rem; padding: 1.5rem 1rem 2rem; text-align: center;
+    color: var(--color-muted); font-size: 0.8125rem; }
+  .footer p { max-width: none; margin: 0; }
+
+  /* Sondas de color: resuelven light-dark() a un color real para el canvas. */
+  #probe { display: none; }
+  #probe .p-canvas { color: var(--color-canvas); }
+  #probe .p-surface { color: var(--color-surface); }
+  #probe .p-raised { color: var(--color-raised); }
+  #probe .p-ink { color: var(--color-ink); }
+  #probe .p-muted { color: var(--color-muted); }
+  #probe .p-rule { color: var(--color-ink); }
+  #probe .p-ok { color: var(--color-ok); }
+  #probe .p-info { color: var(--color-info); }
+  #probe .p-cuotas { color: var(--color-line-cuotas); }
+  #probe .p-socios { color: var(--color-line-socios); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    .viz-pause { display: none; }
+  }
+  @media (max-width: 62rem) {
+    .flow { grid-template-columns: repeat(3, 1fr); }
+    .decisions { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 48rem) {
+    .topbar .meta { display: none; }
+    .hero { padding-top: 2.5rem; }
+    .stage { height: 21rem; }
+    .roles { grid-template-columns: 1fr; }
+    .viz-bar .viz-pause { margin-left: 0; }
+  }
+  @media (max-width: 40rem) {
+    .flow { grid-template-columns: 1fr 1fr; }
+    .stage { height: 18rem; }
+    .data { font-size: 0.8125rem; }
+    .data th, .data td { padding: 0.5rem 0.4rem; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#contenido">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="6" cy="12" r="3.25" stroke="currentColor" stroke-width="2"/>
+        <circle cx="18" cy="12" r="3.25" fill="currentColor"/>
+        <path d="M9.25 12h5.5" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Nexo
+    </a>
+    <span class="meta">Asociación cultural La Ribera · demo</span>
+    <button class="btn btn-secondary btn-sm" type="button" id="theme">Modo claro</button>
+    <a class="btn btn-secondary btn-sm" href="#entrar">Acceder</a>
+  </div>
+</header>
+
+<main id="contenido" tabindex="-1">
+  <div class="wrap">
+    <section class="hero" id="entrar" aria-labelledby="titular">
+      <p class="kicker">Tesorería para asociaciones</p>
+      <h1 id="titular">Un abono llega una vez. Las cuotas que paga, son dos.</h1>
+      <p class="lead">Nexo es la tesorería de una asociación: socios, cuotas y los movimientos que importas del banco en CSV. Su trabajo más delicado es este: repartir un ingreso entre varias cuotas sin inventar apuntes que el banco no tiene.</p>
+      <div class="primer">
+        <p><strong>Si es tu primera vez:</strong> una asociación cobra una cuota anual a cada socio. El banco solo enseña un ingreso. Alguien tiene que decir qué cuotas cubre. Eso es conciliar.</p>
+      </div>
+      <div class="cta">
+        <a class="btn" href="#entrar">Entrar a la demo</a>
+        <a class="btn btn-secondary" href="#resto">Ver las demás pantallas</a>
+      </div>
+      <p class="notice">Demo con datos ficticios · Sin cobros reales ni conexión bancaria</p>
+    </section>
+
+    <section class="scene-frame" aria-labelledby="escena-titulo">
+      <h2 class="sr-only" id="escena-titulo">Un abono de 30,00 € repartido entre las cuotas de 2025 y 2026</h2>
+      <div class="stage" id="scene">
+        <canvas id="scene-canvas" aria-hidden="true"></canvas>
+        <div class="stage-fallback" id="fallback" hidden aria-hidden="true">
+          <svg viewBox="0 0 720 340" role="img" aria-label="Esquema: el extracto del banco a la izquierda se reparte en dos cuotas a la derecha">
+            <rect class="fb-card" x="16" y="96" width="250" height="150" rx="12"/>
+            <text class="fb-ink" x="34" y="126">extracto-enero.csv</text>
+            <text class="fb-muted" x="34" y="150">20/01/2026</text>
+            <text class="fb-ink" x="34" y="176">Transferencia María Ferrer</text>
+            <text class="fb-ok" x="34" y="206">+30,00 €</text>
+            <text class="fb-muted" x="34" y="230">Una sola línea del banco</text>
+            <path class="fb-line" d="M266 160 C 340 100, 400 108, 452 96"/>
+            <path class="fb-line" d="M266 176 C 340 240, 400 232, 452 250"/>
+            <rect class="fb-card" x="452" y="56" width="250" height="82" rx="12"/>
+            <text class="fb-muted" x="470" y="80">Cuota 2025 · María Ferrer</text>
+            <text class="fb-ok" x="470" y="106">15,00 € cobrados</text>
+            <rect class="fb-track" x="470" y="118" width="214" height="6" rx="3"/>
+            <rect class="fb-bar" x="470" y="118" width="214" height="6" rx="3"/>
+            <rect class="fb-card" x="452" y="206" width="250" height="82" rx="12"/>
+            <text class="fb-muted" x="470" y="230">Cuota 2026 · María Ferrer</text>
+            <text class="fb-ok" x="470" y="256">15,00 € cobrados</text>
+            <rect class="fb-track" x="470" y="268" width="214" height="6" rx="3"/>
+            <rect class="fb-bar" x="470" y="268" width="214" height="6" rx="3"/>
+            <text class="fb-muted" x="452" y="318">Queda 0,00 € sin asignar · un solo movimiento</text>
+          </svg>
+        </div>
+      </div>
+      <div class="viz-bar">
+        <p>La escena es una explicación, no la aplicación. La tabla de debajo dice lo mismo sin animación.</p>
+        <button class="btn btn-secondary btn-sm viz-pause" type="button" id="pause" aria-pressed="false" aria-controls="scene">Pausar animación</button>
+      </div>
+      <ul class="legend" aria-label="Leyenda de la escena">
+        <li style="--dot: var(--color-muted)">Extracto del banco</li>
+        <li style="--dot: var(--color-info)">Reparto manual</li>
+        <li style="--dot: var(--color-ok)">Cuota cubierta</li>
+      </ul>
+
+      <table class="data">
+        <caption>Cómo se reparte el abono del 20/01/2026</caption>
+        <thead>
+          <tr><th scope="col">Origen</th><th scope="col">Cuota</th><th scope="col">Importe</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Transferencia María Ferrer</td><td>Cuota anual 2025 · socia 007</td><td class="num">15,00 €</td></tr>
+          <tr><td>Transferencia María Ferrer</td><td>Cuota anual 2026 · socia 007</td><td class="num">15,00 €</td></tr>
+          <tr class="total"><td>Una sola línea del extracto</td><td>Sin asignar</td><td class="num">0,00 €</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="band" id="resto" aria-labelledby="resto-titulo">
+      <h2 id="resto-titulo">El resto de Nexo, en orden</h2>
+      <p class="lede">Antes y después de ese reparto hay cuatro piezas. Todo se guarda en un único sitio, y el historial queda para el equipo siguiente.</p>
+      <div class="flow">
+        <div><span class="n" style="--dot:var(--color-line-socios)">01 · Socios</span><h3>34 socios</h3><p>Quién forma la asociación, desde cuándo y quién está exento.</p></div>
+        <div><span class="n" style="--dot:var(--color-line-cuotas)">02 · Cuotas</span><h3>15,00 € al año</h3><p>Cobrado 300,00 €, pendiente 180,00 € en 6 cuotas.</p></div>
+        <div><span class="n" style="--dot:var(--color-line-movimientos)">03 · Movimientos</span><h3>Extracto CSV</h3><p>18 líneas importadas del archivo del banco.</p></div>
+        <div class="here"><span class="n" style="--dot:var(--color-info)">04 · Conciliación</span><h3>Reparto</h3><p>Un abono cubre varias cuotas. Lo que sobra queda visible.</p></div>
+        <div><span class="n" style="--dot:var(--color-line-saldos)">05 · Saldos</span><h3>1.842,50 €</h3><p>Saldo en banco y deuda por ejercicio, cuadrados con los movimientos.</p></div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="decisiones">
+      <h2 id="decisiones">Conciliar son tres decisiones, no un cálculo</h2>
+      <p class="lede">No hay reglas automáticas que adivinen: eso es lo que evita que un ingreso acabe en la cuota equivocada.</p>
+      <div class="decisions">
+        <div class="decision">
+          <span class="num">Decisión 1</span>
+          <h3>Elegir el movimiento</h3>
+          <p>Un ingreso del extracto, con su fecha y su importe tal como los dio el banco.</p>
+        </div>
+        <div class="decision">
+          <span class="num">Decisión 2</span>
+          <h3>Elegir las cuotas y cuánto a cada una</h3>
+          <p>Una cuota o varias. El importe asignado no puede pasar del que llegó.</p>
+        </div>
+        <div class="decision">
+          <span class="num">Decisión 3</span>
+          <h3>Confirmar el resto</h3>
+          <p>Si sobra dinero, queda como «sin asignar» y se ve en la lista. No se esconde ni se inventa.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="roles">
+      <h2 id="roles">Quién puede tocar esto</h2>
+      <p class="lede">Repartir dinero entre cuotas es una decisión con consecuencias, así que no la tiene todo el mundo. El acceso pide contraseña y un código TOTP de seis cifras.</p>
+      <div class="roles">
+        <div class="role">
+          <h3><span class="badge badge-ok">Tesorería</span></h3>
+          <p>Edita socios y cuotas, importa el extracto y concilia.</p>
+          <ul>
+            <li>Altas, bajas y exenciones.</li>
+            <li>Importar el CSV del banco.</li>
+            <li>Repartir un abono entre cuotas.</li>
+          </ul>
+        </div>
+        <div class="role">
+          <h3><span class="badge badge-info">Junta</span></h3>
+          <p>Consulta el panel y los saldos; no puede cambiar importes ni conciliar.</p>
+          <ul>
+            <li>Saldo en banco y deuda por ejercicio.</li>
+            <li>Qué sigue sin conciliar.</li>
+            <li>Sin acceso a importar ni editar.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="limites">
+      <div class="limits">
+        <h2 id="limites">Lo que esta demo no hace</h2>
+        <ul>
+          <li>No hay cobros reales ni conexión bancaria: el extracto se importa desde un archivo CSV.</li>
+          <li>No garantiza cumplimiento fiscal, contable ni legal.</li>
+          <li>Los datos son ficticios. No uses datos personales ni dinero real.</li>
+          <li>Está en construcción: el reparto se hace a mano, movimiento a movimiento.</li>
+        </ul>
+      </div>
+      <p style="margin-top:1.5rem"><a class="btn" href="#entrar">Entrar a la demo</a></p>
+    </section>
+  </div>
+</main>
+
+<div id="probe" aria-hidden="true" style="display:none">
+  <span class="p-canvas"></span><span class="p-surface"></span><span class="p-raised"></span>
+  <span class="p-ink"></span><span class="p-muted"></span><span class="p-rule"></span>
+  <span class="p-ok"></span><span class="p-info"></span><span class="p-cuotas"></span><span class="p-socios"></span>
+</div>
+<footer class="footer"><p>Nexo · Demo con datos ficticios · No uses datos personales ni dinero real</p></footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var themeBtn = document.getElementById('theme');
+    var pauseBtn = document.getElementById('pause');
+    var stage = document.getElementById('scene');
+    var canvas = document.getElementById('scene-canvas');
+    var fallback = document.getElementById('fallback');
+    var probe = document.getElementById('probe');
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var colors = {};
+    var ctx = null;
+    var FONT = '';
+    var frame = 0;
+    var start = 0;
+    var paused = false;
+    var LOOP = 9000;
+
+    function readColors() {
+      var names = { canvas: 'p-canvas', surface: 'p-surface', raised: 'p-raised', ink: 'p-ink',
+        muted: 'p-muted', rule: 'p-rule', ok: 'p-ok', info: 'p-info', cuotas: 'p-cuotas', socios: 'p-socios' };
+      Object.keys(names).forEach(function (key) {
+        var el = probe.querySelector('.' + names[key]);
+        colors[key] = el ? getComputedStyle(el).color : 'rgb(128,128,128)';
+      });
+    }
+
+    function setTheme(next) {
+      root.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      readColors();
+      draw(staticTime());
+    }
+    setTheme(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    themeBtn.addEventListener('click', function () {
+      setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+
+    function roundRect(c, x, y, w, h, r) {
+      var rr = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + rr, y);
+      c.lineTo(x + w - rr, y);
+      c.quadraticCurveTo(x + w, y, x + w, y + rr);
+      c.lineTo(x + w, y + h - rr);
+      c.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      c.lineTo(x + rr, y + h);
+      c.quadraticCurveTo(x, y + h, x, y + h - rr);
+      c.lineTo(x, y + rr);
+      c.quadraticCurveTo(x, y, x + rr, y);
+      c.closePath();
+    }
+
+    function clamp(v) { return Math.max(0, Math.min(1, v)); }
+    function ease(v) { return v < 0.5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2; }
+    function qpoint(p0, p1, p2, t) {
+      var u = 1 - t;
+      return { x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+               y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y };
+    }
+
+    function staticTime() {
+      return reduce.matches || paused ? 0.6 : null;
+    }
+
+    function draw(at) {
+      if (!ctx) return;
+      var w = canvas.clientWidth;
+      var h = canvas.clientHeight;
+      if (!w || !h) return;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      if (!FONT) FONT = getComputedStyle(document.body).fontFamily;
+      var t = at === null ? ((performance.now() - start) % LOOP) / LOOP : at;
+      var cx = w / 2;
+      var cy = h / 2;
+      var small = w < 620;
+      var G;
+
+      // Geometría: escritorio con profundidad; móvil, dos columnas apiladas.
+      if (small) {
+        /* Móvil: una columna con un raíl a la izquierda; el reparto baja por él. */
+        G = { stW: w * 0.84, stH: 86, stS: 1, stX: w * 0.12, stY: 10,
+              cW: w * 0.84, cH: 62, cX: w * 0.12, c1Y: 10 + 86 + 20 };
+        G.c2Y = G.c1Y + G.cH + 14;
+      } else {
+        var k = Math.min(1, w / 1100);
+        G = { stW: 320 * k, stH: 150 * k, stS: 0.9,
+              stX: w * 0.05, stY: cy - 96 * k,
+              cW: 210 * k, cH: 78 * k, cX: cx + 178 * k, c1Y: cy - 76 * k };
+        G.c2Y = cy + 44 * k;
+      }
+
+      // Suelo en fuga: profundidad sin pedir WebGL.
+      ctx.save();
+      ctx.strokeStyle = colors.muted;
+      ctx.lineWidth = 1;
+      var horizon = cy - h * 0.46;
+      ctx.globalAlpha = small ? 0.08 : 0.18;
+      for (var i = -4; i <= 4; i++) {
+        if (small && (i % 2 !== 0)) continue;
+        ctx.beginPath();
+        ctx.moveTo(cx + i * w * 0.14, h + 10);
+        ctx.lineTo(cx + i * w * 0.02, horizon);
+        ctx.stroke();
+      }
+      for (var j = 1; j <= 4; j++) {
+        if (small) break;
+        var y = horizon + (h - horizon) * (j / 4) * (j / 4);
+        ctx.globalAlpha = 0.14 - j * 0.02;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      function card(x, y, cw, ch, scale, title, sub, amount, fill) {
+        ctx.save();
+        ctx.translate(x + cw / 2, y + ch / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-cw / 2, -ch / 2);
+        ctx.shadowColor = 'rgb(0 0 0 / 0.28)';
+        ctx.shadowBlur = 26;
+        ctx.shadowOffsetY = 12;
+        ctx.fillStyle = colors.raised;
+        roundRect(ctx, 0, 0, cw, ch, 12);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = colors.muted;
+        ctx.globalAlpha = 0.24;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = colors.ink;
+        ctx.font = '600 14px ' + FONT;
+        ctx.fillText(title, 14, 24);
+
+        ctx.fillStyle = colors.muted;
+        ctx.font = '550 11px ' + FONT;
+        if (sub) ctx.fillText(sub, 14, 42);
+
+        if (amount) {
+          ctx.fillStyle = colors.ok;
+          ctx.font = '650 17px ' + FONT;
+          ctx.textAlign = 'right';
+          ctx.fillText(amount, cw - 14, 28);
+          ctx.textAlign = 'left';
+        }
+        if (typeof fill === 'number') {
+          ctx.fillStyle = colors.muted;
+          ctx.globalAlpha = 0.22;
+          roundRect(ctx, 14, ch - 22, cw - 28, 6, 3);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = colors.ok;
+          roundRect(ctx, 14, ch - 22, Math.max(0, (cw - 28) * fill), 6, 3);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      var pIn = ease(clamp((t - 0.04) / 0.16));
+      var pFillA = ease(clamp((t - 0.12) / 0.14));
+      var pFillB = ease(clamp((t - 0.18) / 0.14));
+      var fade = t > 0.95 ? clamp((1 - t) / 0.05) : 1;
+
+      card(G.stX, G.stY, G.stW, G.stH, G.stS, small ? 'María Ferrer' : 'Transferencia María Ferrer',
+        small ? 'extracto.csv · 20/01' : 'extracto-enero.csv · 20/01/2026', '+30,00 €', null);
+      card(G.cX, G.c1Y, G.cW, G.cH, 0.96, 'Cuota 2025', small ? '' : 'María Ferrer · socia 007',
+        (15 * pFillA).toFixed(2).replace('.', ',') + ' €', pFillA);
+      card(G.cX, G.c2Y, G.cW, G.cH, 1, 'Cuota 2026', small ? '' : 'María Ferrer · socia 007',
+        (15 * pFillB).toFixed(2).replace('.', ',') + ' €', pFillB);
+
+      var from = small
+        ? { x: w * 0.05, y: G.stY + G.stH }
+        : { x: G.stX + G.stW * G.stS - 10, y: G.stY + G.stH * G.stS * 0.72 };
+      var to1 = { x: G.cX, y: G.c1Y + G.cH * 0.5 };
+      var to2 = { x: G.cX, y: G.c2Y + G.cH * 0.5 };
+      var c1 = small ? { x: w * 0.05, y: G.c1Y + G.cH * 0.5 } : { x: cx - 20, y: G.c1Y - 40 };
+      var c2 = small ? { x: w * 0.05, y: G.c2Y + G.cH * 0.5 } : { x: cx - 20, y: G.c2Y + 70 };
+
+      function arc(p0, cp, p1, progress) {
+        if (progress <= 0) return;
+        var end = qpoint(p0, cp, p1, progress);
+        ctx.save();
+        ctx.strokeStyle = colors.info;
+        ctx.lineWidth = small ? 1.5 : 2;
+        ctx.globalAlpha = 0.85 * fade;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.quadraticCurveTo(cp.x, cp.y, end.x, end.y);
+        ctx.stroke();
+        ctx.restore();
+        for (var d = 0; d < 3; d++) {
+          var dt = ((t * 1.6 + d * 0.33) % 1) * progress;
+          if (dt > progress) continue;
+          var pt = qpoint(p0, cp, p1, dt);
+          ctx.save();
+          ctx.globalAlpha = fade;
+          ctx.fillStyle = colors.ok;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, small ? 3 : 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      arc(from, c1, to1, pIn);
+      arc(from, c2, to2, pIn);
+
+      var pulse = 0.6 + 0.4 * Math.sin(t * Math.PI * 4);
+      ctx.save();
+      ctx.globalAlpha = 0.22 * fade * (0.7 + pulse * 0.3);
+      ctx.fillStyle = colors.ok;
+      ctx.beginPath();
+      ctx.arc(from.x, from.y, 14 + pulse * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = fade;
+      ctx.beginPath();
+      ctx.arc(from.x, from.y, small ? 4 : 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function staticFrame() {
+      draw(0.6);
+    }
+
+    function loop() {
+      if (paused || reduce.matches) return;
+      draw(null);
+      frame = requestAnimationFrame(loop);
+    }
+
+    function startLoop() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      if (reduce.matches || paused) {
+        staticFrame();
+        return;
+      }
+      if (!start) start = performance.now() - LOOP * 0.55;
+      loop();
+    }
+
+    function setPaused(next) {
+      paused = next;
+      pauseBtn.setAttribute('aria-pressed', String(paused));
+      pauseBtn.textContent = paused ? 'Reanudar animación' : 'Pausar animación';
+      if (paused) {
+        cancelAnimationFrame(frame);
+        staticFrame();
+      } else {
+        start = 0;
+        startLoop();
+      }
+    }
+    pauseBtn.addEventListener('click', function () {
+      setPaused(pauseBtn.getAttribute('aria-pressed') !== 'true');
+    });
+
+    function showFallback() {
+      if (fallback) fallback.removeAttribute('hidden');
+      if (canvas) canvas.setAttribute('hidden', '');
+      if (pauseBtn) pauseBtn.setAttribute('hidden', '');
+    }
+
+    try {
+      ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('sin canvas 2d');
+      readColors();
+      startLoop();
+      window.addEventListener('resize', function () {
+        cancelAnimationFrame(frame);
+        if (reduce.matches || paused) { staticFrame(); } else { start = 0; startLoop(); }
+      });
+    } catch (error) {
+      ctx = null;
+      showFallback();
+    }
+
+    function applyPreference() {
+      if (reduce.matches) {
+        cancelAnimationFrame(frame);
+        if (pauseBtn) pauseBtn.setAttribute('hidden', '');
+        paused = true;
+        staticFrame();
+      } else if (!ctx) {
+        showFallback();
+      } else {
+        pauseBtn.removeAttribute('hidden');
+        paused = false;
+        pauseBtn.setAttribute('aria-pressed', 'false');
+        pauseBtn.textContent = 'Pausar animación';
+        start = 0;
+        startLoop();
+      }
+    }
+    applyPreference();
+    if (reduce.addEventListener) reduce.addEventListener('change', applyPreference);
+  })();
+</script>
+</body>
+</html>

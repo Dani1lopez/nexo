@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "chosen": "04-viaje-de-camara.html",
+  "handoffs": {
+    "04-viaje-de-camara.html": {
+      "status": "in_progress",
+      "queued": false,
+      "sentAt": "2026-11-18T22:35:48.956Z",
+      "startedAt": "2026-11-18T22:35:56.805Z",
+      "implementedAt": null,
+      "feature": "odd/tasks/landing-3d.md",
+      "note": "Eligida la 04 (viaje de cámara). Issue, rama, presupuesto de peso por página y escena Three.js en curso."
+    }
+  }
+}

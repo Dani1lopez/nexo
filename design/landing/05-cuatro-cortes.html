@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Nexo · dirección 05 · Cuatro cortes</title>
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  /* =========================================================================
+     DIRECCIÓN 05 — CUATRO CORTES
+     La historia del dinero como una película de cuatro tomas. Cada toma ocupa
+     la pantalla entera con su propia escenografía; al cruzar de una a otra la
+     transición es un corte: un estallido de partículas y un barrido de rótulo.
+     Lusion como referencia de lenguaje (fondo oscuro, tipografía enorme,
+     retícula asimétrica), no de plantilla.
+
+     SIMULACIÓN: la escenografía es CSS 3D + SVG; el estallido y el polvo son
+     canvas 2D. En la implementación, Three.js pondría cada toma en una escena
+     real con cámara y materiales; GSAP gobernaría el corte y la entrada de
+     rótulos, y Lenis el scroll. Solo la portada cargaría esas librerías.
+
+     TOKENS: valores oscuros de design/system.md. Extensión local: --film-*
+     (mezclas del canvas con negro), justificada en el informe.
+     TIPOGRAFÍA: Fraunces (display) + Instrument Sans (texto), propuesta
+     autoalojada con @fontsource; aquí simuladas con pilas locales.
+    ========================================================================= */
+  :root {
+    color-scheme: dark;
+    --font-display: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', ui-serif, Georgia, serif;
+    --font-text: 'Instrument Sans', 'Instrument Sans Variable', 'Helvetica Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+    --color-canvas: #202634;
+    --color-surface: #2a3142;
+    --color-raised: #333b50;
+    --color-ink: #eceff6;
+    --color-muted: #aab3c7;
+    --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-on-accent: #141925;
+    --color-line-panel: #8b9cff;
+    --color-line-saldos: #f9a8d4;
+    --color-line-socios: #2dd4bf;
+    --color-line-cuotas: #fbbf24;
+    --color-line-movimientos: #b79cff;
+    --color-danger: #f97066;
+    --color-danger-strong: #fda29b;
+    --color-warn: #fec84b;
+    --color-ok: #47cd89;
+    --color-info: #a4bcfd;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-pill: 999px;
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 320ms;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    --film-void: color-mix(in srgb, var(--color-canvas) 16%, #000);
+    --film-deep: color-mix(in srgb, var(--color-canvas) 32%, #000);
+    --film-edge: color-mix(in srgb, var(--color-ink) 10%, transparent);
+    --film-hair: color-mix(in srgb, var(--color-ink) 6%, transparent);
+    --film-accent: var(--color-line-panel);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--film-void);
+    color: var(--color-ink);
+    font-family: var(--font-text);
+    font-size: 1rem;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: color-mix(in srgb, var(--color-line-movimientos) 45%, transparent); }
+  :focus-visible { outline: 2px solid var(--color-line-panel); outline-offset: 3px; border-radius: 2px; }
+  h1, h2, h3 { margin: 0; font-weight: 500; text-wrap: balance; }
+  p { margin: 0.5rem 0; max-width: 46ch; }
+  .wrap { width: 100%; max-width: 84rem; margin-inline: auto; padding-inline: clamp(1.25rem, 4.5vw, 4rem); }
+  .skip { position: fixed; top: 0; left: 1.25rem; z-index: 90; padding: 0.5rem 1rem;
+    color: var(--color-on-accent); background: var(--color-line-panel); text-decoration: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); transform: translateY(-140%); }
+  .skip:focus { transform: translateY(0); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.028em;
+    font-variation-settings: 'opsz' 110, 'SOFT' 34, 'WONK' 1; }
+  .label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted); }
+  .mono { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-muted); }
+
+  /* Escena de fondo fílmica */
+  .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 50% 45% at 74% 30%, color-mix(in srgb, var(--color-line-panel) 17%, transparent), transparent 70%),
+      radial-gradient(ellipse 45% 50% at 20% 78%, color-mix(in srgb, var(--color-line-movimientos) 13%, transparent), transparent 72%),
+      var(--film-void); }
+  .fx { position: fixed; inset: 0; z-index: 1; pointer-events: none; display: none; }
+  .js .fx { display: block; }
+  .grain { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.55;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 14%, transparent) 0.5px, transparent 0.6px);
+    background-size: 3px 3px;
+    -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 15%, transparent 90%);
+    mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 15%, transparent 90%); }
+
+  /* Navegación */
+  .nav { position: fixed; inset: 0 0 auto; z-index: 40; display: flex; align-items: center; gap: 0.75rem;
+    padding: 1rem clamp(1.25rem, 4.5vw, 4rem);
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--film-void) 86%, transparent), transparent); }
+  .nav { transition: background-color 240ms var(--ease-out), box-shadow 240ms var(--ease-out); }
+  .nav.scrolled { background: color-mix(in srgb, var(--film-void) 94%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+    box-shadow: 0 1px 0 var(--film-edge); }
+  .brand { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1.0625rem; font-weight: 650;
+    letter-spacing: -0.02em; color: var(--color-ink); text-decoration: none; }
+  .brand svg { color: var(--color-line-panel); }
+  .reel { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+  .tc { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.06em; color: var(--color-muted); }
+  .tc b { color: var(--color-ink); font-weight: 600; }
+  .pause { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+    min-height: 2.75rem; min-width: 2.75rem; padding: 0.3125rem 0.875rem;
+    font: inherit; font-size: 0.75rem; font-weight: 550; color: var(--color-ink); cursor: pointer;
+    background: color-mix(in srgb, var(--color-ink) 7%, transparent); border: 0; border-radius: var(--radius-pill);
+    box-shadow: inset 0 0 0 1px var(--film-edge); transition: background-color var(--dur-fast) var(--ease-out); }
+  .pause:hover { background: color-mix(in srgb, var(--color-ink) 12%, transparent); }
+
+  /* Rail de fotogramas */
+  .rail { position: fixed; right: clamp(0.5rem, 1.5vw, 1.5rem); top: 50%; z-index: 35;
+    transform: translateY(-50%); display: grid; gap: 0.375rem; }
+  .rail a { position: relative; display: grid; grid-template-columns: 2.25rem auto; align-items: center;
+    gap: 0.5rem; padding: 0.25rem; text-decoration: none; color: var(--color-muted);
+    border-radius: var(--radius-sm); transition: color var(--dur-base) var(--ease-out); }
+  .rail a::before { content: ''; position: absolute; left: -0.5rem; top: 50%; width: 2px; height: 0;
+    background: var(--film-accent); transform: translateY(-50%); transition: height var(--dur-slow) var(--ease-out); }
+  .rail a[aria-current="true"] { color: var(--color-ink); }
+  .rail a[aria-current="true"]::before { height: 1.75rem; }
+  .rail .frame { position: relative; width: 2.25rem; height: 1.4rem; overflow: clip;
+    background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+    box-shadow: inset 0 0 0 1px var(--film-edge); transition: box-shadow var(--dur-base) var(--ease-out); }
+  .rail .frame i { position: absolute; inset: 0; display: block; }
+  .rail a:hover .frame, .rail a:focus-visible .frame { box-shadow: inset 0 0 0 1px var(--color-line-panel); }
+  .rail .frame::after { content: ''; position: absolute; inset: 0; opacity: 0.7;
+    background: repeating-linear-gradient(to bottom, transparent 0 3px, color-mix(in srgb, var(--film-void) 70%, transparent) 3px 4px); }
+  .rail .f1 i { background: radial-gradient(circle at 30% 40%, var(--color-line-socios) 0 2px, transparent 2px),
+    radial-gradient(circle at 62% 62%, var(--color-line-socios) 0 1.5px, transparent 1.5px); }
+  .rail .f2 i { background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--color-line-cuotas) 55%, transparent) 0 1px, transparent 1px 4px); }
+  .rail .f3 i { background: linear-gradient(115deg, transparent 45%, var(--color-line-movimientos) 45% 49%, transparent 49%),
+    linear-gradient(65deg, transparent 55%, var(--color-line-movimientos) 55% 59%, transparent 59%); }
+  .rail .f4 i { background: linear-gradient(to top, var(--color-line-saldos) 0 40%, transparent 40%),
+    linear-gradient(to right, transparent 62%, var(--color-line-saldos) 62% 66%, transparent 66%); }
+  .rail .rn { font-family: var(--font-mono); font-size: 0.625rem; }
+
+  /* Tomas */
+  .take { position: relative; min-height: 100svh; display: grid; align-items: end;
+    padding: clamp(6.5rem, 12vh, 9rem) 0 clamp(3.5rem, 7vh, 5.5rem); overflow: clip; }
+  body.paused *, body.paused *::before, body.paused *::after { animation-play-state: paused !important; }
+  .take::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(0deg, color-mix(in srgb, var(--film-void) 94%, transparent) 0%,
+      color-mix(in srgb, var(--film-void) 64%, transparent) 38%, transparent 68%); }
+  .take::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--film-void) 72%, transparent), transparent 58%); }
+  .take.flip::after { background: linear-gradient(270deg, color-mix(in srgb, var(--film-void) 72%, transparent), transparent 58%); }
+  .take-inner { position: relative; z-index: 3; }
+
+  /* Marcas de encuadre */
+  .marks { position: absolute; inset: clamp(4.25rem, 8vh, 5.5rem) clamp(1rem, 3vw, 3rem) clamp(1.5rem, 4vh, 2.5rem);
+    z-index: 2; pointer-events: none; }
+  .marks i { position: absolute; width: 1.125rem; height: 1.125rem; border: 1px solid var(--film-edge); }
+  .marks i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+  .marks i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+  .marks i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+  .marks i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+  .slate { position: absolute; z-index: 3; right: clamp(1.5rem, 5vw, 5rem); top: clamp(5.5rem, 10vh, 7rem);
+    display: grid; gap: 0.1875rem; text-align: right; }
+  .slate .take-n { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--color-ink); }
+  .slate .take-n b { color: var(--color-line-panel); font-weight: 600; }
+  .slate .take-meta { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .take.flip .slate { right: auto; left: clamp(1.5rem, 5vw, 5rem); text-align: left; }
+
+  .title { position: relative; font-size: clamp(2.25rem, 6.4vw, 6rem); line-height: 0.95; letter-spacing: -0.032em;
+    max-width: 15ch; }
+  .title .mask { display: block; overflow: hidden; padding-bottom: 0.06em; }
+  .title .mask > span { display: block; }
+  .js .take.live .title .mask > span { animation: wipe 900ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+  .title .mask:nth-child(2) > span { --d: 90ms; }
+  @keyframes wipe { from { transform: translateY(108%); } to { transform: none; } }
+
+  .subtitle { position: relative; max-width: 34rem; margin-top: 1.25rem; color: var(--color-muted);
+    font-size: 0.9375rem; line-height: 1.65; text-shadow: 0 1px 20px rgb(0 0 0 / 0.8); }
+  .subtitle::before { content: 'Subtítulo'; display: block; margin-bottom: 0.375rem;
+    font-family: var(--font-mono); font-size: 0.5625rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-ink) 45%, transparent); }
+  .take-meta-row { display: flex; flex-wrap: wrap; gap: 0.375rem 1.25rem; margin-top: 1.25rem;
+    font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--color-muted); }
+  .take-meta-row b { color: var(--color-ink); font-weight: 600; }
+
+  .ghost { position: absolute; z-index: 0; right: 4%; bottom: 4%; font-family: var(--font-display);
+    font-size: clamp(9rem, 30vw, 27rem); line-height: 0.72; font-weight: 500; letter-spacing: -0.05em;
+    color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--color-ink) 16%, transparent);
+    pointer-events: none; }
+  .take.flip .ghost { right: auto; left: 4%; }
+
+  /* ---------- Toma 01: constelación de socios ---------- */
+  .scene { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .constellation { position: absolute; right: -4%; top: 6%; width: min(64rem, 74vw); height: 88%; }
+  .constellation svg { width: 100%; height: 100%; overflow: visible; }
+  .node { fill: color-mix(in srgb, var(--color-line-socios) 82%, var(--color-ink)); opacity: 0.9; }
+  .node.dim { fill: color-mix(in srgb, var(--color-ink) 45%, transparent); }
+  .edge { stroke: color-mix(in srgb, var(--color-ink) 22%, transparent); stroke-width: 1; fill: none; }
+  .node-ring { fill: none; stroke: var(--color-line-socios); stroke-width: 1.2; opacity: 0.5; }
+  .js .take.live .node { animation: nodeIn 700ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 16ms); }
+  .js .take.live .edge { animation: edgeIn 900ms var(--ease-out) both; animation-delay: 240ms; }
+  .js .take.live .node-ring { animation: ringPulse 5s ease-in-out infinite alternate; }
+  @keyframes nodeIn { from { opacity: 0; transform: scale(0.2); } to { opacity: 0.9; transform: none; } }
+  @keyframes edgeIn { from { stroke-dasharray: 520; stroke-dashoffset: 520; } to { stroke-dashoffset: 0; } }
+  @keyframes ringPulse { from { opacity: 0.2; } to { opacity: 0.7; } }
+  .callout { position: absolute; display: grid; gap: 0.0625rem; padding: 0.375rem 0.5rem;
+    background: color-mix(in srgb, var(--film-void) 72%, transparent); border-left: 1px solid var(--color-line-socios);
+    font-size: 0.75rem; line-height: 1.35; backdrop-filter: blur(2px); }
+  .callout b { font-weight: 600; }
+  .callout span { color: var(--color-muted); font-family: var(--font-mono); font-size: 0.625rem; }
+  .callout.a { right: 24%; top: 30%; }
+  .callout.b { right: 46%; top: 52%; border-left-color: var(--color-line-cuotas); }
+  .callout.c { right: 14%; top: 60%; border-left-color: var(--color-ink); }
+
+  /* ---------- Toma 02: hojas de cuotas en el aire ---------- */
+  .planes { position: absolute; z-index: 0; left: 4%; top: 14%; width: min(52rem, 56vw); height: 66%;
+    perspective: 1200px; }
+  .plane { position: absolute; inset: 6% 10%; padding: 1.5rem;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--color-raised) 92%, var(--color-line-cuotas)), var(--color-surface));
+    border: 1px solid var(--film-edge); border-radius: var(--radius-sm);
+    box-shadow: 0 40px 90px -40px rgb(0 0 0 / 0.9);
+    transform: rotateX(14deg) rotateY(-20deg) rotateZ(-5deg) translate3d(0, 0, 0);
+    color: var(--color-ink); }
+  .plane.p1 { transform: rotateX(16deg) rotateY(-24deg) rotateZ(-7deg) translate3d(-7%, 10%, 0); opacity: 0.55; }
+  .plane.p2 { transform: rotateX(4deg) rotateY(-6deg) rotateZ(3deg) translate3d(6%, -2%, 0); opacity: 0.8; }
+  .plane.p3 { transform: rotateX(18deg) rotateY(-16deg) rotateZ(-2deg); }
+  .plane h3 { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: -0.01em; }
+  .plane .rows { display: grid; gap: 0.5rem; margin-top: 1rem; }
+  .plane .rows i { display: block; height: 1px; background: color-mix(in srgb, var(--color-ink) 22%, transparent); }
+  .plane .rows i.short { width: 62%; }
+  .plane .row-amount { display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--film-edge); font-size: 0.875rem; }
+  .plane .row-amount b { font-family: var(--font-display); font-size: 1.75rem; letter-spacing: -0.02em; }
+  .plane .stamp { display: inline-block; margin-top: 0.75rem; padding: 0.1875rem 0.5rem; font-family: var(--font-mono);
+    font-size: 0.625rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-ok);
+    border: 1px solid color-mix(in srgb, var(--color-ok) 60%, transparent); border-radius: 2px; }
+  .planes .float-wrap { position: absolute; inset: 0; transform-style: preserve-3d;
+    animation: planeFloat 9s ease-in-out infinite alternate; }
+  @keyframes planeFloat { from { transform: translateY(-8px) rotateY(-2deg); } to { transform: translateY(10px) rotateY(2deg); } }
+  .js .take.live .planes .plane { animation: planeIn 900ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+  .planes .plane.p1 { --d: 80ms; }
+  .planes .plane.p2 { --d: 0ms; }
+  .planes .plane.p3 { --d: 160ms; }
+  @keyframes planeIn { from { opacity: 0; transform: rotateX(42deg) rotateY(-40deg) translate3d(-14%, 24%, -160px); } }
+
+  /* ---------- Toma 03: el extracto en una tira ---------- */
+  .strip-wrap { position: absolute; z-index: 0; left: 0; right: 0; top: 24%; height: 30%;
+    overflow: clip; transform: rotate(-2.2deg); }
+  .strip { display: flex; width: max-content; gap: 1.5rem;
+    animation: stripSlide 40s linear infinite; }
+  .take.paused .strip { animation-play-state: paused; }
+  @keyframes stripSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .sheet { position: relative; width: 26rem; padding: 1.125rem 1.25rem;
+    background: linear-gradient(160deg, var(--color-raised), var(--color-surface));
+    border: 1px solid var(--film-edge); border-radius: 4px; color: var(--color-ink);
+    box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.9); }
+  .sheet .head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    font-family: var(--font-mono); font-size: 0.5625rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--color-muted); padding-bottom: 0.5rem; border-bottom: 1px solid var(--film-edge); }
+  .sheet .line-row { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: 0.5rem;
+    padding: 0.375rem 0; font-size: 0.75rem; border-bottom: 1px solid var(--film-hair); }
+  .sheet .line-row small { font-family: var(--font-mono); font-size: 0.625rem; color: var(--color-muted); }
+  .sheet .line-row b { font-weight: 600; }
+  .sheet .line-row b.ok { color: var(--color-ok); }
+  .sheet .line-row b.out { color: var(--color-danger-strong); }
+  .sheet .foot { margin-top: 0.5rem; font-family: var(--font-mono); font-size: 0.5625rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-line-movimientos); }
+  .csv-tab { position: absolute; right: -1px; top: -1px; padding: 0.1875rem 0.4375rem;
+    background: var(--color-line-movimientos); color: var(--color-on-accent);
+    font-family: var(--font-mono); font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.08em; }
+
+  /* ---------- Toma 04: saldos ---------- */
+  .bars { position: absolute; z-index: 0; left: 6%; right: 42%; top: 20%; bottom: 22%;
+    display: flex; align-items: flex-end; gap: clamp(0.75rem, 2vw, 1.75rem); }
+  .bars .bar { position: relative; flex: 1; min-width: 2rem; height: var(--h);
+    background: linear-gradient(to top, color-mix(in srgb, var(--c) 55%, transparent), color-mix(in srgb, var(--c) 12%, transparent));
+    border-top: 1px solid var(--c); }
+  .bars .bar::after { content: attr(data-k); position: absolute; left: 0; bottom: -2.25rem;
+    font-family: var(--font-mono); font-size: 0.5625rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--color-muted); white-space: nowrap; }
+  .bars .bar::before { content: attr(data-v); position: absolute; left: 0; top: -1.75rem;
+    font-family: var(--font-display); font-size: 1.125rem; color: var(--color-ink); white-space: nowrap; }
+  .js .take.live .bars .bar { animation: barUp 1000ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+  @keyframes barUp { from { height: 0; opacity: 0; } }
+  .horizon { position: absolute; left: 4%; right: 4%; bottom: 22%; height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-ink) 32%, transparent), transparent); }
+  .seal { position: absolute; z-index: 2; right: 8%; top: 22%; padding: 0.5rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--color-line-saldos) 55%, transparent);
+    transform: rotate(-8deg); color: var(--color-line-saldos);
+    font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.14em; text-transform: uppercase; }
+
+  /* CTA de la toma 1 */
+  .btn { display: inline-flex; align-items: center; gap: 0.625rem; min-height: 3rem; padding: 0.75rem 1.5rem;
+    font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--color-on-accent); text-decoration: none;
+    background: var(--color-line-panel); border: 0; border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: 0 12px 40px -14px color-mix(in srgb, var(--color-line-panel) 75%, transparent);
+    transition: transform 240ms var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+  .btn:hover { background: color-mix(in srgb, var(--color-line-panel) 86%, white); }
+  .btn .arrow { transition: transform 240ms var(--ease-out); }
+  .btn:hover .arrow { transform: translateX(4px); }
+  .hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; margin-top: 1.5rem; }
+  .hero-cta .label { text-transform: none; letter-spacing: 0.02em; font-size: 0.8125rem; font-weight: 500; color: var(--color-muted); }
+
+  /* Ficha técnica (cierre editorial) */
+  .credits { position: relative; z-index: 3; background: var(--film-deep); border-top: 1px solid var(--film-edge);
+    padding: clamp(3.5rem, 7vw, 6rem) 0; }
+  .credits .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem 1rem; }
+  .credits h2 { grid-column: 1 / span 5; font-size: clamp(1.875rem, 4vw, 3.25rem); line-height: 1.03; letter-spacing: -0.03em; }
+  .credits .lede { grid-column: 7 / span 6; color: var(--color-muted); font-size: 1.0625rem; }
+  .credits .lede b { color: var(--color-ink); font-weight: 600; }
+  .sheet-list { grid-column: 7 / span 6; display: grid; gap: 0; margin: 1.5rem 0 0; }
+  .sheet-list div { display: grid; grid-template-columns: 7.5rem 1fr; gap: 1rem; padding: 0.75rem 0;
+    border-top: 1px solid var(--film-edge); }
+  .sheet-list dt { font-family: var(--font-mono); font-size: 0.625rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); padding-top: 0.2rem; }
+  .sheet-list dd { margin: 0; font-size: 0.9375rem; }
+  .credits .out { grid-column: 1 / span 5; margin-top: 2rem; }
+  .credits .out ul { margin: 0.75rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
+  .credits .out li { display: grid; grid-template-columns: 0.875rem 1fr; gap: 0.5rem; color: var(--color-muted); font-size: 0.875rem; }
+  .credits .out li::before { content: '—'; color: color-mix(in srgb, var(--color-ink) 40%, transparent); }
+  .credits .out b { color: var(--color-ink); font-weight: 600; }
+
+  .end { position: relative; z-index: 3; background: var(--film-deep); padding: 0 0 clamp(3rem, 6vw, 5rem); }
+  .end .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem;
+    padding-top: clamp(2.5rem, 5vw, 4rem); border-top: 1px solid var(--film-edge); }
+  .end .copy { grid-column: 1 / span 4; }
+  .end .copy p { color: var(--color-muted); font-size: 0.9375rem; }
+  .end .action { grid-column: 6 / span 7; align-self: center; }
+  .mega { display: inline-flex; align-items: flex-start; gap: 0.625rem; font-family: var(--font-display);
+    font-size: clamp(2.375rem, 6vw, 5rem); line-height: 0.96; letter-spacing: -0.035em;
+    color: var(--color-ink); text-decoration: none; border-bottom: 2px solid var(--color-line-panel);
+    padding-bottom: 0.1em; transition: color 200ms var(--ease-out); }
+  .mega:hover { color: var(--color-line-panel); }
+  .mega .arrow { font-family: var(--font-text); font-size: 0.5em; padding-top: 0.35em; transition: transform 300ms var(--ease-out); }
+  .mega:hover .arrow { transform: translate(6px, -6px); }
+  .end .note { margin-top: 1rem; font-size: 0.8125rem; color: var(--color-muted); }
+  .footer { position: relative; z-index: 3; background: var(--film-deep); padding: 0 0 2rem;
+    color: var(--color-muted); font-size: 0.8125rem; }
+  .footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
+  .footer p { margin: 0; }
+
+  @media (max-width: 62rem) {
+    .rail { display: none; }
+    .constellation { right: -30%; width: 120vw; opacity: 0.72; }
+    .planes { left: -10%; width: 100vw; opacity: 0.6; }
+    .bars { right: 8%; }
+    .slate { left: auto; right: 1.5rem; }
+    .credits h2, .credits .lede, .sheet-list, .credits .out { grid-column: 1 / -1; }
+    .end .copy, .end .action { grid-column: 1 / -1; }
+    .strip-wrap { top: 16%; }
+    .ghost { font-size: clamp(8rem, 40vw, 16rem); }
+    .callout { display: none; }
+  }
+  @media (max-width: 34rem) {
+    .nav .tc { display: none; }
+    .pause .txt { display: none; }
+    .sheet { width: 20rem; }
+    .sheet .line-row { grid-template-columns: 3.5rem 1fr auto; }
+    .plane { padding: 1rem; }
+    .sheet-list div { grid-template-columns: 1fr; gap: 0.25rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .fx { display: none; }
+    .js .take.live .title .mask > span { animation: none; }
+    .planes .float-wrap { animation: none; }
+    .strip { animation: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div class="atmosphere" aria-hidden="true"></div>
+<canvas class="fx" id="fx" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="#take1" aria-label="Nexo, ir a la primera toma">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="7" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="17" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M10.4 12h3.2" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    Nexo
+  </a>
+  <nav class="reel" aria-label="Capítulos de la película">
+    <span class="tc" id="tc"><b>TC 00:01</b> · toma 1 de 4</span>
+    <button class="pause" id="pause" type="button" aria-pressed="false" aria-label="Pausar la escena">
+      <span class="txt">Pausar escena</span><span aria-hidden="true">❚❚</span>
+    </button>
+  </nav>
+</header>
+
+<nav class="rail" id="rail" aria-label="Ir a una toma">
+  <a href="#take1" data-go="take1" aria-current="true" aria-label="Ir a la toma 1: socios"><span class="frame f1"><i></i></span><span class="rn">01</span></a>
+  <a href="#take2" data-go="take2" aria-label="Ir a la toma 2: extracto"><span class="frame f2"><i></i></span><span class="rn">02</span></a>
+  <a href="#take3" data-go="take3" aria-label="Ir a la toma 3: conciliación"><span class="frame f3"><i></i></span><span class="rn">03</span></a>
+  <a href="#take4" data-go="take4" aria-label="Ir a la toma 4: saldos"><span class="frame f4"><i></i></span><span class="rn">04</span></a>
+</nav>
+
+<main id="contenido">
+  <!-- ================= TOMA 01 · SOCIOS ================= -->
+  <section class="take" id="take1" data-take="1" aria-labelledby="t1">
+    <div class="marks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="scene" aria-hidden="true">
+      <div class="constellation">
+        <svg viewBox="0 0 900 620" role="presentation" focusable="false">
+          <g class="edge">
+            <path d="M120 190L250 140L360 220L300 330L170 300Z"/>
+            <path d="M360 220L500 160L610 240L560 350L430 360L300 330"/>
+            <path d="M610 240L730 190L790 300L700 390L560 350"/>
+            <path d="M170 300L120 420L250 470L360 420L430 360"/>
+            <path d="M430 360L470 470L600 500L700 390"/>
+            <path d="M790 300L820 420L700 390"/>
+            <path d="M250 140L300 60L430 80L500 160"/>
+            <path d="M250 470L260 570L400 580L470 470"/>
+          </g>
+          <g class="node">
+            <circle cx="120" cy="190" r="5" style="--i:0"/><circle cx="250" cy="140" r="7" style="--i:1"/>
+            <circle cx="360" cy="220" r="5" style="--i:2"/><circle cx="300" cy="330" r="6" style="--i:3"/>
+            <circle cx="170" cy="300" r="5" style="--i:4"/><circle cx="500" cy="160" r="7" style="--i:5"/>
+            <circle cx="610" cy="240" r="5" style="--i:6"/><circle cx="560" cy="350" r="6" style="--i:7"/>
+            <circle cx="430" cy="360" r="5" style="--i:8"/><circle cx="730" cy="190" r="6" style="--i:9"/>
+            <circle cx="790" cy="300" r="5" style="--i:10"/><circle cx="700" cy="390" r="6" style="--i:11"/>
+            <circle cx="120" cy="420" r="5" style="--i:12"/><circle cx="250" cy="470" r="6" style="--i:13"/>
+            <circle cx="360" cy="420" r="5" style="--i:14"/><circle cx="470" cy="470" r="6" style="--i:15"/>
+            <circle cx="600" cy="500" r="5" style="--i:16"/><circle cx="820" cy="420" r="5" style="--i:17"/>
+            <circle cx="300" cy="60" r="5" style="--i:18"/><circle cx="430" cy="80" r="6" style="--i:19"/>
+            <circle cx="260" cy="570" r="5" style="--i:20"/><circle cx="400" cy="580" r="5" style="--i:21"/>
+            <circle cx="200" cy="230" r="3" style="--i:22"/><circle cx="330" cy="270" r="3" style="--i:23"/>
+            <circle cx="470" cy="250" r="3" style="--i:24"/><circle cx="650" cy="300" r="3" style="--i:25"/>
+            <circle cx="700" cy="470" r="3" style="--i:26"/><circle cx="520" cy="420" r="3" style="--i:27"/>
+            <circle cx="200" cy="380" r="3" style="--i:28"/><circle cx="330" cy="510" r="3" style="--i:29"/>
+            <circle cx="560" cy="140" r="3" style="--i:30"/><circle cx="760" cy="240" r="3" style="--i:31"/>
+            <circle cx="140" cy="500" r="3" style="--i:32"/><circle cx="620" cy="580" r="3" style="--i:33"/>
+          </g>
+          <circle class="node-ring" cx="250" cy="140" r="20"/>
+        </svg>
+      </div>
+      <div class="callout a"><b>Ana Ruiz</b><span>alta 09/2025 · 10,00 €</span></div>
+      <div class="callout b"><b>Luis Gómez</b><span>cuota anual · 15,00 €</span></div>
+      <div class="callout c"><b>Paco Nieto</b><span>exento · ingreso bajo</span></div>
+    </div>
+    <span class="ghost" aria-hidden="true">34</span>
+    <p class="slate"><span class="take-n"><b>TAKE 01</b> / 04 · SOCIOS</span><span class="take-meta">ESC. 01 · DÍA 01 · FICTICIO</span></p>
+
+    <div class="take-inner wrap">
+      <h1 id="t1" class="title display" style="max-width:19ch">
+        <span class="mask"><span>Las cuentas claras</span></span>
+        <span class="mask"><span>para quien venga después.</span></span>
+      </h1>
+      <p class="subtitle">Treinta y cuatro socios, cuota anual de 15,00 € con dos exenciones. Nexo guarda quién está, desde cuándo y cuánto debe, para que la asociación no dependa de la memoria de una sola persona.</p>
+      <div class="hero-cta">
+        <a class="btn" href="/login">Entrar a la demo <span class="arrow" aria-hidden="true">→</span></a>
+        <span class="label">Demo en construcción · datos ficticios</span>
+      </div>
+      <p class="take-meta-row"><span><b>34</b> socios</span><span><b>2</b> exentos</span><span><b>15,00 €</b> cuota anual</span><span>Asociación Cultural La Ribera</span></p>
+    </div>
+  </section>
+
+  <!-- ================= TOMA 02 · EXTRACTO ================= -->
+  <section class="take flip" id="take2" data-take="2" aria-labelledby="t2">
+    <div class="marks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="scene" aria-hidden="true">
+      <div class="planes">
+        <div class="float-wrap">
+          <div class="plane p1">
+            <h3>Cuota 2025</h3>
+            <div class="rows"><i></i><i></i><i class="short"></i><i></i><i class="short"></i></div>
+            <div class="row-amount"><span>Ana Ruiz</span><b>10,00 €</b></div>
+          </div>
+          <div class="plane p2">
+            <h3>Recibo luz enero</h3>
+            <div class="rows"><i></i><i class="short"></i><i></i><i></i><i class="short"></i></div>
+            <div class="row-amount"><span>Movimiento del banco</span><b style="color:var(--color-danger)">−84,50 €</b></div>
+          </div>
+          <div class="plane p3">
+            <h3>Ingreso María Ferrer</h3>
+            <div class="rows"><i></i><i></i><i></i><i class="short"></i><i></i></div>
+            <div class="row-amount"><span>Transferencia · 20/01</span><b style="color:var(--color-ok)">+30,00 €</b></div>
+            <span class="stamp">importado de extracto-enero.csv</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="ghost" aria-hidden="true">18</span>
+    <p class="slate"><span class="take-n"><b>TAKE 02</b> / 04 · EXTRACTO</span><span class="take-meta">ESC. 02 · DÍA 01 · CSV</span></p>
+
+    <div class="take-inner wrap">
+      <h2 id="t2" class="title display">
+        <span class="mask"><span>El banco</span></span>
+        <span class="mask"><span>habla en CSV.</span></span>
+      </h2>
+      <p class="subtitle">El extracto de enero entra como archivo: 18 líneas con fecha, concepto e importe, tal como los dio el banco. No hay cobros reales ni conexión bancaria; solo un archivo que se importa.</p>
+      <p class="take-meta-row"><span><b>18</b> líneas</span><span><b>1</b> archivo</span><span><b>0</b> conexiones bancarias</span></p>
+    </div>
+  </section>
+
+  <!-- ================= TOMA 03 · CONCILIACIÓN ================= -->
+  <section class="take" id="take3" data-take="3" aria-labelledby="t3">
+    <div class="marks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="scene" aria-hidden="true">
+      <div class="strip-wrap">
+        <div class="strip" id="strip">
+          <!-- El mismo extracto se repite para que la tira no tenga fin -->
+          <div class="sheet">
+            <span class="csv-tab">CSV</span>
+            <div class="head"><span>Extracto · enero 2026</span><span>18 líneas</span></div>
+            <div class="line-row"><small>12/01</small><b>Cuota Ana Ruiz</b><b class="ok">+10,00 €</b></div>
+            <div class="line-row"><small>15/01</small><b>Recibo luz enero</b><b class="out">−84,50 €</b></div>
+            <div class="line-row"><small>20/01</small><b>Ingreso María Ferrer</b><b class="ok">+30,00 €</b></div>
+            <div class="line-row"><small>22/01</small><b>Cuota Luis Gómez</b><b class="ok">+15,00 €</b></div>
+            <div class="line-row"><small>31/01</small><b>Cuota Paco Nieto</b><b class="ok">+15,00 €</b></div>
+            <div class="foot">extracto-enero.csv · datos ficticios</div>
+          </div>
+          <div class="sheet">
+            <span class="csv-tab">CSV</span>
+            <div class="head"><span>Extracto · febrero 2026</span><span>12 líneas</span></div>
+            <div class="line-row"><small>02/02</small><b>Material taller</b><b class="out">−42,10 €</b></div>
+            <div class="line-row"><small>08/02</small><b>Cuota Ana Ruiz</b><b class="ok">+5,00 €</b></div>
+            <div class="line-row"><small>14/02</small><b>Ingreso Luis Gómez</b><b class="ok">+15,00 €</b></div>
+            <div class="line-row"><small>21/02</small><b>Alquiler local</b><b class="out">−120,00 €</b></div>
+            <div class="line-row"><small>28/02</small><b>Cuota María Ferrer</b><b class="ok">+15,00 €</b></div>
+            <div class="foot">extracto-febrero.csv · datos ficticios</div>
+          </div>
+          <div class="sheet" aria-hidden="true">
+            <span class="csv-tab">CSV</span>
+            <div class="head"><span>Extracto · enero 2026</span><span>18 líneas</span></div>
+            <div class="line-row"><small>12/01</small><b>Cuota Ana Ruiz</b><b class="ok">+10,00 €</b></div>
+            <div class="line-row"><small>15/01</small><b>Recibo luz enero</b><b class="out">−84,50 €</b></div>
+            <div class="line-row"><small>20/01</small><b>Ingreso María Ferrer</b><b class="ok">+30,00 €</b></div>
+            <div class="line-row"><small>22/01</small><b>Cuota Luis Gómez</b><b class="ok">+15,00 €</b></div>
+            <div class="line-row"><small>31/01</small><b>Cuota Paco Nieto</b><b class="ok">+15,00 €</b></div>
+            <div class="foot">extracto-enero.csv · datos ficticios</div>
+          </div>
+          <div class="sheet" aria-hidden="true">
+            <span class="csv-tab">CSV</span>
+            <div class="head"><span>Extracto · febrero 2026</span><span>12 líneas</span></div>
+            <div class="line-row"><small>02/02</small><b>Material taller</b><b class="out">−42,10 €</b></div>
+            <div class="line-row"><small>08/02</small><b>Cuota Ana Ruiz</b><b class="ok">+5,00 €</b></div>
+            <div class="line-row"><small>14/02</small><b>Ingreso Luis Gómez</b><b class="ok">+15,00 €</b></div>
+            <div class="line-row"><small>21/02</small><b>Alquiler local</b><b class="out">−120,00 €</b></div>
+            <div class="line-row"><small>28/02</small><b>Cuota María Ferrer</b><b class="ok">+15,00 €</b></div>
+            <div class="foot">extracto-febrero.csv · datos ficticios</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="ghost" aria-hidden="true">30</span>
+    <p class="slate"><span class="take-n"><b>TAKE 03</b> / 04 · CONCILIACIÓN</span><span class="take-meta">ESC. 03 · DÍA 02 · REPARTO</span></p>
+
+    <div class="take-inner wrap">
+      <h2 id="t3" class="title display">
+        <span class="mask"><span>Un abono,</span></span>
+        <span class="mask"><span>dos cuotas.</span></span>
+      </h2>
+      <p class="subtitle">María transfiere 30,00 €. La tesorería lo reparte a mano entre la cuota de 2025 y la de 2026: 15,00 € a cada una. Lo que sobrara quedaría como «sin asignar», a la vista, sin esconderlo.</p>
+      <p class="take-meta-row"><span><b>30,00 €</b> abono</span><span><b>15,00 €</b> cuota 2025</span><span><b>15,00 €</b> cuota 2026</span><span><b>0,00 €</b> sin asignar</span></p>
+    </div>
+  </section>
+
+  <!-- ================= TOMA 04 · SALDOS ================= -->
+  <section class="take flip" id="take4" data-take="4" aria-labelledby="t4">
+    <div class="marks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="scene" aria-hidden="true">
+      <div class="horizon"></div>
+      <div class="bars">
+        <div class="bar" style="--h:74%;--c:var(--color-line-panel);--d:0ms" data-k="En banco" data-v="1.842,50 €"></div>
+        <div class="bar" style="--h:26%;--c:var(--color-warn);--d:90ms" data-k="Deuda 2026" data-v="180,00 €"></div>
+        <div class="bar" style="--h:4%;--c:var(--color-ok);--d:180ms" data-k="Sin conciliar" data-v="0,00 €"></div>
+      </div>
+      <span class="seal">cuadra · ejercicio 2026</span>
+    </div>
+    <span class="ghost" aria-hidden="true">€</span>
+    <p class="slate"><span class="take-n"><b>TAKE 04</b> / 04 · SALDOS</span><span class="take-meta">ESC. 04 · DÍA 03 · CIERRE</span></p>
+
+    <div class="take-inner wrap">
+      <h2 id="t4" class="title display">
+        <span class="mask"><span>La junta lee.</span></span>
+        <span class="mask"><span>La tesorería trabaja.</span></span>
+      </h2>
+      <p class="subtitle">El ejercicio cierra con el banco, la deuda por ejercicio y lo que sigue sin conciliar en la misma pantalla. Dos roles —tesorería y junta— y un código TOTP de seis cifras para entrar.</p>
+      <p class="take-meta-row"><span><b>1.842,50 €</b> en banco</span><span><b>180,00 €</b> deuda 2026</span><span><b>0,00 €</b> sin conciliar</span><span><b>2</b> roles · TOTP</span></p>
+    </div>
+  </section>
+
+  <!-- ================= FICHA DE LA DEMO ================= -->
+  <section class="credits" aria-labelledby="ficha">
+    <div class="wrap grid">
+      <h2 id="ficha" class="display">Cuentas claras para el siguiente equipo.</h2>
+      <div class="lede">
+        <p><b>Nexo es la tesorería de una asociación cultural ficticia.</b> Socios, cuotas y movimientos del banco en un solo sitio, con la conciliación como una decisión visible: qué abono paga qué cuota y qué queda pendiente.</p>
+      </div>
+      <dl class="sheet-list">
+        <div><dt>Reparto</dt><dd><b>Tesorería</b> edita socios, cuotas y conciliación. <b>Junta</b> consulta panel y saldos.</dd></div>
+        <div><dt>Acceso</dt><dd>Contraseña y <b>código TOTP de seis cifras</b>.</dd></div>
+        <div><dt>Extracto</dt><dd><b>Importado de un CSV.</b> Sin cobros reales ni conexión bancaria.</dd></div>
+        <div><dt>Conciliación</dt><dd><b>Manual,</b> con reparto de un abono entre varias cuotas.</dd></div>
+        <div><dt>Saldos</dt><dd>Banco, deuda por ejercicio y <b>sin conciliar</b>.</dd></div>
+      </dl>
+      <div class="out">
+        <p class="mono">Fuera de cámara</p>
+        <ul>
+          <li><span><b>No hay dinero real ni conexión bancaria.</b> El extracto se importa desde un archivo.</span></li>
+          <li><span><b>No uses datos personales.</b> Todo es de una asociación ficticia.</span></li>
+          <li><span><b>No garantiza cumplimiento fiscal, contable ni legal.</b></span></li>
+          <li><span><b>Está en construcción:</b> el reparto se hace a mano, movimiento a movimiento.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="end" aria-labelledby="fin">
+    <div class="wrap grid">
+      <div class="copy">
+        <h2 id="fin" class="display" style="font-size:clamp(1.375rem,2.2vw,1.875rem);line-height:1.15">Fin de la proyección. La escena sigue en la demo.</h2>
+        <p>Entra con datos ficticios y recorre los cuatro cortes por dentro.</p>
+      </div>
+      <div class="action">
+        <a class="mega" href="/login">Entrar a la demo <span class="arrow" aria-hidden="true">↗</span></a>
+        <p class="note">Demo en construcción · Datos ficticios · Sin cobros reales ni conexión bancaria</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>Nexo · Tesorería para asociaciones</p>
+    <p>Demo con datos ficticios · No uses datos personales ni dinero real</p>
+  </div>
+</footer>
+
+<div class="sr-only" aria-hidden="true">
+  <span id="p-ink" style="color:var(--color-ink)"></span>
+  <span id="p-panel" style="color:var(--color-line-panel)"></span>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var canvas = document.getElementById('fx');
+    var takes = Array.prototype.slice.call(document.querySelectorAll('.take'));
+    var railLinks = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+    var tc = document.getElementById('tc');
+    var pause = document.getElementById('pause');
+    var strip = document.getElementById('strip');
+    var ctx = null, dpr = 1, W = 0, H = 0, raf = 0, last = 0, time = 0;
+    var paused = false;
+    var dust = [];
+    var burst = { active: false, t0: 0, x: 0, y: 0, parts: [] };
+
+    function resize() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = window.innerWidth; H = window.innerHeight;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function seedDust() {
+      dust = [];
+      for (var i = 0; i < 150; i++) {
+        dust.push({ x: Math.random() * 1, y: Math.random() * 1, r: 0.4 + Math.random() * 1.1, sp: 0.006 + Math.random() * 0.02, ph: Math.random() * 6.28 });
+      }
+    }
+    function makeBurst(x, y) {
+      var parts = [];
+      for (var i = 0; i < 190; i++) {
+        var a = Math.random() * Math.PI * 2;
+        var v = 0.4 + Math.random() * 2.6;
+        parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7,
+          r: 0.6 + Math.random() * 2.2, life: 0.5 + Math.random() * 0.7, tone: Math.random() < 0.55 ? 'ink' : 'accent' });
+      }
+      burst = { active: true, t0: performance.now(), x: x, y: y, parts: parts };
+    }
+
+    var pal = {};
+    function readPalette() {
+      pal.ink = getComputedStyle(document.getElementById('p-ink')).color;
+      pal.accent = getComputedStyle(document.getElementById('p-panel')).color;
+    }
+    function draw(now, dt) {
+      ctx.clearRect(0, 0, W, H);
+      /* Polvo fílmico ambiente */
+      for (var i = 0; i < dust.length; i++) {
+        var d = dust[i];
+        var y = (d.y + time * d.sp * 0.12) % 1;
+        var x = (d.x + Math.sin(time * 0.0003 + d.ph) * 0.02);
+        ctx.globalAlpha = 0.3 + 0.24 * Math.sin(time * 0.001 + d.ph);
+        ctx.fillStyle = pal.ink;
+        ctx.beginPath();
+        ctx.arc(x * W, (1 - y) * H, d.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      /* Corte: estallido de partículas */
+      if (burst.active) {
+        var age = (now - burst.t0) / 1000;
+        if (age > 1.2) { burst.active = false; }
+        else {
+          ctx.globalCompositeOperation = 'lighter';
+          for (var j = 0; j < burst.parts.length; j++) {
+            var p = burst.parts[j];
+            var tt = age / p.life;
+            if (tt <= 0 || tt >= 1) continue;
+            var px = burst.x + p.vx * age * 220;
+            var py = burst.y + p.vy * age * 220 + 40 * age * age * 60;
+            ctx.globalAlpha = (1 - tt) * 0.8;
+            ctx.fillStyle = (j % 3 === 0) ? pal.accent : pal.ink;
+            ctx.beginPath();
+            ctx.arc(px, py, p.r * (1 - tt * 0.4), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      if (!last) last = now;
+      var dt = Math.min(64, now - last);
+      last = now;
+      if (!paused) time += dt;
+      draw(now, dt);
+    }
+
+    function setLive(take, index) {
+      takes.forEach(function (t) { t.classList.toggle('live', t === take); });
+      railLinks.forEach(function (a) {
+        a.setAttribute('aria-current', a.getAttribute('data-go') === take.id ? 'true' : 'false');
+      });
+      tc.innerHTML = '<b>TC 00:0' + (index + 1) + '</b> · toma ' + (index + 1) + ' de 4';
+      if (!reduce.matches && burst.active === false) {
+        /* El corte entra desde el borde derecho, como un cambio de plano */
+        makeBurst(W * 0.78, H * 0.42);
+      }
+    }
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            var index = takes.indexOf(entry.target);
+            setLive(entry.target, index);
+          }
+        });
+      }, { threshold: 0.55 });
+      takes.forEach(function (t) { io.observe(t); });
+    } else {
+      takes.forEach(function (t, i) { t.classList.add('live'); });
+    }
+
+    railLinks.forEach(function (a) {
+      a.addEventListener('click', function (event) {
+        var target = document.getElementById(a.getAttribute('data-go'));
+        if (!target) return;
+        event.preventDefault();
+        target.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
+      });
+    });
+
+    pause.addEventListener('click', function () {
+      paused = !paused;
+      pause.setAttribute('aria-pressed', String(paused));
+      pause.querySelector('.txt').textContent = paused ? 'Reanudar' : 'Pausar escena';
+      document.body.classList.toggle('paused', paused);
+      if (paused) { cancelAnimationFrame(raf); raf = 0; if (ctx) draw(performance.now(), 0); }
+      else { last = 0; raf = requestAnimationFrame(frame); }
+    });
+
+    try {
+      ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('sin canvas 2d');
+      readPalette();
+      resize(); seedDust();
+      raf = requestAnimationFrame(frame);
+      window.addEventListener('resize', resize);
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
+        else if (!paused && !reduce.matches) { last = 0; raf = requestAnimationFrame(frame); }
+      });
+    } catch (error) {
+      root.classList.add('no-canvas');
+      var p = document.getElementById('pause');
+      if (p) p.hidden = true;
+    }
+
+    function applyMotion() {
+      if (reduce.matches) {
+        cancelAnimationFrame(raf); raf = 0;
+        pause.hidden = true;
+        if (ctx) draw(0, 0);
+        takes.forEach(function (t) { t.classList.add('live'); });
+      } else if (ctx) {
+        pause.hidden = false;
+        last = 0;
+        raf = requestAnimationFrame(frame);
+      }
+    }
+    applyMotion();
+    if (reduce.addEventListener) reduce.addEventListener('change', applyMotion);
+
+    /* La barra se vuelve opaca al bajar, para que el contenido no choque con ella. */
+    var nav = document.querySelector('.nav');
+    function navState() { if (nav) nav.classList.toggle('scrolled', window.scrollY > 24); }
+    window.addEventListener('scroll', navState, { passive: true });
+    navState();
+  })();
+</script>
+</body>
+</html>

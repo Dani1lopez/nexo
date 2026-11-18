@@ -1,0 +1,49 @@
+{
+  "title": "Landing de Nexo",
+  "brief": "Portada para quien entra por primera vez: una experiencia inmersiva y cinematográfica, con referencia en Lusion (lusion.co), que explique en segundos qué es Nexo —tesorería para asociaciones: socios, cuotas, movimientos del banco por CSV, conciliación con reparto de un abono y saldos—. Escenario oscuro con escena 3D/partículas protagonista, cámara que reacciona al scroll, cortes entre capítulos, tipografía display con carácter (Fraunces + Instrument Sans, autoalojadas), retícula editorial asimétrica y microinteracciones de cursor. Contenido en español, datos ficticios y versión estática completa con prefers-reduced-motion. Tres interpretaciones: cámara continua (04), película por tomas (05) y escultura de partículas que obedece al cursor (06).",
+  "feature": "odd/tasks/landing-3d.md",
+  "artboards": [
+    {
+      "file": "01-linea-del-dinero.html",
+      "title": "La línea del dinero",
+      "tradeoff": "La escena 3D cuenta el recorrido entero (socios → cuotas → movimientos → conciliación → saldos) y el texto va después; se entiende el sistema de un vistazo, pero el producto real tarda más en aparecer.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-ventana-flotante.html",
+      "title": "La ventana que flota",
+      "tradeoff": "Enseña la aplicación en 3D desde el primer scroll, con parallax y placas en profundidad; convence por producto, pero la explicación conceptual queda debajo y hay más movimiento y DOM sobre el pliegue.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-un-abono-dos-cuotas.html",
+      "title": "Un abono, dos cuotas",
+      "tradeoff": "Empieza por la operación más difícil de explicar —repartir un abono entre dos cuotas— con una escena en canvas 2D; deja claro lo que Nexo resuelve, pero exige un prólogo porque quien llega no sabe todavía qué es una cuota ni por qué se concilia.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "04-viaje-de-camara.html",
+      "title": "El viaje de la cuota (cámara continua)",
+      "tradeoff": "Un solo escenario oscuro con un hilo de luz que atraviesa cuatro puertas: el scroll mueve la cámara y el hilo cambia de color con cada etapa, así que la historia del dinero se sigue sin cortes y con una sola escena que mantener. A cambio, hay que esculpir muy bien ese único recorrido y todo el peso visual depende de él; en Three.js costaría del orden de 180–220 KB gzip (three + GSAP + Lenis) más postproceso de bloom a pantalla completa, el mayor coste de GPU de las tres (estimación a medir en T2).",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "05-cuatro-cortes.html",
+      "title": "Cuatro cortes (película por tomas)",
+      "tradeoff": "Cuatro tomas a pantalla completa con rótulo de película y un corte de partículas entre ellas: la variedad visual es máxima y cada corte explica una etapa con su propia escenografía. A cambio, exige cuatro escenografías coherentes y materiales distintos; en Three.js es la opción más pesada —del orden de 240–280 KB gzip y cuatro sets de geometría/materiales, con tirones de compilación de shaders al cambiar de toma— y la que acumula más trabajo de arte (estimación a medir en T2).",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "06-cuatro-formas.html",
+      "title": "Cuatro formas (escultura que obedece al cursor)",
+      "tradeoff": "Una única escultura de partículas que se ordena en las cuatro formas del sistema y responde al cursor, con el puntero afinando las partículas y el arrastre girando la escena: es la más interactiva y la que mejor muestra el sistema con una sola imagen. A cambio, la narración depende del gesto —en táctil se pierde la mitad— y el morph en Three.js pide morph targets o GPGPU (del orden de 190–230 KB gzip), con más riesgo de rendimiento en móvil; el botón «Recorrer las cuatro formas» cubre a quien no usa el ratón (estimación a medir en T2).",
+      "width": 1440,
+      "height": 900
+    }
+  ]
+}
