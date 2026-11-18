@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Modules\Access\Models\User;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Bank\Models\OtherIncome;
 use App\Modules\Fees\Actions\GrantExemption;
 use App\Modules\Fees\Actions\SetFeeYear;
 use App\Modules\Fees\Models\Due;
@@ -464,6 +465,28 @@ class SplitReconcileTest extends AuthTestCase
         $this->expectException(QueryException::class);
 
         DB::table('payments')->where('id', $voided->id)->update(['voided_at' => null]);
+    }
+
+    /**
+     * Preserve (#44): an unclassified credit splits exactly as before; the new destination never
+     * interferes with the reconcile form, its sums or its confirmation message.
+     */
+    public function test_an_unclassified_credit_still_splits_as_before(): void
+    {
+        $year = $this->year(2026, 1000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->split($movement->id, [$ana->id => '10', $luis->id => '10'])
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Reparto conciliado desde el extracto.');
+
+        $this->assertSame(2000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(0, OtherIncome::count());
+        $this->assertSame('paid', $ana->fresh()->status());
+        $this->assertSame('paid', $luis->fresh()->status());
     }
 
     public function test_the_bank_screen_offers_only_what_is_left_of_each_credit(): void

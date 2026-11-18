@@ -7,6 +7,7 @@ use App\Modules\Bank\Actions\ImportStatement;
 use App\Modules\Bank\Http\Requests\ImportRequest;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Bank\Models\OtherIncome;
 use App\Modules\Bank\Support\InvalidStatement;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
@@ -30,10 +31,20 @@ class BankImportController extends Controller
             ->get()
             ->groupBy('bank_movement_id');
 
-        // What is left of each movement: its amount minus the payments already linked to it.
+        // A credit that is not money for the dues can be classified as other income instead. At most
+        // one classification is active per movement, so the map holds one row per movement id.
+        $incomes = OtherIncome::query()
+            ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
+            ->whereNull('voided_at')
+            ->get()
+            ->keyBy('bank_movement_id');
+
+        // What is left of each movement: its amount minus the active payments and, when it is
+        // classified as other income, the whole credit that already has its destination.
         $remaining = [];
         foreach ($movements->items() as $movement) {
-            $used = (int) $linked->get($movement->id, collect())->sum('amount_cents');
+            $used = (int) $linked->get($movement->id, collect())->sum('amount_cents')
+                + (int) ($incomes->get($movement->id)?->amount_cents ?? 0);
             $remaining[$movement->id] = max(0, $movement->amount_cents - $used);
         }
 
@@ -49,6 +60,8 @@ class BankImportController extends Controller
             'movements' => $movements,
             'imports' => BankImport::query()->with('user')->latest('id')->limit(10)->get(),
             'linked' => $linked,
+            'incomes' => $incomes,
+            'categories' => OtherIncome::CATEGORIES,
             'remaining' => $remaining,
             'pendingDues' => $pendingDues,
         ]);

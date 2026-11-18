@@ -24,6 +24,8 @@ class BuildBalances
      *     movements: int,
      *     unreconciledCents: int,
      *     unreconciledCount: int,
+     *     otherIncomeCents: int,
+     *     otherIncomeCount: int,
      *     lastImportAt: ?Carbon,
      *     years: list<array{id: int, year: int, payableCents: int, paidCents: int, pendingCents: int, pendingDues: int}>,
      *     totalPendingCents: int,
@@ -32,12 +34,25 @@ class BuildBalances
      */
     public function handle(): array
     {
-        // Only credits can feed a payment, and a credit reconciled in part still has a remainder.
-        $remainders = BankMovement::query()
+        // Only credits need a destination, and a credit used in part or classified as other income
+        // still has a remainder or none at all: the figures below are its active payments and its
+        // active classification.
+        $credits = BankMovement::query()
             ->where('amount_cents', '>', 0)
-            ->with(['payments' => fn ($query) => $query->whereNull('voided_at')])
-            ->get()
-            ->map(fn (BankMovement $movement): int => max(0, $movement->amount_cents - (int) $movement->payments->sum('amount_cents')));
+            ->with([
+                'payments' => fn ($query) => $query->whereNull('voided_at'),
+                'otherIncomes' => fn ($query) => $query->whereNull('voided_at'),
+            ])
+            ->get();
+
+        $remainders = $credits->mapWithKeys(fn (BankMovement $movement): array => [
+            $movement->id => max(0, $movement->amount_cents
+                - (int) $movement->payments->sum('amount_cents')
+                - (int) $movement->otherIncomes->sum('amount_cents')),
+        ]);
+
+        // Classified income is not pending reconciliation: it already has its destination.
+        $otherIncomes = $credits->flatMap(fn (BankMovement $movement) => $movement->otherIncomes);
 
         $years = FeeYear::query()
             ->with(['dues.exemptions', 'dues.payments'])
@@ -51,6 +66,8 @@ class BuildBalances
             'movements' => BankMovement::query()->count(),
             'unreconciledCents' => (int) $remainders->sum(),
             'unreconciledCount' => $remainders->filter(fn (int $cents): bool => $cents > 0)->count(),
+            'otherIncomeCents' => (int) $otherIncomes->sum('amount_cents'),
+            'otherIncomeCount' => $otherIncomes->count(),
             'lastImportAt' => BankImport::query()->latest('id')->value('created_at'),
             'years' => $years,
             'totalPendingCents' => (int) array_sum(array_column($years, 'pendingCents')),

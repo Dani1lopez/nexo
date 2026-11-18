@@ -2,6 +2,7 @@
 
 use App\Modules\Access\Http\Controllers\SessionController;
 use App\Modules\Bank\Http\Controllers\BankImportController;
+use App\Modules\Bank\Http\Controllers\OtherIncomeController;
 use App\Modules\Bank\Http\Controllers\ReconcileController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Dashboard\Http\Controllers\SummaryController;
@@ -51,5 +52,7 @@ Route::middleware(['auth', 'can:view-treasury'])->prefix('bank')->name('bank.')-
     Route::get('/', [BankImportController::class, 'index'])->name('index');
     Route::post('/imports', [BankImportController::class, 'store'])->middleware('can:edit-treasury')->name('imports.store');
     Route::post('/movements/{movement}/reconcile', [ReconcileController::class, 'store'])->middleware('can:edit-treasury')->name('movements.reconcile');
+    Route::post('/movements/{movement}/incomes', [OtherIncomeController::class, 'store'])->middleware('can:edit-treasury')->name('movements.incomes.store');
+    Route::post('/incomes/{income}/void', [OtherIncomeController::class, 'void'])->middleware('can:edit-treasury')->name('incomes.void');
     Route::post('/payments/{payment}/void', [ReconcileController::class, 'void'])->middleware('can:edit-treasury')->name('payments.void');
 });

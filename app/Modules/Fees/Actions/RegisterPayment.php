@@ -3,6 +3,7 @@
 namespace App\Modules\Fees\Actions;
 
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Bank\Models\OtherIncome;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Fees\Support\Money;
@@ -17,6 +18,11 @@ class RegisterPayment
      * Abort message of the SQLite capacity trigger (see migration 2026_01_01_000009).
      */
     private const MOVEMENT_CAPACITY = 'payments_bank_movement_capacity';
+
+    /**
+     * Abort message of the SQLite trigger that keeps a classified credit away from the dues (#44).
+     */
+    private const CLASSIFIED_MOVEMENT = 'payments_bank_movement_other_income';
 
     public function handle(Due $due, int $amountCents, string $paidOn, string $method, ?string $note, string $submissionKey, ?int $bankMovementId = null): Payment
     {
@@ -34,6 +40,11 @@ class RegisterPayment
             }
 
             $due = Due::with(['feeYear', 'exemptions', 'payments'])->findOrFail($due->id);
+
+            // A credit classified as other income already went to the other destination.
+            if ($bankMovementId !== null && $this->isClassified($bankMovementId)) {
+                throw ValidationException::withMessages(['amount' => 'El abono está clasificado como otro ingreso: anula esa clasificación antes de asignarlo a cuotas.']);
+            }
 
             // A movement can feed several payments, but not two active ones for the same due.
             // This is a guard, never a silent success: dropping the line would keep the money unassigned.
@@ -84,6 +95,11 @@ class RegisterPayment
 
                 return $winner;
             } catch (QueryException $e) {
+                // The classification trigger caught what the check above could not see in time.
+                if (str_contains($e->getMessage(), self::CLASSIFIED_MOVEMENT)) {
+                    throw ValidationException::withMessages(['amount' => 'El abono está clasificado como otro ingreso: anula esa clasificación antes de asignarlo a cuotas.']);
+                }
+
                 // The capacity trigger caught what the check above could not see in time.
                 if (! str_contains($e->getMessage(), self::MOVEMENT_CAPACITY)) {
                     throw $e;
@@ -92,6 +108,17 @@ class RegisterPayment
                 throw ValidationException::withMessages(['amount' => 'El movimiento no tiene importe libre suficiente: quedan '.Money::format($this->freeCentsOf((int) $bankMovementId)).' por conciliar.']);
             }
         });
+    }
+
+    /**
+     * Whether the movement is classified as other income right now, voided rows excluded.
+     */
+    private function isClassified(int $bankMovementId): bool
+    {
+        return OtherIncome::query()
+            ->where('bank_movement_id', $bankMovementId)
+            ->whereNull('voided_at')
+            ->exists();
     }
 
     /**
