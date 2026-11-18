@@ -36,6 +36,7 @@
             @elseif ($signedIn)
                 <div class="who">
                     <button type="button" class="btn-secondary btn-sm theme-toggle" id="theme-toggle" hidden>Modo claro</button>
+                    <a class="btn btn-secondary btn-sm" href="/access/two-factor">Seguridad</a>
                     <span>{{ auth()->user()->name }} · {{ auth()->user()->role === 'treasury' ? 'Tesorería' : 'Junta' }}</span>
                     <form method="post" action="/logout">@csrf<button type="submit" class="btn-secondary btn-sm">Cerrar sesión</button></form>
                 </div>
