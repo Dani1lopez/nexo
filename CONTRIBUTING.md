@@ -37,6 +37,10 @@ Reglas:
 - **Consumo de minutos.** El repositorio es público, así que los runners estándar de Linux no gastan la cuota mensual; si pasara a ser privado, sí la gastarían. Por eso el CI cancela las ejecuciones obsoletas de una PR, solo usa Linux, cachea Composer, npm y el navegador, limita el tiempo de cada trabajo, ejecuta el e2e solo cuando hace falta y conserva el rastro de un fallo únicamente siete días.
 - **Protección de ramas.** Este documento no la configura. Si se activa, las comprobaciones exigibles son `Comprobaciones (PHP 8.4)`, `Comprobaciones (PHP 8.5)` y `E2E (Playwright)`; el e2e puede aparecer como omitido cuando una PR no toca nada relevante, y eso cuenta como correcto.
 
+## Despliegues
+
+Las vistas y los assets de Vite se publican como una unidad: el layout compartido referencia entradas del manifiesto compilado (`vite.config.mjs`), así que exponer una vista nueva junto al manifiesto anterior hace que las páginas den 500 hasta que llega la compilación correspondiente. Publica (o revierte) vistas y assets juntos; en un despliegue no atómico, despliega primero los assets y después las vistas.
+
 ## Versiones
 
 Usar etiquetas `vMAJOR.MINOR.PATCH` y mantener `CHANGELOG.md`.

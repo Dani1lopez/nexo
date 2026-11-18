@@ -135,7 +135,9 @@ class SecurityHeadersTest extends TestCase
         $this->assertSame(Str::slug((string) config('app.name')).'-session', config('session.cookie'));
         $this->assertNotNull($session, 'The login page must start a session cookie.');
         $this->assertStringContainsString('; httponly', $session);
-        $this->assertStringContainsString('; samesite=strict', $session);
+        // Lax on purpose: it keeps the session on a top-level visit from an external link
+        // while still never sending the cookie on a cross-site POST (CSRF stays mitigated).
+        $this->assertStringContainsString('; samesite=lax', $session);
         $this->assertStringNotContainsString('; secure', $session);
     }
 

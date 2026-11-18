@@ -202,10 +202,11 @@ return [
     | This option determines how your cookies behave when cross-site requests
     | take place, and can be used to mitigate CSRF attacks.
     |
-    | Strict: Nexo has no cross-site POST navigation or cross-site entry point,
-    | every form is served and posted on this same site, so the cookie never
-    | needs to travel on a cross-site request. Relax it only if a future
-    | integration (an external checkout returning a POST, for example) needs it.
+    | Lax: a person who follows a link to Nexo from another site still keeps
+    | their session on that top-level navigation, and CSRF stays mitigated
+    | because Lax never sends the cookie on a cross-site POST. Strict would sign
+    | such a visitor out (and the login page could even replace their cookie),
+    | so keep Lax unless that tradeoff is explicitly accepted.
     |
     | See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesite-value
     |
@@ -213,7 +214,7 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', 'strict'),
+    'same_site' => env('SESSION_SAME_SITE', 'lax'),
 
     /*
     |--------------------------------------------------------------------------
@@ -226,7 +227,7 @@ return [
     |
     | Kept false because it is incompatible with this configuration: browsers
     | ignore Partitioned unless the cookie is Secure and SameSite=None, and
-    | Nexo uses SameSite=strict. It would also hide the session from browsers
+    | Nexo keeps SameSite=Lax. It would also hide the session from browsers
     | that do not implement partitioned cookies (Safari before 18.4).
     |
     */
