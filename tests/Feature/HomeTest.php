@@ -11,7 +11,7 @@ class HomeTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertHeader('Content-Type', 'text/html; charset=utf-8')
-            ->assertSee('<html lang="es">', false)
+            ->assertSee('<html lang="es"', false)
             ->assertSee('<title>Nexo — Tesorería para asociaciones</title>', false)
             ->assertSee('Datos ficticios')
             ->assertSee('No utilices datos personales ni dinero real.')

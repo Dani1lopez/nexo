@@ -1,0 +1,1109 @@
+/* =============================================================================
+   Portada (landing 3D) · design/landing/04-viaje-de-camara.html
+   =============================================================================
+
+   This sheet is loaded only on the landing route, next to `app.css`. It borrows every
+   colour, radius and duration from the tokens in `app.css`; it adds no palette of its own.
+
+   Landing-only extensions, documented here because they exist nowhere else:
+   - `--font-landing-display` / `--font-landing-text`: the landing's pair of self-hosted
+     variable fonts (Fraunces for display, Instrument Sans for text), served with
+     @fontsource. The rest of the application keeps Inter.
+   - `--stage-void` / `--stage-deep` / `--stage-edge`: the dark room the camera travels
+     through. Void and deep are the canvas colour mixed with black, exactly like the
+     existing `--color-overlay`; edge is the ink at 11 %.
+
+   The page is dark only: the shell sets `data-theme="dark"` and no theme toggle is shipped.
+
+   Structure of the scene (progressive enhancement):
+   1. `.lp-fallback` is plain HTML and CSS (a light thread with four stops). It is visible
+      without JavaScript, with `prefers-reduced-motion: reduce` and when WebGL is missing.
+   2. `landing.js` detects WebGL and reduced motion, then imports Three.js and paints
+      `.lp-canvas` on top. The canvas and its own animation never replace the text.
+   ============================================================================= */
+
+@import '@fontsource-variable/fraunces/full.css';
+@import '@fontsource-variable/instrument-sans/index.css';
+
+:root {
+    --font-landing-display:
+        'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', ui-serif, Georgia, serif;
+    --font-landing-text:
+        'Instrument Sans Variable', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+
+    --stage-void: color-mix(in srgb, var(--color-canvas) 18%, #000);
+    --stage-deep: color-mix(in srgb, var(--color-canvas) 34%, #000);
+    --stage-edge: color-mix(in srgb, var(--color-ink) 11%, transparent);
+
+    /* Thread stops: the section accents, in the order the money travels. */
+    --thread-cuota: var(--color-line-socios);
+    --thread-extracto: var(--color-line-cuotas);
+    --thread-conciliacion: var(--color-line-movimientos);
+    --thread-saldos: var(--color-line-saldos);
+
+    /*
+     * Respaldo del texto pequeño sobre la escena. La escena puede poner blanco puro detrás del
+     * texto, así que el velo se compone con ese peor caso: `--stage-void` al 86 % sobre blanco
+     * deja 6.86:1 para `--color-muted` y 12.55:1 para `--color-ink`. El mínimo que llega a 4.5:1
+     * con el texto secundario es el 74.7 % (4.52:1): no bajar de ahí. Lo comprueba
+     * `scripts/test-landing-contrast.mjs`, que recalcula estos números desde los tokens.
+     * Los bloques sobre `--stage-deep` (manifiesto y cierre) ya son opacos y no lo necesitan.
+     */
+    --lp-veil: color-mix(in srgb, var(--stage-void) 86%, transparent);
+    --lp-veil-pad: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+/* The landing owns the whole viewport: the shell must not constrain it. */
+.landing-page {
+    margin: 0;
+    color: var(--color-ink);
+    background-color: var(--stage-void);
+    background-image: none;
+}
+
+.landing-page {
+    font-family: var(--font-landing-text);
+}
+
+.landing-page ::selection {
+    background: color-mix(in srgb, var(--color-line-panel) 45%, transparent);
+}
+
+.landing-main {
+    width: 100%;
+    max-width: none;
+    flex: 1;
+    padding: 0;
+}
+
+.lp-wrap {
+    width: 100%;
+    max-width: 82rem;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+.lp-display {
+    font-family: var(--font-landing-display);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    font-variation-settings: 'opsz' 120, 'SOFT' 30, 'WONK' 1;
+}
+
+.lp-label {
+    margin: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+/* Every small label that sits over the scene carries its own veil (see --lp-veil). */
+.lp-open-main .lp-label,
+.lp-chapter .lp-label {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    background: var(--lp-veil);
+    border-radius: var(--radius-pill);
+}
+
+.lp-label .n {
+    color: var(--color-ink);
+}
+
+/* ---------------------------------------------------------------- shell - */
+
+.landing-page .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--stage-void) 92%, transparent),
+        color-mix(in srgb, var(--stage-void) 84%, transparent)
+    );
+    box-shadow: 0 1px 0 var(--stage-edge);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    backdrop-filter: blur(12px) saturate(1.2);
+}
+
+.landing-page .topbar .frame {
+    max-width: 82rem;
+    padding-inline: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+.landing-page.lp-scrolled .topbar {
+    background: color-mix(in srgb, var(--stage-void) 94%, transparent);
+}
+
+.landing-page .brand {
+    color: var(--color-ink);
+}
+
+.lp-status {
+    display: grid;
+    margin: 0 0 0 auto;
+    line-height: 1.3;
+    text-align: right;
+    color: var(--color-muted);
+}
+
+.lp-status strong {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+}
+
+.lp-status span {
+    font-size: 0.75rem;
+}
+
+.lp-pause {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    margin: 0;
+    padding: 0.3125rem 0.875rem;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: var(--color-ink);
+    background: color-mix(in srgb, var(--color-ink) 7%, transparent);
+    border: 0;
+    border-radius: var(--radius-pill);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ink) 12%, transparent);
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.lp-pause:hover {
+    background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+.lp-pause[hidden] {
+    display: none;
+}
+
+.lp-pause-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--thread-cuota);
+}
+
+.landing-page .site-footer {
+    position: relative;
+    z-index: 3;
+    padding: 1.5rem 0 2.5rem;
+    background: var(--stage-deep);
+    box-shadow: 0 -1px 0 var(--stage-edge);
+    font-size: 0.8125rem;
+    text-align: left;
+    color: var(--color-muted);
+}
+
+.landing-page .site-footer p {
+    max-width: 82rem;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+/* ---------------------------------------------------------------- scene - */
+
+.lp-atmosphere,
+.lp-grain,
+.lp-canvas,
+.lp-fallback {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+.lp-atmosphere {
+    z-index: 0;
+    background:
+        radial-gradient(
+            ellipse 58% 46% at 62% 44%,
+            color-mix(in srgb, var(--color-line-panel) 12%, transparent),
+            transparent 68%
+        ),
+        radial-gradient(
+            ellipse 42% 52% at 26% 74%,
+            color-mix(in srgb, var(--color-line-movimientos) 9%, transparent),
+            transparent 72%
+        ),
+        radial-gradient(
+            ellipse 90% 60% at 50% 112%,
+            color-mix(in srgb, var(--color-line-saldos) 7%, transparent),
+            transparent 70%
+        ),
+        var(--stage-void);
+}
+
+.lp-grain {
+    z-index: 1;
+    opacity: 0.5;
+    background-image: radial-gradient(
+        color-mix(in srgb, var(--color-ink) 12%, transparent) 0.5px,
+        transparent 0.6px
+    );
+    background-size: 3px 3px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 85%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 85%);
+}
+
+.lp-canvas {
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 600ms var(--ease-out);
+}
+
+.landing-page.lp-canvas-ready .lp-canvas {
+    opacity: 1;
+}
+
+.lp-canvas[hidden] {
+    display: none;
+}
+
+/* Static fallback: a light thread with the four stops. Also the poster the canvas fades over. */
+.lp-fallback {
+    z-index: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            ellipse 70% 52% at 62% 46%,
+            color-mix(in srgb, var(--color-line-panel) 22%, transparent),
+            transparent 70%
+        ),
+        radial-gradient(
+            ellipse 40% 40% at 30% 70%,
+            color-mix(in srgb, var(--color-line-movimientos) 16%, transparent),
+            transparent 72%
+        );
+}
+
+.landing-page.lp-canvas-ready .lp-fallback {
+    display: none;
+}
+
+.lp-fallback::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--color-ink) 7%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--color-ink) 7%, transparent) 1px, transparent 1px);
+    background-size: 8.3333% 100%, 100% 12.5%;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 55% 50%, #000 15%, transparent 78%);
+    mask-image: radial-gradient(ellipse 70% 60% at 55% 50%, #000 15%, transparent 78%);
+}
+
+.lp-fallback-line {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    top: 30%;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--thread-cuota),
+        var(--thread-extracto),
+        var(--thread-conciliacion),
+        var(--thread-saldos),
+        transparent
+    );
+    box-shadow: 0 0 24px color-mix(in srgb, var(--thread-conciliacion) 60%, transparent);
+}
+
+.lp-fallback-stops {
+    position: absolute;
+    inset: calc(30% - 0.25rem) 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+/* Only the four stop lights: the words live in the route list of the opening. */
+.lp-fallback-stops span {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: 0.75rem;
+    border-radius: var(--radius-pill);
+    background: var(--c);
+    box-shadow: 0 0 12px var(--c);
+}
+
+/* ------------------------------------------------- office: the opening -- */
+
+.lp-opening {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    min-height: calc(100svh - 3.5rem);
+    padding: clamp(5rem, 9vh, 8rem) 0 clamp(3rem, 6vh, 4.5rem);
+}
+
+.lp-opening::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        96deg,
+        color-mix(in srgb, var(--stage-void) 92%, transparent) 0%,
+        color-mix(in srgb, var(--stage-void) 58%, transparent) 46%,
+        transparent 78%
+    );
+}
+
+.lp-open-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.lp-open-main {
+    grid-column: 1 / span 8;
+}
+
+.lp-open-main h1 {
+    max-width: 16ch;
+    margin: 0.875rem 0 0;
+    font-size: clamp(2.625rem, 6.9vw, 7rem);
+    line-height: 0.94;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+}
+
+.lp-open-main h1 em {
+    font-style: italic;
+    letter-spacing: -0.03em;
+    color: color-mix(in srgb, var(--color-ink) 55%, var(--color-line-panel));
+}
+
+.lp-lead {
+    max-width: 34rem;
+    margin: 1.5rem 0 0;
+    padding: var(--lp-veil-pad);
+    font-size: clamp(1rem, 1.5vw, 1.125rem);
+    line-height: 1.6;
+    color: var(--color-muted);
+    background: var(--lp-veil);
+    border-radius: var(--radius-lg);
+}
+
+.lp-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1.75rem;
+}
+
+.lp-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 3rem;
+    margin: 0;
+    padding: 0.75rem 1.5rem;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-on-accent);
+    text-decoration: none;
+    background: var(--color-line-panel);
+    border: 0;
+    border-radius: var(--radius-pill);
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--color-line-panel) 60%, transparent),
+        0 10px 40px -12px color-mix(in srgb, var(--color-line-panel) 70%, transparent);
+    transition:
+        transform 260ms var(--ease-out),
+        background-color var(--dur-fast) var(--ease-out),
+        box-shadow 260ms var(--ease-out);
+}
+
+.lp-button:hover {
+    background: color-mix(in srgb, var(--color-line-panel) 86%, white);
+}
+
+.lp-button:active {
+    transform: scale(0.98);
+}
+
+.lp-button .arrow {
+    transition: transform 260ms var(--ease-out);
+}
+
+.lp-button:hover .arrow {
+    transform: translateX(4px);
+}
+
+.lp-note {
+    margin: 0;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+    background: var(--lp-veil);
+    border-radius: var(--radius-pill);
+}
+
+.lp-open-side {
+    grid-column: 10 / span 3;
+    display: grid;
+    gap: 1.25rem;
+    align-content: end;
+    padding: var(--lp-veil-pad);
+    background: var(--lp-veil);
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 0 0 1px var(--stage-edge);
+}
+
+.lp-route {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.lp-route li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.lp-route i {
+    flex: none;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: var(--radius-pill);
+    background: var(--c);
+    box-shadow: 0 0 10px var(--c);
+}
+
+.lp-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+}
+
+.lp-hint::after {
+    content: '';
+    width: 3.5rem;
+    height: 1px;
+    background: linear-gradient(90deg, var(--color-ink), transparent);
+    transform-origin: left;
+}
+
+/* ------------------------------------------------- chapters: the travel - */
+
+.lp-journey {
+    position: relative;
+    z-index: 2;
+}
+
+.lp-chapter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 108svh;
+    overflow: clip;
+}
+
+.lp-chapter::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        92deg,
+        color-mix(in srgb, var(--stage-void) 90%, transparent) 0%,
+        color-mix(in srgb, var(--stage-void) 58%, transparent) 44%,
+        transparent 74%
+    );
+}
+
+.lp-chapter.flip::before {
+    background: linear-gradient(
+        268deg,
+        color-mix(in srgb, var(--stage-void) 90%, transparent) 0%,
+        color-mix(in srgb, var(--stage-void) 58%, transparent) 44%,
+        transparent 74%
+    );
+}
+
+.lp-ghost {
+    position: absolute;
+    top: 6%;
+    right: -0.04em;
+    z-index: 0;
+    font-family: var(--font-landing-display);
+    font-size: clamp(12rem, 34vw, 30rem);
+    font-weight: 500;
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--color-ink) 13%, transparent);
+    pointer-events: none;
+}
+
+.lp-chapter.flip .lp-ghost {
+    right: auto;
+    left: -0.04em;
+}
+
+.lp-chapter-inner {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1.25rem 1rem;
+    align-items: end;
+    width: 100%;
+    padding-block: 8rem 6rem;
+}
+
+.lp-head {
+    grid-column: 1 / span 7;
+}
+
+.lp-body {
+    grid-column: 9 / span 4;
+    align-self: center;
+    padding: var(--lp-veil-pad);
+    background: var(--lp-veil);
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 0 0 1px var(--stage-edge);
+}
+
+.lp-chapter.flip .lp-head {
+    grid-column: 6 / span 7;
+}
+
+.lp-chapter.flip .lp-body {
+    grid-column: 1 / span 4;
+}
+
+.lp-chapter h2 {
+    margin: 1rem 0 0;
+    font-size: clamp(2.125rem, 5.4vw, 4.5rem);
+    font-weight: 500;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+    max-width: 18ch;
+    text-shadow: 0 2px 30px rgb(0 0 0 / 0.45);
+}
+
+.lp-chapter p {
+    max-width: 52ch;
+    text-shadow: 0 1px 18px rgb(0 0 0 / 0.75);
+}
+
+.lp-body p {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--color-muted);
+}
+
+.lp-meta {
+    display: grid;
+    /* `app.css` gives every `dl` two columns from 40 rem; this one is a one-column list of rows. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--stage-edge);
+}
+
+.lp-meta div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 6%, transparent);
+}
+
+.lp-meta div:first-child {
+    border-top: 0;
+}
+
+.lp-meta dt {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.lp-meta dd {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: right;
+    color: var(--color-ink);
+}
+
+.lp-meta dd.ok {
+    color: var(--color-ok);
+}
+
+.lp-meta dd.warn {
+    color: var(--color-warn);
+}
+
+.lp-meta dd.accent {
+    color: var(--color-line-panel);
+}
+
+.lp-meta dd.neg {
+    color: var(--color-danger);
+}
+
+/* ------------------------------------------------------- travel HUD ---- */
+
+.lp-hud {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem clamp(1.25rem, 4vw, 3.5rem) 1rem;
+    pointer-events: none;
+    background: var(--lp-veil);
+    box-shadow: inset 0 1px 0 var(--stage-edge);
+}
+
+.lp-hud[hidden] {
+    display: none;
+}
+
+.lp-hud .cap {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.lp-hud .cap b {
+    color: var(--color-ink);
+}
+
+.lp-hud .bar {
+    position: relative;
+    flex: 1;
+    height: 1px;
+    background: color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.lp-hud .bar i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background: var(--color-line-panel);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-line-panel) 80%, transparent);
+}
+
+.lp-hud .to {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+/* ------------------------------------------------------- manifesto ----- */
+
+.lp-manifesto {
+    position: relative;
+    z-index: 3;
+    padding: clamp(4rem, 8vw, 7rem) 0;
+    background: var(--stage-deep);
+    border-top: 1px solid var(--stage-edge);
+}
+
+.lp-manifesto-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1.25rem 1rem;
+}
+
+.lp-manifesto h2 {
+    grid-column: 1 / span 5;
+    margin: 0;
+    font-size: clamp(2rem, 4.4vw, 3.75rem);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    max-width: 12ch;
+}
+
+.lp-say {
+    grid-column: 7 / span 6;
+    align-self: end;
+}
+
+.lp-say p {
+    max-width: 40ch;
+    margin: 0.5rem 0;
+    font-size: 1.0625rem;
+    color: var(--color-muted);
+}
+
+.lp-say p strong {
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+.lp-say h3 {
+    margin: 1.5rem 0 0;
+}
+
+.lp-facts {
+    grid-column: 7 / span 6;
+    display: grid;
+    /* One row per fact: the shared `dl` columns would make the definition list overflow. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin: 2rem 0 0;
+    padding: 0;
+}
+
+.lp-facts div {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    gap: 1rem;
+    padding: 0.875rem 0;
+    border-top: 1px solid var(--stage-edge);
+}
+
+.lp-facts dt {
+    padding-top: 0.2rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.lp-facts dd {
+    margin: 0;
+    font-size: 0.9375rem;
+}
+
+.lp-facts dd b {
+    font-weight: 600;
+}
+
+.lp-caveats {
+    grid-column: 1 / span 5;
+    margin-top: 2.5rem;
+}
+
+.lp-caveats ul {
+    display: grid;
+    gap: 0.625rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lp-caveats li {
+    display: grid;
+    grid-template-columns: 1rem 1fr;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--color-muted);
+}
+
+.lp-caveats li::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    margin-top: 0.55rem;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--color-ink) 40%, transparent);
+}
+
+.lp-caveats b {
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+/* ------------------------------------------------------------- close --- */
+
+.lp-close {
+    position: relative;
+    z-index: 3;
+    padding: 0 0 clamp(3rem, 6vw, 5rem);
+    background: var(--stage-deep);
+}
+
+.lp-close-rule {
+    height: 1px;
+    background: var(--stage-edge);
+}
+
+.lp-close-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+    padding-top: clamp(3rem, 6vw, 5rem);
+}
+
+.lp-close-copy {
+    grid-column: 1 / span 5;
+}
+
+.lp-close-copy h2 {
+    margin: 0;
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+}
+
+.lp-close-copy p {
+    max-width: 30ch;
+    margin: 0.75rem 0 0;
+    font-size: 0.9375rem;
+    color: var(--color-muted);
+}
+
+.lp-close-action {
+    grid-column: 7 / span 6;
+    align-self: center;
+}
+
+.lp-mega {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-bottom: 0.12em;
+    font-family: var(--font-landing-display);
+    font-size: clamp(2.5rem, 6.4vw, 5.5rem);
+    font-weight: 500;
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+    color: var(--color-ink);
+    text-decoration: none;
+    border-bottom: 2px solid var(--color-line-panel);
+    transition:
+        color 240ms var(--ease-out),
+        border-color 240ms var(--ease-out);
+}
+
+.lp-mega:hover {
+    color: var(--color-line-panel);
+}
+
+.lp-mega .arrow {
+    padding-top: 0.35em;
+    font-family: var(--font-landing-text);
+    font-size: 0.5em;
+    transition: transform 320ms var(--ease-out);
+}
+
+.lp-mega:hover .arrow {
+    transform: translate(6px, -6px);
+}
+
+.lp-demo-note {
+    margin: 1.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+}
+
+/* --------------------------------------------------------- behaviour --- */
+
+/* The reveal exists only when JavaScript ran: without it every word is already visible. */
+.lp-js .lp-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+        opacity 760ms var(--ease-out),
+        transform 760ms var(--ease-out);
+}
+
+.lp-js .lp-reveal.in {
+    opacity: 1;
+    transform: none;
+}
+
+/* --------------------------------------------------------- responsive -- */
+
+@media (max-width: 62rem) {
+    /* On a phone the text fills the width, so the scrim has to protect the whole column. */
+    .lp-chapter::before,
+    .lp-chapter.flip::before {
+        background: linear-gradient(
+            to bottom,
+            color-mix(in srgb, var(--stage-void) 86%, transparent) 0%,
+            color-mix(in srgb, var(--stage-void) 62%, transparent) 62%,
+            color-mix(in srgb, var(--stage-void) 30%, transparent) 100%
+        );
+    }
+
+    .lp-open-main {
+        grid-column: 1 / -1;
+    }
+
+    .lp-open-side {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem 1.5rem;
+    }
+
+    .lp-route {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+    }
+
+    .lp-head,
+    .lp-chapter.flip .lp-head {
+        grid-column: 1 / -1;
+    }
+
+    .lp-body,
+    .lp-chapter.flip .lp-body {
+        grid-column: 1 / -1;
+    }
+
+    .lp-manifesto h2,
+    .lp-say,
+    .lp-facts,
+    .lp-caveats {
+        grid-column: 1 / -1;
+    }
+
+    .lp-facts {
+        margin-top: 2rem;
+    }
+
+    .lp-facts div {
+        grid-template-columns: 7rem minmax(0, 1fr);
+    }
+
+    .lp-close-copy,
+    .lp-close-action {
+        grid-column: 1 / -1;
+    }
+
+    .lp-hud .to {
+        display: none;
+    }
+
+    .lp-ghost {
+        font-size: clamp(10rem, 42vw, 20rem);
+        opacity: 0.7;
+    }
+}
+
+@media (max-width: 34rem) {
+    .lp-opening {
+        padding-top: 5.5rem;
+    }
+
+    .lp-status {
+        display: none;
+    }
+
+    .lp-fallback-stops {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    }
+
+    .lp-pause .txt {
+        display: none;
+    }
+
+    .lp-facts div {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+
+    .lp-meta dd {
+        text-align: left;
+    }
+
+    .lp-meta div {
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .lp-mega {
+        font-size: clamp(2rem, 12vw, 2.75rem);
+    }
+}
+
+/* Motion is a preference, not a decoration: reduced motion keeps the static frame. */
+@media (prefers-reduced-motion: reduce) {
+    .landing-page *,
+    .landing-page *::before,
+    .landing-page *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .lp-js .lp-reveal {
+        opacity: 1;
+        transform: none;
+    }
+
+    .lp-canvas {
+        display: none;
+    }
+}
+
+@media print {
+    .landing-page {
+        background: #fff;
+    }
+
+    .lp-atmosphere,
+    .lp-grain,
+    .lp-canvas,
+    .lp-fallback,
+    .lp-hud,
+    .lp-ghost {
+        display: none !important;
+    }
+
+    .lp-opening,
+    .lp-chapter {
+        min-height: auto;
+        padding-block: 1rem;
+    }
+
+    .lp-chapter::before,
+    .lp-opening::before {
+        display: none;
+    }
+}
