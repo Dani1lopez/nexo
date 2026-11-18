@@ -141,6 +141,24 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringNotContainsString('; secure', $session);
     }
 
+    /** Issue #50: an early rejection from the default stack still carries the hardening headers. */
+    public function test_a_maintenance_rejection_still_carries_the_security_headers(): void
+    {
+        $down = storage_path('framework/down');
+        file_put_contents($down, '{}');
+
+        try {
+            $response = $this->get('/');
+            $response->assertStatus(503);
+            $response->assertHeader('X-Content-Type-Options', 'nosniff');
+            $response->assertHeader('X-Frame-Options', 'DENY');
+            $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+            $this->assertSame(self::STRICT_CSP, $response->headers->get('Content-Security-Policy'));
+        } finally {
+            @unlink($down);
+        }
+    }
+
     public function test_transport_security_is_sent_over_https(): void
     {
         foreach (['/', '/login'] as $path) {

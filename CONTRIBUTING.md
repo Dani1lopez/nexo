@@ -39,7 +39,7 @@ Reglas:
 
 ## Despliegues
 
-Las vistas y los assets de Vite se publican como una unidad: el layout compartido referencia entradas del manifiesto compilado (`vite.config.mjs`), así que exponer una vista nueva junto al manifiesto anterior hace que las páginas den 500 hasta que llega la compilación correspondiente. Publica (o revierte) vistas y assets juntos; en un despliegue no atómico, despliega primero los assets y después las vistas.
+Las vistas y los assets de Vite se publican como una unidad: el layout compartido referencia entradas del manifiesto compilado (`vite.config.mjs`), así que exponer una vista nueva junto al manifiesto anterior hace que las páginas den 500 hasta que llega la compilación correspondiente. En un despliegue no atómico publica primero los assets y después las vistas; en una reversión aplica el orden inverso: restaura primero las vistas antiguas y después el manifiesto y los assets antiguos, porque al revés el layout seguiría pidiendo una entrada que ya no existe y cada página daría 500 hasta recuperar la vista anterior.
 
 ## Versiones
 

@@ -18,8 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Laravel's web group supplies sessions and request-forgery protection.
-        // Every response, public or authenticated, carries the browser hardening headers.
-        $middleware->append(SecurityHeaders::class);
+        // Prepended so every response carries the browser hardening headers, including
+        // early rejections from the default stack such as a maintenance-mode 503.
+        $middleware->prepend(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Use the framework's default exception handling.
