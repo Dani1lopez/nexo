@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Access\Http\Controllers\SessionController;
+use App\Modules\Access\Http\Controllers\TwoFactorController;
 use App\Modules\Bank\Http\Controllers\BankImportController;
 use App\Modules\Bank\Http\Controllers\OtherIncomeController;
 use App\Modules\Bank\Http\Controllers\ReconcileController;
@@ -14,7 +15,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [SessionController::class, 'create'])->name('login');
 Route::post('/login', [SessionController::class, 'store']);
+Route::get('/login/segundo-factor', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
+Route::post('/login/segundo-factor', [TwoFactorController::class, 'challengeStore']);
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::middleware('auth')->prefix('access/two-factor')->name('two-factor.')->group(function (): void {
+    Route::get('/', [TwoFactorController::class, 'index'])->name('index');
+    Route::post('/', [TwoFactorController::class, 'store'])->name('enable');
+    Route::post('/confirm', [TwoFactorController::class, 'confirm'])->name('confirm');
+    Route::post('/disable', [TwoFactorController::class, 'disable'])->name('disable');
+});
 Route::get('/dashboard', [DashboardController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('dashboard');
 Route::get('/saldos', [SummaryController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('summary.show');
 
