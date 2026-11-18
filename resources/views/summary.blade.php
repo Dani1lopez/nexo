@@ -26,6 +26,14 @@
                     {{ $abonos }} {{ $abonos === 1 ? 'abono sin conciliar' : 'abonos sin conciliar' }}
                 </span>
             </div>
+            @if ($balances['otherIncomeCount'] > 0)
+                @php($ingresos = $balances['otherIncomeCount'])
+                <div>
+                    <span class="k">Otros ingresos</span>
+                    <span class="n">{{ $money($balances['otherIncomeCents']) }}</span>
+                    <span class="sub">{{ $ingresos }} {{ $ingresos === 1 ? 'ingreso clasificado' : 'ingresos clasificados' }}. Ya incluidos en el saldo bancario.</span>
+                </div>
+            @endif
             <div>
                 <span class="k">Movimientos</span>
                 <span class="n">{{ $movimientos }}</span>
@@ -40,6 +48,7 @@
             @endif
             Los abonos sin conciliar se resuelven en <a href="/bank">Movimientos</a>.
             Un abono puede estar conciliado en parte: aquí cuenta solo lo que falta.
+            Un abono clasificado como otro ingreso ya tiene su destino y no cuenta como pendiente.
         </p>
     @else
         <div class="empty">
