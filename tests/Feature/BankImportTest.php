@@ -114,6 +114,22 @@ class BankImportTest extends AuthTestCase
         $this->assertDatabaseCount('bank_movements', 4);
     }
 
+    public function test_a_binary_file_renamed_as_csv_is_rejected_before_it_is_read(): void
+    {
+        $this->actingAs($this->treasury());
+
+        // A PNG renamed as .csv: the fake reports the MIME a real upload would be detected as,
+        // because the fake derives it from the name and the test needs the content gate.
+        $binary = "\x89PNG\r\n\x1a\n".str_repeat("\x00\x01\x02\x03", 32);
+        $file = UploadedFile::fake()->createWithContent('extracto.csv', $binary)->mimeType('image/png');
+
+        $this->post('/bank/imports', ['file' => $file])
+            ->assertSessionHasErrors(['file' => 'El archivo debe contener texto en formato CSV.']);
+
+        $this->assertDatabaseCount('bank_movements', 0);
+        $this->assertDatabaseCount('bank_imports', 0);
+    }
+
     public function test_invalid_rows_are_rejected_with_line_and_reason_while_valid_ones_are_imported(): void
     {
         $this->actingAs($this->treasury());
