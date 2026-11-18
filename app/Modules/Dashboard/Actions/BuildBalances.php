@@ -4,6 +4,7 @@ namespace App\Modules\Dashboard\Actions;
 
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Fees\Actions\SumDues;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\FeeYear;
 use Illuminate\Support\Carbon;
@@ -12,12 +13,16 @@ use Illuminate\Support\Carbon;
  * Read-only figures for the balances screen: the balance of the imported statement, the credits still
  * to reconcile and the debt broken down by fee year.
  *
- * Dues are summed with their own rules (exemptions, voided payments), never re-derived here. Like
- * BuildOverview, it loads the dues once and sums them in PHP, which keeps the rules in one place and
- * is fine at the size of an association.
+ * Dues are summed with their own rules (exemptions, voided payments), never re-derived here. Both the
+ * credits and the dues are read in chunks, so the screen never loads the whole statement or every due
+ * of every year at once.
  */
 class BuildBalances
 {
+    private const CHUNK = 200;
+
+    public function __construct(private SumDues $sumDues) {}
+
     /**
      * @return array{
      *     balanceCents: int,
@@ -37,59 +42,57 @@ class BuildBalances
         // Only credits need a destination, and a credit used in part or classified as other income
         // still has a remainder or none at all: the figures below are its active payments and its
         // active classification.
-        $credits = BankMovement::query()
+        $unreconciledCents = 0;
+        $unreconciledCount = 0;
+        $otherIncomeCents = 0;
+        $otherIncomeCount = 0;
+
+        BankMovement::query()
             ->where('amount_cents', '>', 0)
             ->with([
                 'payments' => fn ($query) => $query->whereNull('voided_at'),
                 'otherIncomes' => fn ($query) => $query->whereNull('voided_at'),
             ])
-            ->get();
+            ->chunkById(self::CHUNK, function ($credits) use (&$unreconciledCents, &$unreconciledCount, &$otherIncomeCents, &$otherIncomeCount): void {
+                foreach ($credits as $movement) {
+                    $remainder = max(0, $movement->amount_cents
+                        - (int) $movement->payments->sum('amount_cents')
+                        - (int) $movement->otherIncomes->sum('amount_cents'));
 
-        $remainders = $credits->mapWithKeys(fn (BankMovement $movement): array => [
-            $movement->id => max(0, $movement->amount_cents
-                - (int) $movement->payments->sum('amount_cents')
-                - (int) $movement->otherIncomes->sum('amount_cents')),
-        ]);
+                    if ($remainder > 0) {
+                        $unreconciledCount++;
+                    }
 
-        // Classified income is not pending reconciliation: it already has its destination.
-        $otherIncomes = $credits->flatMap(fn (BankMovement $movement) => $movement->otherIncomes);
+                    $unreconciledCents += $remainder;
+
+                    foreach ($movement->otherIncomes as $income) {
+                        $otherIncomeCount++;
+                        $otherIncomeCents += (int) $income->amount_cents;
+                    }
+                }
+            });
 
         $years = FeeYear::query()
-            ->with(['dues.exemptions', 'dues.payments'])
             ->orderByDesc('year')
             ->get()
-            ->map(fn (FeeYear $feeYear): array => $this->yearRow($feeYear))
+            ->map(fn (FeeYear $feeYear): array => [
+                'id' => (int) $feeYear->id,
+                'year' => (int) $feeYear->year,
+                ...$this->sumDues->handle(Due::query()->where('fee_year_id', $feeYear->id)),
+            ])
             ->all();
 
         return [
             'balanceCents' => (int) BankMovement::query()->sum('amount_cents'),
             'movements' => BankMovement::query()->count(),
-            'unreconciledCents' => (int) $remainders->sum(),
-            'unreconciledCount' => $remainders->filter(fn (int $cents): bool => $cents > 0)->count(),
-            'otherIncomeCents' => (int) $otherIncomes->sum('amount_cents'),
-            'otherIncomeCount' => $otherIncomes->count(),
+            'unreconciledCents' => $unreconciledCents,
+            'unreconciledCount' => $unreconciledCount,
+            'otherIncomeCents' => $otherIncomeCents,
+            'otherIncomeCount' => $otherIncomeCount,
             'lastImportAt' => BankImport::query()->latest('id')->value('created_at'),
             'years' => $years,
             'totalPendingCents' => (int) array_sum(array_column($years, 'pendingCents')),
             'totalPendingDues' => (int) array_sum(array_column($years, 'pendingDues')),
-        ];
-    }
-
-    /**
-     * @return array{id: int, year: int, payableCents: int, paidCents: int, pendingCents: int, pendingDues: int}
-     */
-    private function yearRow(FeeYear $feeYear): array
-    {
-        // The inverse relation is set explicitly: the dues were loaded through the year, not the other way round.
-        $dues = $feeYear->dues->each(fn (Due $due) => $due->setRelation('feeYear', $feeYear));
-
-        return [
-            'id' => (int) $feeYear->id,
-            'year' => (int) $feeYear->year,
-            'payableCents' => (int) $dues->sum(fn (Due $due): int => $due->payableCents()),
-            'paidCents' => (int) $dues->sum(fn (Due $due): int => $due->paidCents()),
-            'pendingCents' => (int) $dues->sum(fn (Due $due): int => $due->pendingCents()),
-            'pendingDues' => $dues->filter(fn (Due $due): bool => $due->pendingCents() > 0)->count(),
         ];
     }
 }

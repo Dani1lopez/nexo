@@ -11,15 +11,21 @@ use App\Modules\Bank\Models\OtherIncome;
 use App\Modules\Bank\Support\InvalidStatement;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
+use App\Modules\Members\Models\Member;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class BankImportController extends Controller
 {
-    public function index(): View
+    /** Hard cap of pending dues offered inside the reconcile forms of one page. */
+    private const PENDING_DUES = 100;
+
+    public function index(Request $request): View
     {
-        $movements = BankMovement::query()->orderByDesc('occurred_on')->orderByDesc('id')->simplePaginate(50);
+        $movements = BankMovement::query()->orderByDesc('occurred_on')->orderByDesc('id')->simplePaginate(50)->withQueryString();
 
         // A credit can be split over several dues, so a movement lists every active payment it fed;
         // voided ones no longer count as reconciled.
@@ -48,13 +54,29 @@ class BankImportController extends Controller
             $remaining[$movement->id] = max(0, $movement->amount_cents - $used);
         }
 
-        // Demo scale: dues carry computed status, so filtering happens on the loaded year.
-        $pendingDues = Due::query()
-            ->with(['member', 'feeYear', 'payments', 'exemptions'])
-            ->get()
-            ->filter(fn (Due $due): bool => $due->activeExemption() === null && $due->pendingCents() > 0)
-            ->sortBy(fn (Due $due): string => $due->member->name)
-            ->values();
+        // Pending dues are filtered in SQL and capped, so the page never loads every due of
+        // every year. The forms repeat this list per movement, so a name filter keeps it usable.
+        $memberFilter = mb_substr(trim((string) $request->query('socio')), 0, 100);
+        $filterByMember = fn (Builder $query): Builder => $query->when(
+            $memberFilter !== '',
+            fn (Builder $filtered): Builder => $filtered->whereHas(
+                'member',
+                fn (Builder $members): Builder => $members->whereLike('name', '%'.$memberFilter.'%'),
+            ),
+        );
+
+        $pendingDues = $filterByMember(Due::query()->pending())
+            ->with(['member', 'feeYear', 'exemptions', 'payments'])
+            ->orderBy(Member::query()->select('name')->whereColumn('members.id', 'dues.member_id'))
+            ->orderBy('dues.id')
+            ->limit(self::PENDING_DUES + 1)
+            ->get();
+
+        $pendingTotal = null;
+        if ($pendingDues->count() > self::PENDING_DUES) {
+            $pendingTotal = $filterByMember(Due::query()->pending())->count();
+            $pendingDues = $pendingDues->take(self::PENDING_DUES);
+        }
 
         return view('bank.index', [
             'movements' => $movements,
@@ -64,6 +86,9 @@ class BankImportController extends Controller
             'categories' => OtherIncome::CATEGORIES,
             'remaining' => $remaining,
             'pendingDues' => $pendingDues,
+            'pendingCap' => self::PENDING_DUES,
+            'pendingTotal' => $pendingTotal,
+            'memberFilter' => $memberFilter,
         ]);
     }
 
