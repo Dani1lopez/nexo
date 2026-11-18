@@ -16,7 +16,15 @@ class ImportRequest extends FormRequest
      */
     public function rules(): array
     {
-        return ['file' => ['required', 'file', 'max:1024', 'extensions:csv,txt']];
+        // The extension is a hint; the content type is the gate. A binary file renamed as .csv
+        // must be rejected before the statement reader ever looks at it.
+        return ['file' => [
+            'required',
+            'file',
+            'max:1024',
+            'extensions:csv,txt',
+            'mimetypes:text/plain,text/csv,application/csv,text/x-csv,application/vnd.ms-excel',
+        ]];
     }
 
     /**
@@ -29,6 +37,7 @@ class ImportRequest extends FormRequest
             'file.file' => 'El archivo no se ha subido correctamente.',
             'file.max' => 'El archivo no puede superar 1 MB.',
             'file.extensions' => 'El archivo debe ser un CSV (.csv o .txt).',
+            'file.mimetypes' => 'El archivo debe contener texto en formato CSV.',
         ];
     }
 }
