@@ -178,6 +178,9 @@ class AccessSecurityTest extends AuthTestCase
 
     public function test_a_forged_forge_host_does_not_unlock_forwarded_headers(): void
     {
+        // The case is about an app with no trusted proxy: pin it so a developer's
+        // TRUSTED_PROXIES in the environment cannot turn this into a different scenario.
+        config(['trustedproxy.proxies' => []]);
         $this->account('ana@example.test', 'board', 'correct-secret-value');
 
         for ($i = 0; $i < 5; $i++) {
