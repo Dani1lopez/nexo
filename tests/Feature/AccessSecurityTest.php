@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Modules\Access\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use InvalidArgumentException;
 use Tests\Support\AuthTestCase;
 
@@ -226,5 +228,36 @@ class AccessSecurityTest extends AuthTestCase
 
         $this->assertSame('treasury', $user->fresh()->role);
         $this->assertTrue(Gate::forUser($user->fresh())->allows('edit-treasury'));
+    }
+
+    public function test_the_hashing_policy_is_explicit_and_never_stores_the_clear_password(): void
+    {
+        $user = $this->account('ana@example.test', 'treasury', 'treasury-secret-value');
+
+        $this->assertSame('bcrypt', config('hashing.driver'));
+        $this->assertTrue(config('hashing.rehash_on_login'));
+
+        $hash = (string) $user->fresh()->password;
+        $this->assertNotSame('treasury-secret-value', $hash);
+        $this->assertMatchesRegularExpression('/^\$2y\$\d{2}\$/', $hash);
+        $this->assertTrue(Hash::check('treasury-secret-value', $hash));
+    }
+
+    public function test_an_outdated_hash_is_upgraded_on_the_next_login(): void
+    {
+        $user = $this->account('ana@example.test', 'treasury', 'treasury-secret-value');
+
+        // A hash written when the cost was lower: the row is updated straight through the
+        // database so the hashed cast does not re-hash it on the way in.
+        DB::table('users')->where('id', $user->id)
+            ->update(['password' => Hash::make('treasury-secret-value', ['rounds' => 4])]);
+        config(['hashing.bcrypt.rounds' => 8]);
+        app('hash')->forgetDrivers();
+
+        $this->attemptLogin('ana@example.test', 'treasury-secret-value')->assertRedirect('/dashboard');
+
+        $upgraded = (string) $user->fresh()->password;
+        $this->assertStringStartsWith('$2y$08$', $upgraded);
+        $this->assertTrue(Hash::check('treasury-secret-value', $upgraded));
     }
 }
