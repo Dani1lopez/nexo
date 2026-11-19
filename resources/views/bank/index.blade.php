@@ -88,7 +88,20 @@
                     </dl>
                     @php($linkedPayments = $linked->get($movement->id, collect()))
                     @php($income = $incomes->get($movement->id))
+                    @php($expense = $expenses->get($movement->id))
                     @php($left = $remaining[$movement->id] ?? 0)
+                    @if ($expense)
+                        <p class="notice linked">Clasificado como gasto · {{ $expense->categoryLabel() }} · {{ \App\Modules\Fees\Support\Money::format($expense->amount()) }}</p>
+                        <p class="notice">{{ $expense->description }}</p>
+                        @can('edit-treasury')
+                            <form method="post" action="/bank/expenses/{{ $expense->id }}/void" class="form-block reconcile">
+                                @csrf
+                                <label for="void-expense-{{ $expense->id }}" class="mt-0">Motivo de la anulación</label>
+                                <input id="void-expense-{{ $expense->id }}" name="reason" type="text" maxlength="500" required>
+                                <button type="submit" class="btn-danger btn-sm mt-3">Anular el gasto</button>
+                            </form>
+                        @endcan
+                    @endif
                     @foreach ($linkedPayments as $linkedPayment)
                         <p class="notice linked">Conciliado con {{ $linkedPayment->due->member->name }} · {{ $linkedPayment->due->feeYear->year }} · {{ \App\Modules\Fees\Support\Money::format($linkedPayment->amount_cents) }}</p>
                         @can('edit-treasury')
@@ -109,6 +122,25 @@
                                 <label for="void-income-{{ $income->id }}" class="mt-0">Motivo de la anulación</label>
                                 <input id="void-income-{{ $income->id }}" name="reason" type="text" maxlength="500" required>
                                 <button type="submit" class="btn-danger btn-sm mt-3">Anular la clasificación</button>
+                            </form>
+                        @endcan
+                    @endif
+                    @if ($movement->amount_cents < 0 && $expense === null && $linkedPayments->isEmpty())
+                        @can('edit-treasury')
+                            <form method="post" action="/bank/movements/{{ $movement->id }}/expenses" class="form-block reconcile">
+                                @csrf
+                                <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+                                <p class="notice">Si conoces el motivo de este cargo, clasifícalo como gasto. El saldo del banco no cambia: el cargo ya está restado en el extracto.</p>
+                                <label for="expense-category-{{ $movement->id }}">Categoría</label>
+                                <select id="expense-category-{{ $movement->id }}" name="category" required>
+                                    <option value="">Elige una categoría</option>
+                                    @foreach (\App\Modules\Bank\Models\BankExpense::CATEGORIES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <label for="expense-description-{{ $movement->id }}">Descripción</label>
+                                <input id="expense-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
+                                <button type="submit" class="btn-secondary btn-sm mt-3">Clasificar el cargo</button>
                             </form>
                         @endcan
                     @endif
