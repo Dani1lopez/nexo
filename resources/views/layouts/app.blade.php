@@ -6,6 +6,7 @@
         ['key' => 'socios', 'label' => 'Socios', 'href' => '/members', 'match' => 'members*'],
         ['key' => 'cuotas', 'label' => 'Cuotas', 'href' => '/fees', 'match' => 'fees*'],
         ['key' => 'movimientos', 'label' => 'Movimientos', 'href' => '/bank', 'match' => 'bank*'],
+        ['key' => 'caja', 'label' => 'Caja', 'href' => '/caja', 'match' => 'caja*'],
     ];
     $line = collect($menu)->first(fn ($item) => request()->is($item['match']))['key'] ?? 'panel';
     // The public entry page runs without session, so it must not ask who is signed in.
