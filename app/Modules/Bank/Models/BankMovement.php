@@ -43,6 +43,15 @@ class BankMovement extends Model
         return $this->hasMany(OtherIncome::class);
     }
 
+    /**
+     * Classifications of this charge as an expense. Since #65 at most one is active, and never
+     * together with a payment or another income: the whole movement goes to one destination.
+     */
+    public function bankExpenses(): HasMany
+    {
+        return $this->hasMany(BankExpense::class);
+    }
+
     protected function casts(): array
     {
         return ['occurred_on' => 'date'];

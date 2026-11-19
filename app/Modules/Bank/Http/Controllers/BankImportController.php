@@ -5,6 +5,7 @@ namespace App\Modules\Bank\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Bank\Actions\ImportStatement;
 use App\Modules\Bank\Http\Requests\ImportRequest;
+use App\Modules\Bank\Models\BankExpense;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Bank\Models\OtherIncome;
@@ -40,6 +41,13 @@ class BankImportController extends Controller
         // A credit that is not money for the dues can be classified as other income instead. At most
         // one classification is active per movement, so the map holds one row per movement id.
         $incomes = OtherIncome::query()
+            ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
+            ->whereNull('voided_at')
+            ->get()
+            ->keyBy('bank_movement_id');
+
+        // A charge can also be classified as an expense, so the page explains what it paid for.
+        $expenses = BankExpense::query()
             ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
             ->whereNull('voided_at')
             ->get()
@@ -83,6 +91,7 @@ class BankImportController extends Controller
             'imports' => BankImport::query()->with('user')->latest('id')->limit(10)->get(),
             'linked' => $linked,
             'incomes' => $incomes,
+            'expenses' => $expenses,
             'categories' => OtherIncome::CATEGORIES,
             'remaining' => $remaining,
             'pendingDues' => $pendingDues,

@@ -35,6 +35,14 @@
                     <span class="sub">{{ $ingresos }} {{ $ingresos === 1 ? 'ingreso clasificado' : 'ingresos clasificados' }}. Ya incluidos en el saldo bancario.</span>
                 </div>
             @endif
+            @if ($balances['bankExpenseCount'] > 0)
+                @php($gastosBanco = $balances['bankExpenseCount'])
+                <div>
+                    <span class="k">Gastos bancarios</span>
+                    <span class="n">{{ $money($balances['bankExpenseCents']) }}</span>
+                    <span class="sub">{{ $gastosBanco }} {{ $gastosBanco === 1 ? 'cargo clasificado' : 'cargos clasificados' }}. Ya restados en el saldo bancario.</span>
+                </div>
+            @endif
             <div>
                 <span class="k">Movimientos</span>
                 <span class="n">{{ $movimientos }}</span>
