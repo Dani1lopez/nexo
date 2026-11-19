@@ -13,7 +13,6 @@ use App\Modules\Cash\Http\Requests\ExpenseRequest;
 use App\Modules\Cash\Http\Requests\OpeningBalanceRequest;
 use App\Modules\Cash\Http\Requests\ReasonRequest;
 use App\Modules\Cash\Models\CashExpense;
-use App\Modules\Cash\Models\CashOpeningBalance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -26,9 +25,10 @@ class CashController extends Controller
 {
     public function index(BuildCashBalance $balance): View
     {
+        // The action reads the opening row once and hands it over, so the figure and the displayed
+        // base are the same row even if a treasury submission lands in between.
         return view('cash.index', [
             ...$balance->handle(),
-            'opening' => CashOpeningBalance::query()->with('user')->first(),
             'expenses' => CashExpense::query()->with('user')->orderByDesc('id')->simplePaginate(50),
         ]);
     }

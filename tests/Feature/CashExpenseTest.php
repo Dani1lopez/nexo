@@ -5,12 +5,14 @@ namespace Tests\Feature;
 use App\Modules\Access\Models\User;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Cash\Actions\UpdateCashExpense;
 use App\Modules\Cash\Models\CashExpense;
 use App\Modules\Fees\Actions\RegisterPayment;
 use App\Modules\Fees\Actions\SetFeeYear;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Members\Models\Member;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\Support\AuthTestCase;
 
 /**
@@ -264,5 +266,54 @@ class CashExpenseTest extends AuthTestCase
             ->assertOk()
             ->assertSeeInOrder(['Saldo en caja', '80,00 €'])
             ->assertSeeInOrder(['Cuotas en efectivo', '30,00 €']);
+    }
+
+    /** Rule 9: a reused form only replays as a retry when the details are identical (R1-002, R3-002, R4-002). */
+    public function test_a_reused_form_with_different_details_is_rejected_and_an_identical_one_is_a_retry(): void
+    {
+        $input = $this->expenseInput(['amount' => '25,00']);
+        $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
+
+        // Same key, different amount: the original draft is the truth and nothing new is registered.
+        $this->actingAs($this->treasury())
+            ->post('/caja/gastos', [...$input, 'amount' => '30,00'])
+            ->assertSessionHasErrors(['submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.']);
+
+        $this->assertSame(1, CashExpense::query()->count());
+        $this->assertSame(2500, CashExpense::query()->firstOrFail()->amount_cents);
+
+        // The very same submission is still a harmless retry, not a second draft.
+        $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
+        $this->assertSame(1, CashExpense::query()->count());
+    }
+
+    /** Rule 10: a stale edit loaded before a confirmation can never rewrite the confirmed row (R1-001, R3-001, R4-001). */
+    public function test_a_stale_edit_cannot_change_a_confirmed_expense(): void
+    {
+        $this->draft(['amount' => '25,00']);
+        $stale = CashExpense::query()->firstOrFail();
+
+        // The confirmation lands between the moment the edit loaded the row and its save.
+        $this->actingAs($this->treasury())->post("/caja/gastos/{$stale->id}/confirm")->assertRedirect('/caja');
+
+        try {
+            app(UpdateCashExpense::class)->handle(
+                $stale,
+                3000,
+                '2026-04-10',
+                'material',
+                'Importe cambiado en una pestaña antigua',
+                true,
+                null,
+            );
+            $this->fail('A stale edit should have been refused.');
+        } catch (ValidationException $e) {
+            $this->assertSame('El gasto está confirmado y no se puede editar: anúlalo con motivo y registra uno nuevo.', $e->errors()['concept'][0]);
+        }
+
+        $row = CashExpense::query()->firstOrFail();
+        $this->assertSame(2500, $row->amount_cents);
+        $this->assertSame('Material para el taller', $row->concept);
+        $this->assertNotNull($row->confirmed_at);
     }
 }

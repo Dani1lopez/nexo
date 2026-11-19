@@ -17,7 +17,7 @@ use App\Modules\Fees\Models\Payment;
 class BuildCashBalance
 {
     /**
-     * @return array{cashCents: int, cashFeeCents: int, cashPayments: int, openingCents: ?int, expenseCents: int, expenseCount: int}
+     * @return array{cashCents: int, cashFeeCents: int, cashPayments: int, openingCents: ?int, opening: ?CashOpeningBalance, expenseCents: int, expenseCount: int}
      */
     public function handle(): array
     {
@@ -32,7 +32,8 @@ class BuildCashBalance
 
         $feeCents = (int) (clone $active)->sum('amount_cents');
         $expenseCents = (int) (clone $confirmed)->sum('amount_cents');
-        $opening = CashOpeningBalance::query()->first();
+        // Read once: the caller renders this very row, so the figure and the display can never disagree.
+        $opening = CashOpeningBalance::query()->with('user')->first();
         $openingCents = $opening === null ? null : $opening->amount();
 
         return [
@@ -40,6 +41,7 @@ class BuildCashBalance
             'cashFeeCents' => $feeCents,
             'cashPayments' => (clone $active)->count(),
             'openingCents' => $openingCents,
+            'opening' => $opening,
             'expenseCents' => $expenseCents,
             'expenseCount' => (clone $confirmed)->count(),
         ];
