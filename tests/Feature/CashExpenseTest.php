@@ -317,20 +317,37 @@ class CashExpenseTest extends AuthTestCase
     public function test_crafted_details_that_serialize_the_same_are_still_rejected(): void
     {
         $first = $this->expenseInput([
-            'has_receipt' => null,
-            'concept' => 'Material',
+            'has_receipt' => '1',
+            'concept' => 'Material | abril',
             'reason' => '0|Ticket perdido',
         ]);
         $this->actingAs($this->treasury())->post('/caja/gastos', $first)->assertRedirect('/caja');
 
-        // A different submission that used to serialize to the very same string.
+        // A different submission that used to serialize to the very same string, receipt flag included.
         $this->actingAs($this->treasury())
-            ->post('/caja/gastos', [...$first, 'concept' => 'Material|0', 'reason' => 'Ticket perdido'])
+            ->post('/caja/gastos', [...$first, 'has_receipt' => null, 'concept' => 'Material | abril|1', 'reason' => 'Ticket perdido'])
             ->assertSessionHasErrors(['submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.']);
 
         $row = CashExpense::query()->firstOrFail();
-        $this->assertSame('Material', $row->concept);
-        $this->assertSame('0|Ticket perdido', $row->reason);
+        $this->assertSame('Material | abril', $row->concept);
+        $this->assertTrue($row->has_receipt);
+        $this->assertSame(1, CashExpense::query()->count());
+    }
+
+    /** Rule 14: rows written before the JSON fingerprint keep accepting their exact retry. */
+    public function test_an_exact_retry_still_works_against_a_legacy_fingerprint(): void
+    {
+        $input = $this->expenseInput(['amount' => '25,00']);
+        $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
+        $expense = CashExpense::query()->firstOrFail();
+
+        // A fingerprint stored by the earlier delimiter-based format.
+        $expense->forceFill([
+            'submission_fingerprint' => CashExpense::legacySubmissionFingerprint(2500, '2026-04-10', 'material', 'Material para el taller', true, null),
+        ])->save();
+
+        // The very same submission is still a harmless retry, not a changed-data rejection.
+        $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
         $this->assertSame(1, CashExpense::query()->count());
     }
 

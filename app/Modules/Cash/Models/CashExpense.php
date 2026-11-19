@@ -48,6 +48,28 @@ class CashExpense extends Model
     }
 
     /**
+     * Fingerprint of the earlier delimiter-based format, kept only so rows written before the JSON
+     * encoding still recognize their exact retry. New rows never store this value.
+     */
+    public static function legacySubmissionFingerprint(
+        int $amountCents,
+        string $spentOn,
+        string $category,
+        string $concept,
+        bool $hasReceipt,
+        ?string $reason,
+    ): string {
+        return hash('sha256', implode('|', [
+            $amountCents,
+            $spentOn,
+            $category,
+            $concept,
+            $hasReceipt ? '1' : '0',
+            trim((string) $reason),
+        ]));
+    }
+
+    /**
      * Fingerprint of a registration payload as it was first submitted. The row is editable
      * afterwards, so a repeated submit compares against this, never against the current values.
      *
