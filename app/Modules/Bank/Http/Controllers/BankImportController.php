@@ -10,6 +10,7 @@ use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Bank\Models\OtherIncome;
 use App\Modules\Bank\Support\InvalidStatement;
+use App\Modules\Cash\Models\CashTransfer;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\Payment;
 use App\Modules\Members\Models\Member;
@@ -47,6 +48,13 @@ class BankImportController extends Controller
             ->keyBy('bank_movement_id');
 
         // A charge can also be classified as an expense, so the page explains what it paid for.
+        // A movement can also be money moving between the bank and the safe, so the page labels it.
+        $transfers = CashTransfer::query()
+            ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
+            ->whereNull('voided_at')
+            ->get()
+            ->keyBy('bank_movement_id');
+
         $expenses = BankExpense::query()
             ->whereIn('bank_movement_id', collect($movements->items())->pluck('id'))
             ->whereNull('voided_at')
@@ -92,6 +100,7 @@ class BankImportController extends Controller
             'linked' => $linked,
             'incomes' => $incomes,
             'expenses' => $expenses,
+            'transfers' => $transfers,
             'categories' => OtherIncome::CATEGORIES,
             'remaining' => $remaining,
             'pendingDues' => $pendingDues,

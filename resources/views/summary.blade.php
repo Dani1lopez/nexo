@@ -83,6 +83,14 @@
             <span class="n">{{ $money($balances['cashFeeCents']) }}</span>
             <span class="sub">{{ $pagosEfectivo }} {{ $pagosEfectivo === 1 ? 'pago de cuota en efectivo' : 'pagos de cuotas en efectivo' }}</span>
         </div>
+        @php($traspasos = $balances['transferCount'])
+        @if ($traspasos > 0)
+            <div>
+                <span class="k">Traspasos</span>
+                <span class="n">{{ $money($balances['transferCents']) }}</span>
+                <span class="sub">{{ $traspasos }} {{ $traspasos === 1 ? 'traspaso entre banco y caja' : 'traspasos entre banco y caja' }}. Ni ingreso ni gasto.</span>
+            </div>
+        @endif
         @php($gastos = $balances['expenseCount'])
         <div>
             <span class="k">Gastos confirmados</span>
@@ -91,7 +99,7 @@
         </div>
     </section>
     <p class="notice">
-        La caja suma los pagos de cuotas en efectivo vigentes más la base inicial y resta los gastos confirmados.
+        La caja suma los pagos de cuotas en efectivo vigentes más la base inicial y resta los gastos confirmados; los traspasos con el banco la mueven en la dirección del dinero.
         Un pago o un gasto anulado no cuenta y conserva su historial.
         La base inicial se fija una sola vez en <a href="/caja">Caja</a> y no incluye los pagos ya registrados:
         si los incluyera, contarían dos veces.

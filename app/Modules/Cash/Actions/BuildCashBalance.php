@@ -4,6 +4,7 @@ namespace App\Modules\Cash\Actions;
 
 use App\Modules\Cash\Models\CashExpense;
 use App\Modules\Cash\Models\CashOpeningBalance;
+use App\Modules\Cash\Models\CashTransfer;
 use App\Modules\Fees\Models\Payment;
 
 /**
@@ -30,20 +31,27 @@ class BuildCashBalance
             ->whereNotNull('confirmed_at')
             ->whereNull('voided_at');
 
+        // Money moved between the bank and the safe: the statement already moved it in the bank, so
+        // here it only enters or leaves the cash figure. A transfer is never an income or an expense.
+        $transfers = CashTransfer::query()->whereNull('voided_at');
+
         $feeCents = (int) (clone $active)->sum('amount_cents');
         $expenseCents = (int) (clone $confirmed)->sum('amount_cents');
+        $transferCents = (int) (clone $transfers)->get()->sum(fn (CashTransfer $transfer): int => $transfer->signedCents());
         // Read once: the caller renders this very row, so the figure and the display can never disagree.
         $opening = CashOpeningBalance::query()->with('user')->first();
         $openingCents = $opening === null ? null : $opening->amount();
 
         return [
-            'cashCents' => $feeCents + (int) $openingCents - $expenseCents,
+            'cashCents' => $feeCents + (int) $openingCents - $expenseCents + $transferCents,
             'cashFeeCents' => $feeCents,
             'cashPayments' => (clone $active)->count(),
             'openingCents' => $openingCents,
             'opening' => $opening,
             'expenseCents' => $expenseCents,
             'expenseCount' => (clone $confirmed)->count(),
+            'transferCents' => $transferCents,
+            'transferCount' => (clone $transfers)->count(),
         ];
     }
 }

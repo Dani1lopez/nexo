@@ -21,7 +21,7 @@ test('tesorería clasifica un cargo como gasto, la junta lo consulta y se anula 
   await expect(movement).toContainText('-25,50 €');
 
   await movement.getByLabel('Categoría').selectOption('material');
-  await movement.getByLabel('Descripción').fill('Material de taller');
+  await movement.getByLabel('Descripción del gasto').fill('Material de taller');
   await movement.getByRole('button', { name: 'Clasificar el cargo' }).click();
   await expect(page.getByRole('status')).toHaveText('Cargo clasificado como gasto.');
   await expect(movement).toContainText('Clasificado como gasto · Material · 25,50 €');
