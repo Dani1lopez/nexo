@@ -1,12 +1,3 @@
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="dark light">
-    <title>{{ $__env->hasSection('full_title') ? $__env->yieldContent('full_title') : $__env->yieldContent('title').' — Nexo' }}</title>
-    @vite(['resources/css/app.css', 'resources/js/theme.js'])
-</head>
 @php
     // The menu is defined once: the section accent (body class) and the current item both come from it.
     $menu = [
@@ -21,8 +12,23 @@
     $public = $__env->hasSection('public');
     $signedIn = ! $public && auth()->check();
     $narrow = $__env->hasSection('narrow');
+    // The landing (issue #60) is dark only, ships its own scene entry and never the theme toggle.
+    $landing = $__env->hasSection('landing');
+    $vite = array_merge(
+        ['resources/css/app.css'],
+        $landing ? ['resources/css/landing.css', 'resources/js/landing.js'] : ['resources/js/theme.js'],
+    );
 @endphp
-<body class="flex min-h-screen flex-col line-{{ $line }}">
+<!doctype html>
+<html lang="es"@if ($landing) data-theme="dark"@endif>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="{{ $landing ? 'dark' : 'dark light' }}">
+    <title>{{ $__env->hasSection('full_title') ? $__env->yieldContent('full_title') : $__env->yieldContent('title').' — Nexo' }}</title>
+    @vite($vite)
+</head>
+<body class="flex min-h-screen flex-col line-{{ $line }}{{ $landing ? ' landing-page' : '' }}">
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
     <header class="topbar">
         <div class="frame topbar-inner">
@@ -30,9 +36,12 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="12" r="3.25" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="12" r="3.25" fill="currentColor"/><path d="M9.25 12h5.5" stroke="currentColor" stroke-width="2"/></svg>
                 Nexo
             </a>
-            @if ($public)
-                <button type="button" class="btn-secondary btn-sm theme-toggle ml-auto" id="theme-toggle" hidden>Modo claro</button>
-                <a class="btn btn-secondary btn-sm" href="/login">Acceder</a>
+            @if ($landing)
+                {{-- The scene is the only thing that can stop, so it is the only control next to the brand. --}}
+                <button type="button" class="lp-pause" id="landing-pause" aria-pressed="false" aria-label="Pausar la animación de la escena" hidden>
+                    <span class="lp-pause-dot" aria-hidden="true"></span><span class="txt">Pausar escena</span>
+                </button>
+                <p class="lp-status"><strong>Demo 2026</strong><span>Datos ficticios</span></p>
             @elseif ($signedIn)
                 <div class="who">
                     <button type="button" class="btn-secondary btn-sm theme-toggle" id="theme-toggle" hidden>Modo claro</button>
@@ -51,7 +60,7 @@
                 @endforeach
             </nav>
     @endif
-    <main id="contenido" tabindex="-1" class="{{ $signedIn ? 'content' : 'guest' }}{{ $narrow ? ($signedIn ? ' content-narrow' : ' guest-narrow') : '' }}">
+    <main id="contenido" tabindex="-1" class="{{ $landing ? 'landing-main' : ($signedIn ? 'content' : 'guest') }}{{ $narrow ? ($signedIn ? ' content-narrow' : ' guest-narrow') : '' }}">
         @if (! $public && session('status'))
             <p class="alert alert-ok status" role="status">{{ session('status') }}</p>
         @endif

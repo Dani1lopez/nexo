@@ -9,11 +9,13 @@ test.describe('base visual', () => {
   test.use({ colorScheme: 'dark' });
 
   test('la hoja de estilos compilada se carga en la página pública y en la de acceso', async ({ page }) => {
-    for (const path of ['/', '/login']) {
-      await page.goto(path);
-      await expect(page.locator('link[rel="stylesheet"]')).toHaveCount(1);
-      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), path).toBe(canvas);
-    }
+    // Issue #60: the landing is dark only and adds its own sheet on top of the shared one.
+    await page.goto('/');
+    await expect(page.locator('link[rel="stylesheet"]')).toHaveCount(2);
+
+    await page.goto('/login');
+    await expect(page.locator('link[rel="stylesheet"]')).toHaveCount(1);
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(canvas);
   });
 
   test('el teclado llega primero al enlace de saltar al contenido, que mueve el foco', async ({ page }) => {
@@ -118,7 +120,9 @@ test.describe('modo claro', () => {
     test.use({ colorScheme: 'light' });
 
     test('sigue la preferencia clara del sistema', async ({ page }) => {
-      await page.goto('/');
+      // The landing is dark only (issue #60); the light theme lives on the application shell.
+      await logIn(page, 'board');
+      await page.goto('/dashboard');
       expect(await background(page)).toBe(light);
     });
   });
@@ -127,7 +131,8 @@ test.describe('modo claro', () => {
     test.use({ colorScheme: 'dark' });
 
     test('el botón cambia de tema, lo recuerda al recargar y se puede revertir', async ({ page }) => {
-      await page.goto('/');
+      await logIn(page, 'treasury');
+      await page.goto('/dashboard');
       expect(await background(page)).toBe(dark);
 
       await page.getByRole('button', { name: 'Modo claro' }).click();
