@@ -313,6 +313,48 @@ class CashExpenseTest extends AuthTestCase
         $this->assertSame('Material del taller de abril', $row->concept);
     }
 
+    /** Rule 12: the fingerprint encodes field boundaries unambiguously, so crafted details never collide (R1-001, R3-001). */
+    public function test_crafted_details_that_serialize_the_same_are_still_rejected(): void
+    {
+        $first = $this->expenseInput([
+            'has_receipt' => null,
+            'concept' => 'Material',
+            'reason' => '0|Ticket perdido',
+        ]);
+        $this->actingAs($this->treasury())->post('/caja/gastos', $first)->assertRedirect('/caja');
+
+        // A different submission that used to serialize to the very same string.
+        $this->actingAs($this->treasury())
+            ->post('/caja/gastos', [...$first, 'concept' => 'Material|0', 'reason' => 'Ticket perdido'])
+            ->assertSessionHasErrors(['submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.']);
+
+        $row = CashExpense::query()->firstOrFail();
+        $this->assertSame('Material', $row->concept);
+        $this->assertSame('0|Ticket perdido', $row->reason);
+        $this->assertSame(1, CashExpense::query()->count());
+    }
+
+    /** Rule 13: a failed edit keeps the treasurer's unchecked receipt box unchecked (R4-001). */
+    public function test_a_failed_edit_does_not_silently_recheck_the_receipt_box(): void
+    {
+        $expense = $this->draft(['has_receipt' => '1']);
+
+        // Unchecking the receipt without a reason is refused.
+        $response = $this->actingAs($this->treasury())
+            ->put("/caja/gastos/{$expense->id}", $this->expenseInput([
+                'has_receipt' => null,
+                'reason' => null,
+                'submission_key' => null,
+            ]));
+        $response->assertSessionHasErrors(['reason']);
+
+        // The form shown back keeps the treasurer's choice: the box stays unchecked.
+        $page = $this->actingAs($this->treasury())->get("/caja/gastos/{$expense->id}/edit");
+        $page->assertOk();
+        $this->assertStringContainsString('name="has_receipt" value="0"', $page->getContent());
+        $this->assertStringNotContainsString('checked', $page->getContent());
+    }
+
     /** Rule 10: a stale edit loaded before a confirmation can never rewrite the confirmed row (R1-001, R3-001, R4-001). */
     public function test_a_stale_edit_cannot_change_a_confirmed_expense(): void
     {

@@ -61,12 +61,14 @@ class CashExpense extends Model
         bool $hasReceipt,
         ?string $reason,
     ): string {
-        return hash('sha256', implode('|', [
+        // JSON keeps every field boundary unambiguous, so no valid concept or reason can be
+        // crafted to collide with another submission's fingerprint.
+        return hash('sha256', (string) json_encode([
             $amountCents,
             $spentOn,
             $category,
             $concept,
-            $hasReceipt ? '1' : '0',
+            $hasReceipt,
             trim((string) $reason),
         ]));
     }

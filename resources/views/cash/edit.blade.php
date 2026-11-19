@@ -32,6 +32,9 @@
         <label for="concept">Concepto</label>
         <input id="concept" name="concept" type="text" maxlength="255" autocomplete="off" value="{{ old('concept', $expense->concept) }}" required>
         <label class="check">
+            {{-- The hidden false value is submitted when the box is unchecked, so a validation --}}
+            {{-- retry keeps the treasurer's choice instead of falling back to the stored state. --}}
+            <input type="hidden" name="has_receipt" value="0">
             <input type="checkbox" name="has_receipt" value="1" @checked(old('has_receipt', $expense->has_receipt))>
             Tengo el justificante
         </label>
