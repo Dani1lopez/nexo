@@ -349,6 +349,20 @@ class CashExpenseTest extends AuthTestCase
         // The very same submission is still a harmless retry, not a changed-data rejection.
         $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
         $this->assertSame(1, CashExpense::query()->count());
+
+        // Crafted details that collide in the legacy format are never accepted for a legacy row
+        // (R1-001 of the third pass): the compat path only trusts an exact match with the row.
+        $expense->forceFill([
+            'submission_fingerprint' => CashExpense::legacySubmissionFingerprint(2500, '2026-04-10', 'material', 'Material | abril|1', false, 'Ticket perdido'),
+        ])->save();
+
+        $this->actingAs($this->treasury())
+            ->post('/caja/gastos', [...$input, 'has_receipt' => null, 'concept' => 'Material | abril|1', 'reason' => 'Ticket perdido'])
+            ->assertSessionHasErrors(['submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.']);
+
+        $row = CashExpense::query()->firstOrFail();
+        $this->assertSame('Material para el taller', $row->concept);
+        $this->assertSame(1, CashExpense::query()->count());
     }
 
     /** Rule 13: a failed edit keeps the treasurer's unchecked receipt box unchecked (R4-001). */

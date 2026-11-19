@@ -44,7 +44,7 @@ class RegisterCashExpense
         // retry: changed details mean the page is stale, so they are refused instead of discarded.
         $existing = CashExpense::query()->where('submission_key', $submissionKey)->first();
         if ($existing !== null) {
-            return $this->resolve($existing, $fingerprint, $legacy);
+            return $this->resolve($existing, $fingerprint, $legacy, $amountCents, $spentOn, $category, $concept, $hasReceipt, $reason);
         }
 
         try {
@@ -67,27 +67,51 @@ class RegisterCashExpense
                 throw $e;
             }
 
-            return $this->resolve($winner, $fingerprint, $legacy);
+            return $this->resolve($winner, $fingerprint, $legacy, $amountCents, $spentOn, $category, $concept, $hasReceipt, $reason);
         }
     }
 
     /**
      * @throws ValidationException
      */
-    private function resolve(CashExpense $existing, string $fingerprint, string $legacy): CashExpense
-    {
+    private function resolve(
+        CashExpense $existing,
+        string $fingerprint,
+        string $legacy,
+        int $amountCents,
+        string $spentOn,
+        string $category,
+        string $concept,
+        bool $hasReceipt,
+        ?string $reason,
+    ): CashExpense {
         // Rows without a fingerprint predate the column; they keep the original harmless behaviour.
-        // Rows written before the JSON encoding still hold the delimiter-based fingerprint, so the
-        // submitted payload is accepted when it matches the original in either format.
-        if ($existing->submission_fingerprint !== null
-            && ! hash_equals((string) $existing->submission_fingerprint, $fingerprint)
-            && ! hash_equals((string) $existing->submission_fingerprint, $legacy)) {
-            throw ValidationException::withMessages([
-                'submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.',
-            ]);
+        if ($existing->submission_fingerprint === null) {
+            return $existing;
         }
 
-        return $existing;
+        if (hash_equals((string) $existing->submission_fingerprint, $fingerprint)) {
+            return $existing;
+        }
+
+        // Rows written before the JSON encoding still hold the delimiter-based fingerprint, and that
+        // format can be made to collide, so the legacy path only trusts a submission that also
+        // matches the row exactly: any change asks for a fresh form instead of risking a silent
+        // discard. An edited legacy row can no longer be verified and rejects its replay the same
+        // safe way.
+        if ($existing->amount_cents === $amountCents
+            && $existing->spent_on->toDateString() === $spentOn
+            && $existing->category === $category
+            && $existing->concept === $concept
+            && $existing->has_receipt === $hasReceipt
+            && $existing->reason === ($reason === null || trim($reason) === '' ? null : trim($reason))
+            && hash_equals((string) $existing->submission_fingerprint, $legacy)) {
+            return $existing;
+        }
+
+        throw ValidationException::withMessages([
+            'submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.',
+        ]);
     }
 
     private function isEmpty(?string $reason): bool
