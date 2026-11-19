@@ -1,4 +1,4 @@
-// Portada · escena 3D (design/landing/04-viaje-de-camara.html, issue #60).
+// Portada · escena 3D (design/landing/07-cristal-y-camino.html, issue #60).
 //
 // Three.js se importa aquí y solo aquí: este archivo es la entrada de Vite de la portada y
 // `resources/views/home.blade.php` es la única vista que la incluye. El resto de la
@@ -14,9 +14,9 @@
 //   un trozo del mismo origen.
 // - Sin GSAP ni Lenis: scroll nativo y este bucle de requestAnimationFrame.
 //
-// El resplandor (bloom) del artboard queda fuera: exigía un pase de postproceso que no
-// cabe en el presupuesto de peso de la portada. La luz se resuelve con partículas aditivas
-// y el halo de CSS.
+// La escena es un cristal de cuatro facetas (una por etapa) que se une, fluye, se reparte y
+// se apila con el scroll, y que responde al cursor. Presupuesto: 4 octaedros, 360 partículas,
+// una sola pasada de render, sin postproceso, sin sombras. La luz la pone el halo de CSS.
 
 const body = document.body;
 const canvas = document.getElementById('lp-canvas');
@@ -177,17 +177,30 @@ function showFallback() {
     revealAll();
 }
 
-/** The thread the camera follows: one curve through the four doors. */
-function threadAt(three, z) {
-    return new three.Vector3(
-        Math.sin(z * 0.05) * 2.6 + Math.sin(z * 0.021 + 1.2) * 1.2,
-        Math.cos(z * 0.038) * 1.5 + Math.sin(z * 0.083 + 0.4) * 0.5,
-        z,
-    );
-}
+/**
+ * Where each of the four facets sits at each stage: [x, y, z, scaleX, scaleY, scaleZ].
+ * Stage 0 is one crystal (the fee), 1 a stream (the statement), 2 a split (one deposit, two
+ * fees) and 3 a tower (the balances). The scene interpolates between consecutive stages.
+ */
+const LAYOUTS = [
+    [[-0.55, 0.35, 0, 0.9, 1.4, 0.9], [0.6, 0.3, 0.3, 0.8, 1.3, 0.8], [-0.3, -0.6, 0.4, 0.85, 1.3, 0.85], [0.5, -0.5, -0.3, 0.8, 1.2, 0.8]],
+    [[-2.6, 0.3, 0, 0.55, 0.55, 1.6], [-0.9, -0.3, 0.4, 0.55, 0.55, 1.6], [0.9, 0.3, -0.4, 0.55, 0.55, 1.6], [2.6, -0.3, 0, 0.55, 0.55, 1.6]],
+    [[0, 0.2, 0, 1.5, 1.4, 1.5], [-2.4, -0.9, 0.5, 0.7, 0.7, 0.7], [2.4, -0.9, 0.5, 0.7, 0.7, 0.7], [0, 2.6, -1, 0.3, 0.3, 0.3]],
+    [[-2.4, -0.9, 0, 0.6, 0.7, 0.6], [-0.8, -0.4, 0, 0.6, 1.2, 0.6], [0.8, 0.1, 0, 0.6, 1.5, 0.6], [2.4, 0.6, 0, 0.6, 2, 0.6]],
+];
 
-const DOORS = 4;
-const TRAVEL = 124;
+/**
+ * Where the crystal sits on wide screens, per stage, so it never covers the copy of the chapter
+ * it illustrates: the horizontal shift as a share of the visible width (negative is left) and
+ * the vertical lift in scene units. The chapters alternate which side holds the text card.
+ */
+const SHIFT = [0.1, 0.17, -0.17, 0.17];
+const LIFT = [1, -0.6, 0.8, -0.9];
+const FOV = 56.6;
+const DUST = 360;
+
+const smooth = (value) => value * value * (3 - 2 * value);
+const lerp = (from, to, amount) => from + (to - from) * amount;
 
 /** The resolved colour of a design token, so the scene never invents a palette. */
 function tokenColor(name) {
@@ -215,81 +228,66 @@ async function mountScene() {
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 400);
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
     const glow = glowTexture(THREE);
 
     const palette = {
         ink: new THREE.Color(tokenColor('--color-ink')),
-        cuota: new THREE.Color(tokenColor('--color-line-socios')),
-        extracto: new THREE.Color(tokenColor('--color-line-cuotas')),
-        conciliacion: new THREE.Color(tokenColor('--color-line-movimientos')),
-        saldos: new THREE.Color(tokenColor('--color-line-saldos')),
+        cuota: new THREE.Color(tokenColor('--thread-cuota')),
+        extracto: new THREE.Color(tokenColor('--thread-extracto')),
+        conciliacion: new THREE.Color(tokenColor('--thread-conciliacion')),
+        saldos: new THREE.Color(tokenColor('--thread-saldos')),
     };
 
-    const stageColor = (z) => {
-        if (z < TRAVEL * 0.25) return palette.cuota;
-        if (z < TRAVEL * 0.5) return palette.extracto;
-        if (z < TRAVEL * 0.75) return palette.conciliacion;
+    /* The crystal: four octahedra, each a translucent body plus its edges, in stage colours. */
+    const root = new THREE.Group();
+    scene.add(root);
+    const octahedron = new THREE.OctahedronGeometry(1, 0);
+    const edgeGeometry = new THREE.EdgesGeometry(octahedron);
+    const stageColors = [palette.cuota, palette.extracto, palette.conciliacion, palette.saldos];
+    const facets = stageColors.map((color) => {
+        const body = new THREE.Mesh(
+            octahedron,
+            new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.26,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+            }),
+        );
+        const edges = new THREE.LineSegments(
+            edgeGeometry,
+            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 }),
+        );
+        const group = new THREE.Group();
+        group.add(body, edges);
+        root.add(group);
 
-        return palette.saldos;
-    };
+        return { group, body, edges };
+    });
 
-    /* The thread: points and a line, both coloured per stage, additive so light adds up. */
-    const samples = 520;
-    const threadPositions = new Float32Array(samples * 3);
-    const threadColors = new Float32Array(samples * 3);
-    const thread = [];
-    for (let index = 0; index < samples; index += 1) {
-        const z = (index / (samples - 1)) * TRAVEL;
-        const point = threadAt(THREE, z);
-        thread.push(point);
-        threadPositions.set([point.x, point.y, point.z], index * 3);
-        const color = stageColor(z);
-        threadColors.set([color.r, color.g, color.b], index * 3);
-    }
-
+    /* The thread of light that joins the four facets, in order. */
+    const threadPositions = new Float32Array(facets.length * 3);
     const threadGeometry = new THREE.BufferGeometry();
     threadGeometry.setAttribute('position', new THREE.BufferAttribute(threadPositions, 3));
-    threadGeometry.setAttribute('color', new THREE.BufferAttribute(threadColors, 3));
-
-    const threadPoints = new THREE.Points(
-        threadGeometry,
-        new THREE.PointsMaterial({
-            size: 0.3,
-            map: glow,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.85,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            sizeAttenuation: true,
-        }),
-    );
-    scene.add(threadPoints);
-
     const threadLine = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(thread),
-        new THREE.LineBasicMaterial({
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.28,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-        }),
+        threadGeometry,
+        new THREE.LineBasicMaterial({ color: palette.ink, transparent: true, opacity: 0.35 }),
     );
-    scene.add(threadLine);
+    threadLine.frustumCulled = false;
+    root.add(threadLine);
 
-    /* Dust: the room the camera crosses. Each mote is dimmed by distance, which is our fog. */
-    const dustCount = 900;
-    const dustPositions = new Float32Array(dustCount * 3);
-    const dustColors = new Float32Array(dustCount * 3);
-    for (let index = 0; index < dustCount; index += 1) {
-        const x = (Math.random() - 0.5) * 34;
-        const y = (Math.random() - 0.5) * 22;
-        const z = Math.random() * (TRAVEL + 20);
-        dustPositions.set([x, y, z], index * 3);
-        const brightness = 0.3 + Math.random() * 0.6;
-        dustColors.set([brightness, brightness, brightness * 1.02], index * 3);
+    /* Dust: a fixed budget of motes in the stage colours. */
+    const dustPositions = new Float32Array(DUST * 3);
+    const dustColors = new Float32Array(DUST * 3);
+    for (let index = 0; index < DUST; index += 1) {
+        dustPositions.set(
+            [(Math.random() - 0.5) * 22, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 18],
+            index * 3,
+        );
+        const color = stageColors[index % 4];
+        dustColors.set([color.r, color.g, color.b], index * 3);
     }
 
     const dustGeometry = new THREE.BufferGeometry();
@@ -299,59 +297,18 @@ async function mountScene() {
     const dust = new THREE.Points(
         dustGeometry,
         new THREE.PointsMaterial({
-            size: 0.22,
+            size: 0.16,
             map: glow,
             vertexColors: true,
             transparent: true,
-            opacity: 0.75,
+            opacity: 0.7,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             sizeAttenuation: true,
         }),
     );
-    scene.add(dust);
+    root.add(dust);
 
-    /* Four doors, one per stage, hanging from the thread. */
-    const doors = [];
-    for (let index = 0; index < DOORS; index += 1) {
-        const z = ((index + 1) / DOORS) * TRAVEL - TRAVEL * 0.05;
-        const anchor = threadAt(THREE, z);
-        const color = stageColor(z);
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(3.4, 0.018, 6, 128),
-            new THREE.MeshBasicMaterial({
-                color,
-                transparent: true,
-                opacity: 0.5,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-            }),
-        );
-        ring.position.copy(anchor);
-        scene.add(ring);
-        doors.push(ring);
-    }
-
-    /* The spark: the money travelling the thread, in a slow loop. */
-    const spark = new THREE.Points(
-        new THREE.BufferGeometry().setAttribute(
-            'position',
-            new THREE.BufferAttribute(new Float32Array(3), 3),
-        ),
-        new THREE.PointsMaterial({
-            color: palette.ink,
-            size: 1.1,
-            map: glow,
-            transparent: true,
-            opacity: 0.95,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            sizeAttenuation: true,
-        }),
-    );
-    scene.add(spark);
-
-    const look = new THREE.Vector3();
     const pointer = { x: 0, y: 0 };
     let width = 0;
     let height = 0;
@@ -369,33 +326,44 @@ async function mountScene() {
         camera.updateProjectionMatrix();
     }
 
+    /** The camera only dollies in a little; the crystal does the travelling. */
     function placeCamera() {
-        const z = -8 + progress * (TRAVEL + 6);
-        const side = threadAt(THREE, z);
-        camera.position.set(
-            side.x * 0.55 + pointer.x * 1.4,
-            side.y * 0.5 + pointer.y * 0.9,
-            z,
-        );
-        const ahead = threadAt(THREE, z + 16);
-        look.set(ahead.x * 0.6, ahead.y * 0.55, ahead.z);
-        camera.lookAt(look);
+        camera.position.set(0, 0, 9 - progress * 1.4);
+        camera.lookAt(0, 0, 0);
     }
 
     function render() {
-        const sparkZ = (elapsed * 0.00006 * TRAVEL) % TRAVEL;
-        const sparkPoint = threadAt(THREE, sparkZ);
-        spark.geometry.attributes.position.setXYZ(0, sparkPoint.x, sparkPoint.y, sparkPoint.z);
-        spark.geometry.attributes.position.needsUpdate = true;
+        const stage = clamp(progress * (LAYOUTS.length - 1), 0, LAYOUTS.length - 1);
+        const from = Math.floor(stage);
+        const to = Math.min(LAYOUTS.length - 1, from + 1);
+        const blend = smooth(stage - from);
+        const spread = width < 720 ? 0.62 : 1;
 
-        // The active door breathes a little; the rest stay quiet.
-        const active = clamp(Math.floor(progress * DOORS), 0, DOORS - 1);
-        doors.forEach((ring, index) => {
-            ring.rotation.z = elapsed * 0.00006 * (index % 2 === 0 ? 1 : -1);
-            ring.material.opacity = index === active ? 0.72 : 0.34;
+        facets.forEach((facet, index) => {
+            const a = LAYOUTS[from][index];
+            const b = LAYOUTS[to][index];
+            const value = (slot) => lerp(a[slot], b[slot], blend);
+            facet.group.position.set(value(0) * spread, value(1) * spread, value(2));
+            facet.group.scale.set(value(3) * spread, value(4) * spread, value(5));
+            threadPositions.set(
+                [facet.group.position.x, facet.group.position.y, facet.group.position.z],
+                index * 3,
+            );
         });
+        threadGeometry.attributes.position.needsUpdate = true;
 
         placeCamera();
+
+        // Wide screens move the crystal into the free side of the current chapter.
+        const worldWidth = 2 * camera.position.z * Math.tan((FOV * Math.PI) / 360) * camera.aspect;
+        const wide = width > 900;
+        root.position.x = wide ? worldWidth * lerp(SHIFT[from], SHIFT[to], blend) : 0;
+        root.position.y = wide ? lerp(LIFT[from], LIFT[to], blend) : 0;
+
+        root.rotation.y = Math.sin(elapsed * 0.00035) * 0.4 + pointer.x * 0.55 + progress * 0.5;
+        root.rotation.x = 0.25 - pointer.y * 0.3;
+        dust.position.z = progress * 6;
+
         renderer.render(scene, camera);
     }
 
@@ -446,19 +414,11 @@ async function mountScene() {
      * collected: without this, a lost context or a motion switch leaks buffers and programs.
      */
     const disposables = {
-        geometries: [
-            threadGeometry,
-            threadLine.geometry,
-            dustGeometry,
-            spark.geometry,
-            ...doors.map((ring) => ring.geometry),
-        ],
+        geometries: [octahedron, edgeGeometry, threadGeometry, dustGeometry],
         materials: [
-            threadPoints.material,
             threadLine.material,
             dust.material,
-            spark.material,
-            ...doors.map((ring) => ring.material),
+            ...facets.flatMap((facet) => [facet.body.material, facet.edges.material]),
         ],
         textures: [glow],
     };

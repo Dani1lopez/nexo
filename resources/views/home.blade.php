@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-{{-- Issue #60: the public home page is the 3D landing of design/landing/04-viaje-de-camara.html.
+{{-- Issue #60: the public home page is the 3D landing of design/landing/07-cristal-y-camino.html.
      Dark only, one primary action, and the whole explanation lives in this HTML: the scene is
      progressive enhancement, never the only place where something is said. --}}
 @section('landing', true)

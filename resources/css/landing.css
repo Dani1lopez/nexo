@@ -36,8 +36,8 @@
     --stage-edge: color-mix(in srgb, var(--color-ink) 11%, transparent);
 
     /* Thread stops: the section accents, in the order the money travels. */
-    --thread-cuota: var(--color-line-socios);
-    --thread-extracto: var(--color-line-cuotas);
+    --thread-cuota: var(--color-line-cuotas);
+    --thread-extracto: var(--color-line-panel);
     --thread-conciliacion: var(--color-line-movimientos);
     --thread-saldos: var(--color-line-saldos);
 
