@@ -2,6 +2,7 @@
 
 namespace App\Modules\Dashboard\Actions;
 
+use App\Modules\Bank\Models\BankExpense;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Cash\Actions\BuildCashBalance;
@@ -34,6 +35,8 @@ class BuildBalances
      *     unreconciledCount: int,
      *     otherIncomeCents: int,
      *     otherIncomeCount: int,
+     *     bankExpenseCents: int,
+     *     bankExpenseCount: int,
      *     lastImportAt: ?Carbon,
      *     years: list<array{id: int, year: int, payableCents: int, paidCents: int, pendingCents: int, pendingDues: int}>,
      *     totalPendingCents: int,
@@ -49,6 +52,8 @@ class BuildBalances
         $unreconciledCount = 0;
         $otherIncomeCents = 0;
         $otherIncomeCount = 0;
+        $bankExpenseCents = 0;
+        $bankExpenseCount = 0;
 
         BankMovement::query()
             ->where('amount_cents', '>', 0)
@@ -75,6 +80,17 @@ class BuildBalances
                 }
             });
 
+        // Classified charges explain what the money was spent on. The statement already subtracted
+        // them, so this figure is informational and never enters the bank balance.
+        BankExpense::query()
+            ->whereNull('voided_at')
+            ->chunkById(self::CHUNK, function ($expenses) use (&$bankExpenseCents, &$bankExpenseCount): void {
+                foreach ($expenses as $expense) {
+                    $bankExpenseCount++;
+                    $bankExpenseCents += $expense->amount();
+                }
+            });
+
         $years = FeeYear::query()
             ->orderByDesc('year')
             ->get()
@@ -92,6 +108,8 @@ class BuildBalances
             'unreconciledCount' => $unreconciledCount,
             'otherIncomeCents' => $otherIncomeCents,
             'otherIncomeCount' => $otherIncomeCount,
+            'bankExpenseCents' => $bankExpenseCents,
+            'bankExpenseCount' => $bankExpenseCount,
             'lastImportAt' => BankImport::query()->latest('id')->value('created_at'),
             ...$this->cashBalance->handle(),
             'years' => $years,
