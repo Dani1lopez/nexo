@@ -48,6 +48,30 @@ class CashExpense extends Model
     }
 
     /**
+     * Fingerprint of a registration payload as it was first submitted. The row is editable
+     * afterwards, so a repeated submit compares against this, never against the current values.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function submissionFingerprint(
+        int $amountCents,
+        string $spentOn,
+        string $category,
+        string $concept,
+        bool $hasReceipt,
+        ?string $reason,
+    ): string {
+        return hash('sha256', implode('|', [
+            $amountCents,
+            $spentOn,
+            $category,
+            $concept,
+            $hasReceipt ? '1' : '0',
+            trim((string) $reason),
+        ]));
+    }
+
+    /**
      * @return 'draft'|'confirmed'|'voided'
      */
     public function state(): string

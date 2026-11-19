@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Modules\Access\Models\User;
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Cash\Actions\BuildCashBalance;
 use App\Modules\Cash\Actions\UpdateCashExpense;
 use App\Modules\Cash\Models\CashExpense;
 use App\Modules\Fees\Actions\RegisterPayment;
@@ -287,6 +288,31 @@ class CashExpenseTest extends AuthTestCase
         $this->assertSame(1, CashExpense::query()->count());
     }
 
+    /** Rule 11 (REG-001): an exact replay still succeeds after the draft was legitimately edited. */
+    public function test_an_exact_replay_still_succeeds_after_the_draft_is_edited(): void
+    {
+        $input = $this->expenseInput(['amount' => '25,00']);
+        $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
+        $expense = CashExpense::query()->firstOrFail();
+
+        // A legitimate edit changes the draft; the original form key stays on the row.
+        $this->actingAs($this->treasury())
+            ->put("/caja/gastos/{$expense->id}", $this->expenseInput([
+                'amount' => '30,00',
+                'concept' => 'Material del taller de abril',
+                'submission_key' => null,
+            ]))
+            ->assertRedirect('/caja');
+
+        // Replaying the ORIGINAL registration is still the same submission, not a second draft.
+        $this->actingAs($this->treasury())->post('/caja/gastos', $input)->assertRedirect('/caja');
+
+        $this->assertSame(1, CashExpense::query()->count());
+        $row = CashExpense::query()->firstOrFail();
+        $this->assertSame(3000, $row->amount_cents);
+        $this->assertSame('Material del taller de abril', $row->concept);
+    }
+
     /** Rule 10: a stale edit loaded before a confirmation can never rewrite the confirmed row (R1-001, R3-001, R4-001). */
     public function test_a_stale_edit_cannot_change_a_confirmed_expense(): void
     {
@@ -315,5 +341,9 @@ class CashExpenseTest extends AuthTestCase
         $this->assertSame(2500, $row->amount_cents);
         $this->assertSame('Material para el taller', $row->concept);
         $this->assertNotNull($row->confirmed_at);
+
+        // The refusal also leaves the cash figure untouched (R3-001): the confirmed €25 is what
+        // the balance deducts, never the €30 the stale edit tried to write.
+        $this->assertSame(-2500, app(BuildCashBalance::class)->handle()['cashCents']);
     }
 }

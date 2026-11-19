@@ -34,11 +34,16 @@ class RegisterCashExpense
             ]);
         }
 
+        // The replay rule compares the ORIGINAL submission, which the row remembers through its
+        // fingerprint: a draft can be legitimately edited afterwards, and that never turns the
+        // original form into a stale one nor lets changed details pass as a retry.
+        $fingerprint = CashExpense::submissionFingerprint($amountCents, $spentOn, $category, $concept, $hasReceipt, $reason);
+
         // The same form submitted again is not a new draft, and only the identical submission is a
         // retry: changed details mean the page is stale, so they are refused instead of discarded.
         $existing = CashExpense::query()->where('submission_key', $submissionKey)->first();
         if ($existing !== null) {
-            return $this->resolve($existing, $amountCents, $spentOn, $category, $concept, $hasReceipt, $reason);
+            return $this->resolve($existing, $fingerprint);
         }
 
         try {
@@ -51,39 +56,28 @@ class RegisterCashExpense
                 'has_receipt' => $hasReceipt,
                 'reason' => $this->isEmpty($reason) ? null : trim((string) $reason),
                 'submission_key' => $submissionKey,
+                'submission_fingerprint' => $fingerprint,
             ]);
         } catch (UniqueConstraintViolationException $e) {
-            // Two simultaneous submissions of the same form; resolve to the winner with the payload rule.
+            // Two simultaneous submissions of the same form; resolve to the winner with the same rule.
             $winner = CashExpense::query()->where('submission_key', $submissionKey)->first();
 
             if ($winner === null) {
                 throw $e;
             }
 
-            return $this->resolve($winner, $amountCents, $spentOn, $category, $concept, $hasReceipt, $reason);
+            return $this->resolve($winner, $fingerprint);
         }
     }
 
     /**
      * @throws ValidationException
      */
-    private function resolve(
-        CashExpense $existing,
-        int $amountCents,
-        string $spentOn,
-        string $category,
-        string $concept,
-        bool $hasReceipt,
-        ?string $reason,
-    ): CashExpense {
-        $same = $existing->amount_cents === $amountCents
-            && $existing->spent_on->toDateString() === $spentOn
-            && $existing->category === $category
-            && $existing->concept === $concept
-            && $existing->has_receipt === $hasReceipt
-            && $existing->reason === ($this->isEmpty($reason) ? null : trim((string) $reason));
-
-        if (! $same) {
+    private function resolve(CashExpense $existing, string $fingerprint): CashExpense
+    {
+        // Rows without a fingerprint predate the column; they keep the original harmless behaviour.
+        if ($existing->submission_fingerprint !== null
+            && ! hash_equals((string) $existing->submission_fingerprint, $fingerprint)) {
             throw ValidationException::withMessages([
                 'submission_key' => 'El formulario ya se había enviado y sus datos han cambiado. Recarga la página y vuelve a intentarlo.',
             ]);
