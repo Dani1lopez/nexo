@@ -7,6 +7,7 @@ use App\Modules\Bank\Http\Controllers\BankImportController;
 use App\Modules\Bank\Http\Controllers\OtherIncomeController;
 use App\Modules\Bank\Http\Controllers\ReconcileController;
 use App\Modules\Cash\Http\Controllers\CashController;
+use App\Modules\Cash\Http\Controllers\TransferController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Dashboard\Http\Controllers\SummaryController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
@@ -79,6 +80,8 @@ Route::middleware(['auth', 'can:view-treasury'])->prefix('bank')->name('bank.')-
     Route::post('/imports', [BankImportController::class, 'store'])->middleware('can:edit-treasury')->name('imports.store');
     Route::post('/movements/{movement}/reconcile', [ReconcileController::class, 'store'])->middleware('can:edit-treasury')->name('movements.reconcile');
     Route::post('/movements/{movement}/expenses', [BankExpenseController::class, 'store'])->middleware('can:edit-treasury')->name('movements.expenses.store');
+    Route::post('/movements/{movement}/transfers', [TransferController::class, 'store'])->middleware('can:edit-treasury')->name('movements.transfers.store');
+    Route::post('/transfers/{transfer}/void', [TransferController::class, 'void'])->middleware('can:edit-treasury')->name('transfers.void');
     Route::post('/expenses/{expense}/void', [BankExpenseController::class, 'void'])->middleware('can:edit-treasury')->name('expenses.void');
     Route::post('/movements/{movement}/incomes', [OtherIncomeController::class, 'store'])->middleware('can:edit-treasury')->name('movements.incomes.store');
     Route::post('/incomes/{income}/void', [OtherIncomeController::class, 'void'])->middleware('can:edit-treasury')->name('incomes.void');

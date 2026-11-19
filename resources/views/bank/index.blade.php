@@ -89,7 +89,20 @@
                     @php($linkedPayments = $linked->get($movement->id, collect()))
                     @php($income = $incomes->get($movement->id))
                     @php($expense = $expenses->get($movement->id))
+                    @php($transfer = $transfers->get($movement->id, collect()->first()))
                     @php($left = $remaining[$movement->id] ?? 0)
+                    @if ($transfer)
+                        <p class="notice linked">Traspaso · {{ $transfer->directionLabel() }} · {{ \App\Modules\Fees\Support\Money::format($transfer->amount()) }}</p>
+                        <p class="notice">{{ $transfer->description }}</p>
+                        @can('edit-treasury')
+                            <form method="post" action="/bank/transfers/{{ $transfer->id }}/void" class="form-block reconcile">
+                                @csrf
+                                <label for="void-transfer-{{ $transfer->id }}" class="mt-0">Motivo de la anulación</label>
+                                <input id="void-transfer-{{ $transfer->id }}" name="reason" type="text" maxlength="500" required>
+                                <button type="submit" class="btn-danger btn-sm mt-3">Anular el traspaso</button>
+                            </form>
+                        @endcan
+                    @endif
                     @if ($expense)
                         <p class="notice linked">Clasificado como gasto · {{ $expense->categoryLabel() }} · {{ \App\Modules\Fees\Support\Money::format($expense->amount()) }}</p>
                         <p class="notice">{{ $expense->description }}</p>
@@ -125,7 +138,26 @@
                             </form>
                         @endcan
                     @endif
-                    @if ($movement->amount_cents < 0 && $expense === null && $linkedPayments->isEmpty())
+                    @if ($transfer === null && $expense === null && $income === null && $linkedPayments->isEmpty())
+                        @can('edit-treasury')
+                            <form method="post" action="/bank/movements/{{ $movement->id }}/transfers" class="form-block reconcile">
+                                @csrf
+                                <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+                                <input type="hidden" name="direction" value="{{ $movement->amount_cents < 0 ? 'to_cash' : 'to_bank' }}">
+                                <p class="notice">
+                                    @if ($movement->amount_cents < 0)
+                                        Si este cargo es dinero que sacaste del banco para la caja, márcalo como traspaso: la caja sube y el banco no cambia.
+                                    @else
+                                        Si este abono es efectivo que llevaste de la caja al banco, márcalo como traspaso: la caja baja y el banco no cambia.
+                                    @endif
+                                </p>
+                                <label for="transfer-description-{{ $movement->id }}">Descripción del traspaso</label>
+                                <input id="transfer-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
+                                <button type="submit" class="btn-secondary btn-sm mt-3">Marcar traspaso</button>
+                            </form>
+                        @endcan
+                    @endif
+                    @if ($movement->amount_cents < 0 && $expense === null && $transfer === null && $linkedPayments->isEmpty())
                         @can('edit-treasury')
                             <form method="post" action="/bank/movements/{{ $movement->id }}/expenses" class="form-block reconcile">
                                 @csrf
@@ -138,13 +170,13 @@
                                         <option value="{{ $value }}">{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                <label for="expense-description-{{ $movement->id }}">Descripción</label>
+                                <label for="expense-description-{{ $movement->id }}">Descripción del gasto</label>
                                 <input id="expense-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
                                 <button type="submit" class="btn-secondary btn-sm mt-3">Clasificar el cargo</button>
                             </form>
                         @endcan
                     @endif
-                    @if ($movement->amount_cents > 0 && $left > 0 && $income === null)
+                    @if ($movement->amount_cents > 0 && $left > 0 && $income === null && $transfer === null)
                         @can('edit-treasury')
                             @if ($pendingDues->isNotEmpty())
                                 <form method="post" action="/bank/movements/{{ $movement->id }}/reconcile" class="form-block reconcile">
@@ -173,7 +205,7 @@
                                             <option value="{{ $value }}">{{ $label }}</option>
                                         @endforeach
                                     </select>
-                                    <label for="income-description-{{ $movement->id }}">Descripción</label>
+                                    <label for="income-description-{{ $movement->id }}">Descripción del ingreso</label>
                                     <input id="income-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
                                     <button type="submit" class="btn-secondary btn-sm mt-3">Clasificar como otro ingreso</button>
                                 </form>
