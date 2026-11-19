@@ -6,6 +6,7 @@
         $abonos = $balances['unreconciledCount'];
         $movimientos = $balances['movements'];
         $pendientes = $balances['totalPendingDues'];
+        $pagosEfectivo = $balances['cashPayments'];
     @endphp
 
     <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
@@ -42,7 +43,7 @@
         </section>
         <p class="notice">
             El saldo es el del extracto importado: los abonos suman y los cargos restan.
-            La caja todavía no está incluida.
+            Los pagos en efectivo no cambian este saldo.
             @if ($balances['lastImportAt'])
                 Última importación el {{ $balances['lastImportAt']->format('d/m/Y') }}.
             @endif
@@ -56,6 +57,19 @@
             <a class="btn btn-secondary btn-sm" href="/bank">Ir a movimientos</a>
         </div>
     @endif
+
+    <p class="section-label">Caja</p>
+    <section class="kpis" aria-label="Caja">
+        <div>
+            <span class="k">Saldo en caja</span>
+            <span class="n hero">{{ $money($balances['cashCents']) }}</span>
+            <span class="sub">{{ $pagosEfectivo }} {{ $pagosEfectivo === 1 ? 'pago de cuota en efectivo' : 'pagos de cuotas en efectivo' }}</span>
+        </div>
+    </section>
+    <p class="notice">
+        La caja suma los pagos de cuotas en efectivo vigentes; un pago anulado no cuenta.
+        El banco y la caja se muestran por separado: un pago en efectivo no cambia el saldo bancario.
+    </p>
 
     <p class="section-label">Cuotas pendientes por ejercicio</p>
     @if ($balances['years'] !== [])
