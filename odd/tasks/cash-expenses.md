@@ -16,8 +16,8 @@ S5. «Después: clasificar los gastos bancarios a partir de los cargos ya import
 
 - T1 [S1–S5] Mapear pagos, saldos y permisos; exploración completada, sin commit de código.
 - T2 [S1–S5] Buscar duplicados y abrir la issue en GitHub; completada: #62 abierta y verificada; sin commit.
-- T3a [S1,S4] Derivar las cuotas en efectivo y mostrarlas en un saldo de caja separado; verificada en el commit que registra L5.
-- T3b [S1,S4] Registrar el saldo inicial con permisos y sumarlo al saldo de caja; pendiente, sin commit.
+- T3a [S1,S4] Derivar las cuotas en efectivo y mostrarlas en un saldo de caja separado; verificada, commit `6e6b7a1`.
+- T3b [S1,S4] Registrar el saldo inicial con permisos y sumarlo al saldo de caja; verificada, commit que registra L6.
 - T4 [S2–S4] Implementar gastos editables en borrador, confirmación y anulación con historial; cubrir permisos y saldos con pruebas; pendiente, sin commit.
 - T5 [S1–S5] Integrar prueba de navegador, documentación y verificación de entrega; pendiente, sin commit.
 
@@ -28,3 +28,4 @@ L2. «vale dale» en respuesta a la propuesta de S1–S5. Gastos bancarios y tra
 L3. El explorador ubicó `Payment`, `VoidPayment`, `BuildBalances`, `AccessGates` y las pruebas de saldos. El saldo de caja debe consultar pagos de cuota activos de método efectivo, no copiarlos a la tabla de gastos. El saldo bancario sigue saliendo del extracto importado. Separar los cambios por unidad de comportamiento y añadir una prueba real de navegador para el flujo de dinero y permisos.
 L4. «si dale» autorizó comprobar duplicados y abrir la issue pública en el repositorio indicado con la cuenta acordada. Búsqueda en abiertas y cerradas sin duplicado exacto; #62 abierta con `enhancement` y cuerpo comprobado por lectura posterior.
 L5. T3a: RED 6 fallos de 15 por ausencia de caja; GREEN 15/65 en SummaryTest y 241/1801 en PHPUnit completo; Pint, PHPStan y `git diff --check` limpios. RDD: riesgo medio, revisión no exigida por presupuesto. No se ejecutó e2e en este corte; corresponde al flujo completo. Caja incluye solo cuotas vigentes en efectivo; aún no incluye saldo inicial ni gastos.
+L6. T3b: RED 3 errores y 6 fallos; GREEN 9/67 en CashOpeningBalanceTest y 250/1868 en PHPUnit completo; Pint, PHPStan, migraciones (aplicación, reversión y reaplicación) y `git diff --check` limpios. RDD: riesgo medio, revisión no exigida. La base es una sola fila con índice único en SQLite; repetir el mismo importe es idempotente y un importe distinto se rechaza sin sobrescribir. Unidad de ~592 líneas, por encima del corte de 400: se informa sin recortes y la PR única de la issue mantiene la carga completa de revisión. La entrada de menú de /caja queda pendiente para T4, que incluye el diseño.

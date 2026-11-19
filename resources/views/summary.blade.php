@@ -65,9 +65,21 @@
             <span class="n hero">{{ $money($balances['cashCents']) }}</span>
             <span class="sub">{{ $pagosEfectivo }} {{ $pagosEfectivo === 1 ? 'pago de cuota en efectivo' : 'pagos de cuotas en efectivo' }}</span>
         </div>
+        <div>
+            <span class="k">Base inicial</span>
+            <span class="n">{{ $balances['openingCents'] === null ? 'Sin fijar' : $money($balances['openingCents']) }}</span>
+            <span class="sub">{{ $balances['openingCents'] === null ? 'Sin saldo inicial fijado' : 'se suma una sola vez' }}</span>
+        </div>
+        <div>
+            <span class="k">Cuotas en efectivo</span>
+            <span class="n">{{ $money($balances['cashFeeCents']) }}</span>
+            <span class="sub">{{ $pagosEfectivo }} {{ $pagosEfectivo === 1 ? 'pago de cuota en efectivo' : 'pagos de cuotas en efectivo' }}</span>
+        </div>
     </section>
     <p class="notice">
-        La caja suma los pagos de cuotas en efectivo vigentes; un pago anulado no cuenta.
+        La caja suma los pagos de cuotas en efectivo vigentes más la base inicial; un pago anulado no cuenta.
+        La base inicial se fija una sola vez en <a href="/caja">Caja</a> y no incluye los pagos ya registrados:
+        si los incluyera, contarían dos veces.
         El banco y la caja se muestran por separado: un pago en efectivo no cambia el saldo bancario.
     </p>
 

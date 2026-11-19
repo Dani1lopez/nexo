@@ -5,6 +5,7 @@ use App\Modules\Access\Http\Controllers\TwoFactorController;
 use App\Modules\Bank\Http\Controllers\BankImportController;
 use App\Modules\Bank\Http\Controllers\OtherIncomeController;
 use App\Modules\Bank\Http\Controllers\ReconcileController;
+use App\Modules\Cash\Http\Controllers\CashController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Dashboard\Http\Controllers\SummaryController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
@@ -26,6 +27,12 @@ Route::middleware('auth')->prefix('access/two-factor')->name('two-factor.')->gro
 });
 Route::get('/dashboard', [DashboardController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('dashboard');
 Route::get('/saldos', [SummaryController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('summary.show');
+
+Route::middleware(['auth', 'can:view-treasury'])->prefix('caja')->name('cash.')->group(function (): void {
+    Route::get('/', [CashController::class, 'index'])->name('index');
+    // The base is fixed once: the request checks the role again and the action never overwrites it.
+    Route::post('/saldo-inicial', [CashController::class, 'storeOpening'])->middleware('can:edit-treasury')->name('opening.store');
+});
 
 Route::middleware(['auth', 'can:view-treasury'])->prefix('members')->name('members.')->group(function (): void {
     Route::get('/', [MemberController::class, 'index'])->name('index');
