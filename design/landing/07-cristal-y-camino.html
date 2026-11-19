@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Nexo · dirección 07 · Cristal y camino</title>
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  /* DIRECCIÓN 07 — CRISTAL Y CAMINO (síntesis)
+     Mezcla: cámara continua con scroll (Lusion, 04) + escultura facetada que obedece
+     al cursor (Igloo, 06). Un único cristal de cuatro facetas, una por cuota, viaja por
+     cuatro estados: unido (cuota) → corriente (extracto) → reparto (conciliación) → torre (saldos).
+     Rendimiento: canvas 2D, 4 facetas + 360 partículas, DPR ≤ 1.5, un solo bucle rAF que se
+     detiene fuera de pantalla o con la pestaña oculta, sin sombras ni blur en el canvas.
+     En producción: Three.js con InstancedMesh y el mismo presupuesto. */
+  :root {
+    color-scheme: dark;
+    --font-display: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', ui-serif, Georgia, serif;
+    --font-text: 'Instrument Sans', 'Helvetica Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --color-canvas: #202634;
+    --color-ink: #eceff6;
+    --color-muted: #aab3c7;
+    --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-on-accent: #141925;
+    --line-panel: #8b9cff;
+    --line-saldos: #f9a8d4;
+    --line-socios: #2dd4bf;
+    --line-cuotas: #fbbf24;
+    --line-mov: #b79cff;
+    --stage: #0b0e16;
+    --veil: color-mix(in srgb, var(--stage) 86%, transparent);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { background: var(--stage); }
+  body { font-family: var(--font-text); color: var(--color-ink); background: var(--stage); line-height: 1.6; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--line-panel); outline-offset: 3px; border-radius: 4px; }
+  .skip { position: absolute; left: 12px; top: -48px; background: var(--color-ink); color: var(--color-on-accent); padding: 8px 14px; border-radius: 8px; z-index: 10; }
+  .skip:focus { top: 12px; }
+
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  .grain { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, transparent 35%, color-mix(in srgb, var(--stage) 92%, transparent) 100%); }
+
+  header.bar { position: fixed; z-index: 5; inset: 0 0 auto 0; display: flex; justify-content: space-between; align-items: center; padding: 22px clamp(20px, 4vw, 56px); }
+  .brand { display: inline-flex; gap: 10px; align-items: center; text-decoration: none; font-weight: 600; letter-spacing: -0.01em; }
+  .brand svg { width: 26px; height: 26px; }
+  .pill { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--color-muted); border: 1px solid var(--color-rule); padding: 6px 12px; border-radius: 999px; background: var(--veil); }
+
+  nav.dots { position: fixed; z-index: 5; right: clamp(14px, 2.4vw, 36px); top: 50%; transform: translateY(-50%); display: grid; gap: 14px; }
+  nav.dots a { display: block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--color-muted); transition: transform .2s var(--ease-out), background .2s; }
+  nav.dots a[aria-current="true"] { background: var(--c); border-color: var(--c); transform: scale(1.35); }
+  nav.dots span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+  main { position: relative; z-index: 2; }
+  section.ch { min-height: 100vh; min-height: 100svh; display: grid; align-items: end; padding: 0 clamp(20px, 6vw, 96px) clamp(48px, 10vh, 112px); }
+  section.ch.right { justify-items: end; }
+  .copy { max-width: 33rem; padding: 28px 30px; border-radius: 20px; background: var(--veil); border: 1px solid var(--color-rule); }
+  .eyebrow { font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; color: var(--c); display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .eyebrow b { font-weight: 600; font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0; }
+  h1, h2 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.04; font-variation-settings: "WONK" 1; }
+  h1 { font-size: clamp(2.3rem, 5vw, 4.4rem); }
+  #cuota .copy { max-width: 40rem; }
+  h2 { font-size: clamp(1.9rem, 4.4vw, 3.2rem); }
+  h1 em, h2 em { font-style: italic; color: var(--c); }
+  p.lead { margin-top: 16px; color: var(--color-muted); font-size: 1.0625rem; max-width: 34rem; }
+  .cta { display: inline-flex; margin-top: 24px; gap: 10px; align-items: center; background: var(--color-ink); color: var(--color-on-accent); text-decoration: none; font-weight: 600; padding: 14px 22px; border-radius: 999px; transition: transform .2s var(--ease-out); }
+  .cta:hover { transform: translateY(-2px); }
+  .facts { display: grid; grid-template-columns: repeat(3, auto); gap: 8px 28px; margin-top: 22px; justify-content: start; }
+  .facts dt { font-size: .6875rem; text-transform: uppercase; letter-spacing: .12em; color: var(--color-muted); }
+  .facts dd { font-size: 1.35rem; font-weight: 650; }
+  .hint { position: fixed; z-index: 4; left: 50%; bottom: 22px; transform: translateX(-50%); font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--color-muted); transition: opacity .3s; }
+
+  /* Reveal por capítulo: solo opacidad y transform */
+  .js .copy { opacity: 0; transform: translateY(24px); transition: opacity .6s var(--ease-out), transform .6s var(--ease-out); }
+  .js section.on .copy { opacity: 1; transform: none; }
+  @media (max-width: 720px) {
+    section.ch.right { justify-items: start; }
+    .copy { padding: 22px; }
+    nav.dots { display: none; }
+    .facts { grid-template-columns: repeat(2, auto); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .js .copy { opacity: 1; transform: none; transition: none; }
+    .cta { transition: none; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#cuota">Saltar al contenido</a>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="bar">
+  <a class="brand" href="#top" aria-label="Nexo, inicio">
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="8" cy="16" r="4" stroke="#8b9cff" stroke-width="2.4"/><path d="M12 16h14" stroke="#f9a8d4" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="16" r="2" fill="#fbbf24"/></svg>
+    Nexo
+  </a>
+  <span class="pill">Demo 2026 · datos ficticios</span>
+</header>
+
+<nav class="dots" aria-label="Capítulos">
+  <a href="#cuota" style="--c:var(--line-cuotas)" aria-current="true"><span>Cuota</span></a>
+  <a href="#extracto" style="--c:var(--line-panel)"><span>Extracto</span></a>
+  <a href="#conciliacion" style="--c:var(--line-mov)"><span>Conciliación</span></a>
+  <a href="#saldos" style="--c:var(--line-saldos)"><span>Saldos</span></a>
+</nav>
+
+<main id="top">
+  <section class="ch on" id="cuota" style="--c:var(--line-cuotas)" data-i="0">
+    <div class="copy">
+      <p class="eyebrow"><b>01</b> Tesorería para asociaciones</p>
+      <h1>Las cuentas <em>claras</em> para quien venga después.</h1>
+      <p class="lead">Socios, cuotas y movimientos del banco en un solo sitio. Del pago del socio al saldo conciliado, sin hojas sueltas.</p>
+      <dl class="facts"><div><dt>Socios</dt><dd>34</dd></div><div><dt>Exentos</dt><dd>2</dd></div><div><dt>Cuota anual</dt><dd>15,00 €</dd></div></dl>
+      <a class="cta" href="/login">Entrar a la demo <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+
+  <section class="ch right" id="extracto" style="--c:var(--line-panel)" data-i="1">
+    <div class="copy">
+      <p class="eyebrow"><b>02</b> Extracto</p>
+      <h2>El banco entra como <em>corriente</em>, no como hoja de cálculo.</h2>
+      <p class="lead">Subes el CSV del banco y cada movimiento aparece con su fecha, concepto e importe. Ana ingresa 10,00 €; Luis, 15,00 €. Nada se pierde por el camino.</p>
+    </div>
+  </section>
+
+  <section class="ch" id="conciliacion" style="--c:var(--line-mov)" data-i="2">
+    <div class="copy">
+      <p class="eyebrow"><b>03</b> Conciliación</p>
+      <h2>Un abono, <em>repartido</em> entre dos cuotas.</h2>
+      <p class="lead">Un único ingreso de 25,00 € cubre la cuota completa de Luis (15,00 €) y el pago parcial de Ana (10,00 €). Tú decides el reparto y Nexo guarda el rastro.</p>
+    </div>
+  </section>
+
+  <section class="ch right" id="saldos" style="--c:var(--line-saldos)" data-i="3">
+    <div class="copy">
+      <p class="eyebrow"><b>04</b> Saldos</p>
+      <h2>Quién debe qué, <em>de un vistazo</em>.</h2>
+      <p class="lead">Cobrado 300,00 €. Pendiente: lo que falta, socio por socio. Cada cifra se puede explicar hasta el movimiento del banco que la origina.</p>
+      <a class="cta" href="/login">Entrar a la demo <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+</main>
+<p class="hint" aria-hidden="true">Desplázate · mueve el cursor</p>
+
+<script>
+(() => {
+  const cvs = document.getElementById('stage'), ctx = cvs.getContext('2d', { alpha: false });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COLORS = ['#fbbf24', '#8b9cff', '#b79cff', '#f9a8d4'];
+  let W = 0, H = 0, dpr = 1;
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 1.5);
+    W = innerWidth; H = innerHeight;
+    cvs.width = W * dpr; cvs.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener('resize', () => { resize(); draw(); });
+  resize();
+
+  /* Estados del cristal: posición y escala de cada una de las 4 facetas */
+  const L = [
+    [[-.55,.35,0,.9,1.4,.9], [.6,.3,.3,.8,1.3,.8], [-.3,-.6,.4,.85,1.3,.85], [.5,-.5,-.3,.8,1.2,.8]],        // unido
+    [[-2.6,.3,0,.55,.55,1.6], [-.9,-.3,.4,.55,.55,1.6], [.9,.3,-.4,.55,.55,1.6], [2.6,-.3,0,.55,.55,1.6]], // corriente
+    [[0,.2,0,1.5,1.4,1.5], [-2.4,-.9,.5,.7,.7,.7], [2.4,-.9,.5,.7,.7,.7], [0,2.6,-1,.3,.3,.3]],      // reparto
+    [[-2.4,-.9,0,.6,.7,.6], [-.8,-.4,0,.6,1.2,.6], [.8,.1,0,.6,1.5,.6], [2.4,.6,0,.6,2,.6]]          // torre
+  ];
+  let curOx = 0;
+  const SIDE = [1, -1, 1, -1];
+  const wide = () => (W < 720 ? .62 : 1);
+
+  /* Octaedro alargado: 6 vértices, 8 caras */
+  const V = [[0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]];
+  const F = [[0,2,4],[0,4,3],[0,3,5],[0,5,2],[1,4,2],[1,3,4],[1,5,3],[1,2,5]];
+
+  /* Partículas: presupuesto fijo, sin objetos nuevos por fotograma */
+  const N = reduce ? 160 : 360;
+  const P = new Float32Array(N * 4);
+  for (let i = 0; i < N; i++) { P[i*4] = (Math.random()-.5)*22; P[i*4+1] = (Math.random()-.5)*12; P[i*4+2] = (Math.random()-.5)*18; P[i*4+3] = i % 4; }
+
+  let p = 0, tp = 0, mx = 0, my = 0, tmx = 0, tmy = 0, t0 = performance.now(), run = false, raf = 0, visible = true;
+  const ease = x => x * x * (3 - 2 * x);
+  function target() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    tp = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+  }
+  addEventListener('scroll', target, { passive: true });
+  addEventListener('pointermove', e => { tmx = e.clientX / W - .5; tmy = e.clientY / H - .5; }, { passive: true });
+
+  function project(x, y, z, cam) {
+    const f = 7 / (7 + z + cam);
+    const u = H / 7.5;
+    return [W/2 + curOx + x * f * u, H/2 - y * f * u, f];
+  }
+  function draw(time = 0) {
+    ctx.fillStyle = '#0b0e16'; ctx.fillRect(0, 0, W, H);
+    const c = Math.min(3, p * 3), i0 = Math.floor(c), i1 = Math.min(3, i0 + 1), k = ease(c - i0);
+    curOx = W > 900 ? W * .17 * (SIDE[i0] + (SIDE[i1] - SIDE[i0]) * k) : 0;
+    const cam = 2 - p * 1.4, ry = Math.sin(time * .00035) * .4 + mx * 1.1 + p * .5, rx = -.25 + my * .6;
+    const cy = Math.cos(ry), sy = Math.sin(ry), cx = Math.cos(rx), sx = Math.sin(rx);
+    const rot = (x, y, z) => { const a = x*cy + z*sy, b = -x*sy + z*cy; return [a, y*cx - b*sx, y*sx + b*cx]; };
+
+    /* Partículas agrupadas por color: 4 cambios de estilo por fotograma */
+    for (let col = 0; col < 4; col++) {
+      ctx.fillStyle = COLORS[col]; ctx.globalAlpha = .55;
+      for (let i = col; i < N; i += 4) {
+        const drift = Math.sin(time * .0003 + i) * .25;
+        const [a, b, d] = rot(P[i*4] + drift, P[i*4+1], P[i*4+2] - p * 6);
+        if (d + cam < -5) continue;
+        const [X, Y, f] = project(a, b, d, cam);
+        const s = Math.max(.8, 2.2 * f);
+        ctx.fillRect(X, Y, s, s);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    /* Brillo central: un solo degradado radial, barato */
+    const gx = W / 2 + curOx, gr = H * .55;
+    const gg = ctx.createRadialGradient(gx, H/2, 0, gx, H/2, gr);
+    gg.addColorStop(0, 'rgba(139,156,255,.20)'); gg.addColorStop(1, 'rgba(11,14,22,0)');
+    ctx.fillStyle = gg; ctx.fillRect(gx - gr, H/2 - gr, gr * 2, gr * 2);
+
+    /* Facetas: caras ordenadas por profundidad, relleno translúcido + arista fina */
+    const faces = [];
+    for (let s = 0; s < 4; s++) {
+      const A = L[i0][s], B = L[i1][s];
+      const g = j => A[j] + (B[j] - A[j]) * k;
+      const px = g(0) * wide(), py = g(1) * wide(), pz = g(2), kx = g(3) * wide(), ky = g(4) * wide(), kz = g(5);
+      const pts = V.map(v => { const r = rot(px + v[0]*kx, py + v[1]*ky, pz + v[2]*kz); return [r, project(r[0], r[1], r[2], cam)]; });
+      F.forEach((f, n) => {
+        const d = (pts[f[0]][0][2] + pts[f[1]][0][2] + pts[f[2]][0][2]) / 3;
+        faces.push({ d, s, n, a: pts[f[0]][1], b: pts[f[1]][1], c: pts[f[2]][1] });
+      });
+    }
+    /* Hilo de luz: une los centros de las facetas en orden */
+    ctx.beginPath();
+    for (let s = 0; s < 4; s++) {
+      const A = L[i0][s], B = L[i1][s];
+      const r0 = rot((A[0] + (B[0]-A[0])*k) * wide(), (A[1] + (B[1]-A[1])*k) * wide(), A[2] + (B[2]-A[2])*k);
+      const q = project(r0[0], r0[1], r0[2], cam);
+      s ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+    }
+    ctx.globalAlpha = .35; ctx.strokeStyle = '#eceff6'; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
+    faces.sort((u, v) => v.d - u.d);
+    ctx.lineWidth = 1; ctx.lineJoin = 'round';
+    for (const f of faces) {
+      const lit = .10 + (f.n % 3) * .07;
+      ctx.beginPath(); ctx.moveTo(f.a[0], f.a[1]); ctx.lineTo(f.b[0], f.b[1]); ctx.lineTo(f.c[0], f.c[1]); ctx.closePath();
+      ctx.globalAlpha = lit + .05; ctx.fillStyle = COLORS[f.s]; ctx.fill();
+      ctx.globalAlpha = .75; ctx.strokeStyle = COLORS[f.s]; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function frame(t) {
+    raf = 0;
+    p += (tp - p) * .075; mx += (tmx - mx) * .06; my += (tmy - my) * .06;
+    draw(t);
+    if (run && visible && !document.hidden) raf = requestAnimationFrame(frame);
+  }
+  function start() { if (!raf && !reduce) raf = requestAnimationFrame(frame); }
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) start(); }).observe(cvs);
+  document.addEventListener('visibilitychange', start);
+  run = true; target();
+  if (reduce) { p = tp; draw(3000); addEventListener('scroll', () => { p = tp; draw(3000); }, { passive: true }); } else start();
+
+  /* Capítulos: revelar el activo y marcar el punto de navegación */
+  const secs = [...document.querySelectorAll('section.ch')], dots = [...document.querySelectorAll('nav.dots a')];
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('on'); dots.forEach((d, i) => d.setAttribute('aria-current', String(i === +e.target.dataset.i))); }
+  }), { threshold: .45 });
+  secs.forEach(s => io.observe(s));
+})();
+</script>
+</body>
+</html>

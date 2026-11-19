@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Nexo · dirección 09 · La moneda</title>
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  /* DIRECCIÓN 09 — LA MONEDA
+     Referencia: Oryzo (un objeto, una idea por pantalla) + Lusion/Igloo (minimalismo, mucho aire).
+     Una sola moneda de 15,00 € gira con el scroll y cuenta la historia: entra (cuota), llega el
+     extracto (flujo), se reparte en dos (conciliación) y se apila en saldos. Texto mínimo, cifras
+     enormes. Rendimiento: canvas 2D, ≤ 3 monedas con borde apilado, DPR ≤ 1.5, bucle detenido
+     fuera de pantalla. En producción: Three.js con una malla de moneda instanciada. */
+  :root {
+    color-scheme: dark;
+    --font-display: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', ui-serif, Georgia, serif;
+    --font-text: 'Instrument Sans', 'Helvetica Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --color-ink: #eceff6; --color-muted: #aab3c7; --color-on-accent: #141925;
+    --color-rule: color-mix(in srgb, var(--color-ink) 10%, transparent);
+    --stage: #0b0e16; --veil: color-mix(in srgb, var(--stage) 80%, transparent);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: var(--font-text); color: var(--color-ink); background: var(--stage); line-height: 1.55; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid #8b9cff; outline-offset: 3px; border-radius: 6px; }
+  .skip { position: absolute; left: 12px; top: -48px; background: var(--color-ink); color: var(--color-on-accent); padding: 8px 14px; border-radius: 8px; z-index: 10; }
+  .skip:focus { top: 12px; }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  header { position: fixed; z-index: 5; inset: 0 0 auto 0; display: flex; justify-content: space-between; align-items: center; padding: 22px clamp(18px, 4vw, 56px); }
+  .brand { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; text-decoration: none; color: inherit; }
+  .brand svg { width: 26px; height: 26px; }
+  .pill { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--color-muted); border: 1px solid var(--color-rule); padding: 6px 12px; border-radius: 999px; background: var(--veil); }
+  .progress { position: fixed; z-index: 5; left: 0; top: 0; height: 2px; width: 100%; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, #fbbf24, #8b9cff, #b79cff, #f9a8d4); }
+  main { position: relative; z-index: 2; }
+  section { min-height: 100vh; min-height: 100svh; display: grid; align-content: end; padding: 0 clamp(20px, 6vw, 96px) clamp(40px, 9vh, 96px); }
+  .t { max-width: 36rem; }
+  .n { font-size: .75rem; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+  .big { font-family: var(--font-display); font-weight: 600; letter-spacing: -.045em; line-height: .92; font-size: clamp(3rem, 8vw, 6.6rem); margin-top: 10px; font-variation-settings: "WONK" 1; }
+  .big em { font-style: italic; color: var(--c); }
+  h1.big { font-size: clamp(2.8rem, 6.4vw, 5.6rem); }
+  .sub { margin-top: 18px; font-size: clamp(1.05rem, 1.6vw, 1.3rem); color: var(--color-muted); max-width: 28rem; }
+  .sub b { color: var(--color-ink); font-weight: 600; }
+  .cta { display: inline-flex; margin-top: 26px; gap: 10px; align-items: center; background: var(--color-ink); color: var(--color-on-accent); text-decoration: none; font-weight: 600; padding: 15px 24px; border-radius: 999px; transition: transform .2s var(--ease-out); }
+  .cta:hover { transform: translateY(-2px); }
+  .foot { margin-top: 22px; font-size: .8125rem; color: var(--color-muted); }
+  .js .t { opacity: 0; transform: translateY(28px); transition: opacity .7s var(--ease-out), transform .7s var(--ease-out); }
+  .js section.on .t { opacity: 1; transform: none; }
+  /* Contraste del texto pequeño sobre la escena: velo opaco bajo el bloque */
+  .t::before { content: ''; position: absolute; inset: -28px -32px -28px -32px; z-index: -1; border-radius: 28px; background: radial-gradient(ellipse at 30% 60%, var(--veil), transparent 78%); }
+  .t { position: relative; }
+  @media (max-width: 720px) { .t::before { background: var(--veil); inset: -20px -14px; } }
+  main { overflow-x: clip; }
+  @media (prefers-reduced-motion: reduce) { .js .t { opacity: 1; transform: none; transition: none; } .cta { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#cuota">Saltar al contenido</a>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<header>
+  <a class="brand" href="#cuota" aria-label="Nexo, inicio"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="8" cy="16" r="4" stroke="#8b9cff" stroke-width="2.4"/><path d="M12 16h14" stroke="#f9a8d4" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="16" r="2" fill="#fbbf24"/></svg>Nexo</a>
+  <span class="pill">Demo 2026 · datos ficticios</span>
+</header>
+<main>
+  <section id="cuota" class="on" style="--c:#fbbf24" data-i="0"><div class="t">
+    <p class="n">01 · Tesorería para asociaciones</p>
+    <h1 class="big">Una cuota. <em>15,00 €.</em></h1>
+    <p class="sub">Las cuentas claras para quien venga después. <b>34 socios</b>, 2 exentos, todo en un solo sitio.</p>
+    <a class="cta" href="/login">Entrar a la demo <span aria-hidden="true">→</span></a>
+  </div></section>
+  <section id="extracto" style="--c:#8b9cff" data-i="1"><div class="t">
+    <p class="n">02 · Extracto</p>
+    <h2 class="big">Llega del <em>banco</em>.</h2>
+    <p class="sub">Un CSV de <b>18 líneas</b> con fecha, concepto e importe. Sin conexión bancaria: solo un archivo que importas.</p>
+  </div></section>
+  <section id="reparto" style="--c:#b79cff" data-i="2"><div class="t">
+    <p class="n">03 · Conciliación</p>
+    <h2 class="big">Un abono, <em>dos</em> cuotas.</h2>
+    <p class="sub">María transfiere <b>30,00 €</b>. Tú lo repartes: 15,00 € a la cuota de 2025 y 15,00 € a la de 2026.</p>
+  </div></section>
+  <section id="saldos" style="--c:#f9a8d4" data-i="3"><div class="t">
+    <p class="n">04 · Saldos</p>
+    <h2 class="big">1.842,50 € <em>en banco</em>.</h2>
+    <p class="sub">Deuda 2026: <b>180,00 €</b>. Sin conciliar: <b>0,00 €</b>. La junta lee, la tesorería trabaja.</p>
+    <a class="cta" href="/login">Entrar a la demo <span aria-hidden="true">→</span></a>
+    <p class="foot">Demo en construcción · datos ficticios</p>
+  </div></section>
+</main>
+<script>
+(() => {
+  const cvs = document.getElementById('stage'), ctx = cvs.getContext('2d', { alpha: false });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, dpr;
+  function resize() { dpr = Math.min(devicePixelRatio || 1, 1.5); W = innerWidth; H = innerHeight; cvs.width = W * dpr; cvs.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw(); }
+  addEventListener('resize', resize);
+
+  /* Cada diseño: hasta 3 monedas {x, y, r (0 = oculta), pila}. x e y relativos al alto */
+  const LAY = [
+    [{ x: .74, y: -.08, r: 1, n: 1 }, { x: 0, y: 0, r: 0, n: 1 }, { x: 0, y: 0, r: 0, n: 1 }],
+    [{ x: .74, y: -.08, r: .95, n: 1 }, { x: 0, y: 0, r: 0, n: 1 }, { x: 0, y: 0, r: 0, n: 1 }],
+    [{ x: .64, y: -.08, r: .66, n: 1 }, { x: .86, y: -.08, r: .66, n: 1 }, { x: 0, y: 0, r: 0, n: 1 }],
+    [{ x: .66, y: .04, r: .55, n: 11 }, { x: .87, y: .04, r: .55, n: 2 }, { x: 0, y: 0, r: 0, n: 1 }]
+  ];
+  const COL = ['#fbbf24', '#8b9cff', '#b79cff', '#f9a8d4'];
+  let p = 0, tp = 0, t = 0, raf = 0, vis = true, ci = 0;
+  const ease = x => x * x * (3 - 2 * x), lerp = (a, b, k) => a + (b - a) * k;
+  function target() { const m = document.documentElement.scrollHeight - innerHeight; tp = m > 0 ? Math.min(1, Math.max(0, scrollY / m)) : 0; document.getElementById('progress').style.transform = `scaleX(${tp})`; }
+  addEventListener('scroll', target, { passive: true });
+
+  function coin(cx, cy, R, rot, n, hue) {
+    const sq = Math.abs(Math.cos(rot)), edge = R * .16, ed = edge * Math.abs(Math.sin(rot));
+    for (let k = 0; k < n; k++) {
+      const y = cy - k * edge * .55 * (n > 1 ? 1 : 0), sx = n > 1 ? 1 : sq, ry = n > 1 ? R * .34 : R;
+      const rx = n > 1 ? R : R * Math.max(.04, sq);
+      if (n > 1) { /* pila vista de lado: discos planos con borde */
+        ctx.fillStyle = k % 2 ? '#a16207' : '#854d0e'; ctx.beginPath(); ctx.ellipse(cx, y + edge * .3, R, ry, 0, 0, 6.283); ctx.fill();
+        ctx.fillStyle = hue; ctx.globalAlpha = .9; ctx.beginPath(); ctx.ellipse(cx, y, R, ry, 0, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = '#92400e'; ctx.beginPath(); ctx.ellipse(cx + ed, cy, rx, ry, 0, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#b45309'; ctx.beginPath(); ctx.ellipse(cx + ed * .5, cy, rx, ry, 0, 0, 6.283); ctx.fill();
+        const g = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R); g.addColorStop(0, '#fff3c4'); g.addColorStop(.5, hue); g.addColorStop(1, '#b45309');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.283); ctx.fill();
+        if (sq > .35) { ctx.strokeStyle = 'rgba(124,74,3,.55)'; ctx.lineWidth = Math.max(1, R * .03); ctx.beginPath(); ctx.ellipse(cx, cy, rx * .82, ry * .82, 0, 0, 6.283); ctx.stroke();
+          ctx.fillStyle = 'rgba(92,53,2,.85)'; ctx.font = `700 ${R * 1.05 * sq}px ui-serif, Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('€', cx, cy + R * .04); }
+      }
+    }
+  }
+  function draw() {
+    ctx.fillStyle = '#0b0e16'; ctx.fillRect(0, 0, W, H);
+    const c = Math.min(3, p * 3), i0 = Math.floor(c), i1 = Math.min(3, i0 + 1), k = ease(c - i0);
+    const wide = W > 900, base = H * .26 * (wide ? 1 : .8), hue = COL[Math.round(c)];
+    const gx = (wide ? W * lerp(LAY[i0][0].x, LAY[i1][0].x, k) : W * .5), gy = H / 2;
+    const gl = ctx.createRadialGradient(W * (wide ? .74 : .5), H * .42, 0, W * (wide ? .74 : .5), H * .42, H * .7);
+    gl.addColorStop(0, hue + '33'); gl.addColorStop(1, 'rgba(11,14,22,0)'); ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
+    /* Flujo del extracto: filas que cruzan la pantalla, solo en el capítulo 2 */
+    const fl = Math.max(0, 1 - Math.abs(c - 1) * 1.6);
+    if (fl > .01) { ctx.fillStyle = '#8b9cff'; for (let i = 0; i < 18; i++) { const y = H * (.12 + (i % 9) * .06) + (i > 8 ? 0 : 0), x = ((t * .06 * (1 + i % 3) + i * 140) % (W + 200)) - 100; ctx.globalAlpha = fl * .45; ctx.fillRect(x, y, 70 + (i % 4) * 22, 3); } ctx.globalAlpha = 1; }
+    for (let j = 0; j < 3; j++) {
+      const A = LAY[i0][j], B = LAY[i1][j], r = lerp(A.r, B.r, k);
+      if (r < .03) continue;
+      const n = Math.max(1, Math.round(lerp(A.n, B.n, k)));
+      const x = wide ? W * lerp(A.x || B.x, B.x || A.x, k) + (j === 0 && i0 === 2 && k < 1 ? 0 : 0) : W * (.5 + (j - .5 * ((r > .03 ? 1 : 0))) * 0);
+      const px = wide ? x : W * (j === 0 ? (i1 >= 2 ? .3 : .5) : .7), py = wide ? H / 2 + H * lerp(A.y, B.y, k) : H * .34 + (j ? H * .12 : 0);
+      const rot = reduce ? .3 : t * .0016 + j * 1.4 + p * 9;
+      coin(px, py, base * r, rot, n, COL[Math.min(3, i0 + (k > .5 ? 1 : 0))]);
+    }
+  }
+  function frame(ts) { raf = 0; t = ts; p += (tp - p) * .08; draw(); if (vis && !document.hidden) raf = requestAnimationFrame(frame); }
+  function start() { if (!raf && !reduce) raf = requestAnimationFrame(frame); }
+  new IntersectionObserver(([e]) => { vis = e.isIntersecting; if (vis) start(); }).observe(cvs);
+  document.addEventListener('visibilitychange', start);
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('on'); }), { threshold: .4 });
+  document.querySelectorAll('section').forEach(s => io.observe(s));
+  target(); resize();
+  if (reduce) addEventListener('scroll', () => { p = tp; draw(); }, { passive: true }); else start();
+})();
+</script>
+</body>
+</html>
