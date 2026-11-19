@@ -2,6 +2,7 @@
 
 namespace App\Modules\Bank\Models;
 
+use App\Modules\Cash\Models\CashTransfer;
 use App\Modules\Fees\Models\Payment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +51,12 @@ class BankMovement extends Model
     public function bankExpenses(): HasMany
     {
         return $this->hasMany(BankExpense::class);
+    }
+
+    /** Transfers between the bank and the safe recorded from this movement. At most one is active. */
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(CashTransfer::class);
     }
 
     protected function casts(): array

@@ -60,10 +60,13 @@ class BuildBalances
             ->with([
                 'payments' => fn ($query) => $query->whereNull('voided_at'),
                 'otherIncomes' => fn ($query) => $query->whereNull('voided_at'),
+                'transfers' => fn ($query) => $query->whereNull('voided_at'),
             ])
             ->chunkById(self::CHUNK, function ($credits) use (&$unreconciledCents, &$unreconciledCount, &$otherIncomeCents, &$otherIncomeCount): void {
                 foreach ($credits as $movement) {
-                    $remainder = max(0, $movement->amount_cents
+                    // A credit marked as a transfer already has its destination: it took cash to the
+                    // bank, so it is not waiting to be reconciled.
+                    $remainder = $movement->transfers->isNotEmpty() ? 0 : max(0, $movement->amount_cents
                         - (int) $movement->payments->sum('amount_cents')
                         - (int) $movement->otherIncomes->sum('amount_cents'));
 

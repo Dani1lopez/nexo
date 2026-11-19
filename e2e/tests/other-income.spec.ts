@@ -58,13 +58,13 @@ test('tesorería clasifica un abono como otro ingreso, la junta lo consulta y se
 
   // The description is mandatory: blanks are refused and nothing is classified.
   await movement.getByLabel('Categoría').selectOption('donations');
-  await movement.getByLabel('Descripción').fill('   ');
+  await movement.getByLabel('Descripción del ingreso').fill('   ');
   await movement.getByRole('button', { name: 'Clasificar como otro ingreso' }).click();
   await expect(page.getByRole('alert')).toContainText('Escribe una descripción para el ingreso.');
   await expect(movement).toContainText('Quedan 15,00 € por conciliar');
 
   await movement.getByLabel('Categoría').selectOption('donations');
-  await movement.getByLabel('Descripción').fill(description);
+  await movement.getByLabel('Descripción del ingreso').fill(description);
   await movement.getByRole('button', { name: 'Clasificar como otro ingreso' }).click();
   await expect(page.getByRole('status')).toHaveText('Abono clasificado como otro ingreso.');
   await expect(movement).toContainText('Clasificado como otro ingreso · Donaciones');
@@ -96,7 +96,7 @@ test('tesorería clasifica un abono como otro ingreso, la junta lo consulta y se
   await page.goto('/bank');
   const freeAgain = page.locator('article', { has: page.getByRole('heading', { name: concept }) });
   await freeAgain.getByLabel('Categoría').selectOption('activities');
-  await freeAgain.getByLabel('Descripción').fill(`Concierto benéfico ${stamp}`);
+  await freeAgain.getByLabel('Descripción del ingreso').fill(`Concierto benéfico ${stamp}`);
   await freeAgain.getByRole('button', { name: 'Clasificar como otro ingreso' }).click();
   await expect(page.getByRole('status')).toHaveText('Abono clasificado como otro ingreso.');
 
