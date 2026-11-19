@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Nexo · dirección 04 · El viaje de la cuota</title>
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  /* =========================================================================
+     DIRECCIÓN 04 — VIAJE DE CÁMARA CONTINUO
+     Lusion como referencia: un único escenario oscuro a pantalla completa por
+     el que la cámara avanza con el scroll. Un hilo de luz atraviesa cuatro
+     puertas (cuota, extracto, conciliación, saldos). La escena se simula con
+     canvas 2D proyectando partículas en perspectiva; en la implementación,
+     Three.js tomaría el relevo con una cámara real, un shader de partículas
+     y postproceso (bloom/vignette), GSAP orquestaría los tiempos de cada
+     capítulo y Lenis el scroll suave. Solo la portada carga esa librería.
+
+     TOKENS: se usan los valores oscuros de design/system.md (la dirección fija
+     escenario oscuro). Las variables --stage-* son la única extensión local:
+     mezclas del canvas con negro para el fondo de la escena, justificadas en
+     el informe.
+
+     TIPOGRAFÍA (propuesta para el sistema, autoalojada con @fontsource):
+     display «Fraunces» — serif variable con eje WONK: carácter de imprenta,
+     le da a las cifras y a los titulares una voz humana que no parece
+     plantilla; a 8rem aguanta el gesto cinematográfico.
+     texto «Instrument Sans» — grotesca neutra de aperturas abiertas y cifras
+     firmes para párrafos, etiquetas y los propios importes.
+     Aquí se simulan con pilas locales (el artboard no puede cargar fuentes).
+    ========================================================================= */
+  :root {
+    color-scheme: dark;
+    --font-display: 'Fraunces Variable', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', ui-serif, Georgia, serif;
+    --font-text: 'Instrument Sans', 'Instrument Sans Variable', 'Helvetica Neue', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --color-canvas: #202634;
+    --color-surface: #2a3142;
+    --color-raised: #333b50;
+    --color-ink: #eceff6;
+    --color-muted: #aab3c7;
+    --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-on-accent: #141925;
+    --color-line-panel: #8b9cff;
+    --color-line-saldos: #f9a8d4;
+    --color-line-socios: #2dd4bf;
+    --color-line-cuotas: #fbbf24;
+    --color-line-movimientos: #b79cff;
+    --color-danger: #f97066;
+    --color-warn: #fec84b;
+    --color-ok: #47cd89;
+    --color-info: #a4bcfd;
+    --radius-sm: 8px;
+    --radius-pill: 999px;
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 320ms;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    /* Escena: mezclas del canvas con negro (mismo recurso que --color-overlay). */
+    --stage-void: color-mix(in srgb, var(--color-canvas) 18%, #000);
+    --stage-deep: color-mix(in srgb, var(--color-canvas) 34%, #000);
+    --stage-edge: color-mix(in srgb, var(--color-ink) 11%, transparent);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-ink);
+    background: var(--stage-void);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: color-mix(in srgb, var(--color-line-panel) 45%, transparent); }
+  a { color: var(--color-ink); text-decoration-color: color-mix(in srgb, var(--color-ink) 35%, transparent); }
+  :focus-visible { outline: 2px solid var(--color-line-panel); outline-offset: 3px; border-radius: 2px; }
+  h1, h2, h3 { margin: 0; font-weight: 500; text-wrap: balance; }
+  p { margin: 0.5rem 0; max-width: 52ch; }
+  .wrap { width: 100%; max-width: 82rem; margin-inline: auto; padding-inline: clamp(1.25rem, 4vw, 3.5rem); }
+  .skip { position: fixed; top: 0; left: 1.25rem; z-index: 90; padding: 0.5rem 1rem;
+    color: var(--color-on-accent); background: var(--color-line-panel); text-decoration: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); transform: translateY(-140%); }
+  .skip:focus { transform: translateY(0); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.025em;
+    font-variation-settings: 'opsz' 120, 'SOFT' 30, 'WONK' 1; }
+  .label { font-family: var(--font-text); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .label .n { color: var(--color-ink); }
+
+  /* Escena */
+  .scene-canvas { display: none; position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%;
+    pointer-events: none; }
+  .js .scene-canvas { display: block; }
+  .scene-fallback { display: block; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    background:
+      radial-gradient(ellipse 70% 52% at 62% 46%, color-mix(in srgb, var(--color-line-panel) 26%, transparent), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 30% 70%, color-mix(in srgb, var(--color-line-movimientos) 18%, transparent), transparent 72%),
+      var(--stage-void); }
+  .js.no-canvas .scene-fallback, .no-canvas .scene-fallback { display: block; }
+  .js:not(.no-canvas) .scene-fallback { display: none; }
+  .scene-fallback::before { content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--color-ink) 7%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-ink) 7%, transparent) 1px, transparent 1px);
+    background-size: 8.3333% 100%, 100% 12.5%;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 55% 50%, #000 15%, transparent 78%);
+    mask-image: radial-gradient(ellipse 70% 60% at 55% 50%, #000 15%, transparent 78%); }
+  .fallback-line { position: absolute; left: -10%; right: -10%; top: 52%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-line-socios), var(--color-line-cuotas),
+      var(--color-line-movimientos), var(--color-line-saldos), transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--color-line-movimientos) 60%, transparent); }
+  .fallback-stops { position: absolute; inset: 52% 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    font-family: var(--font-text); font-size: 0.6875rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--color-muted); }
+  .fallback-stops span { display: grid; gap: 0.375rem; padding-left: 0.75rem; }
+  .fallback-stops span::after { content: ''; width: 0.5rem; height: 0.5rem; border-radius: var(--radius-pill); background: var(--c);
+    box-shadow: 0 0 12px var(--c); }
+
+  /* Retícula de la escena: un halo suave y la textura de la sala */
+  .grain { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.5;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 12%, transparent) 0.5px, transparent 0.6px);
+    background-size: 3px 3px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 85%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 85%); }
+
+  /* Atmósfera: gradientes de la escena bajo el canvas, para que el vacío no
+     sea un negro plano. Mezclas de tokens, sin degradados genéricos de color. */
+  .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 58% 46% at 62% 44%, color-mix(in srgb, var(--color-line-panel) 12%, transparent), transparent 68%),
+      radial-gradient(ellipse 42% 52% at 26% 74%, color-mix(in srgb, var(--color-line-movimientos) 9%, transparent), transparent 72%),
+      radial-gradient(ellipse 90% 60% at 50% 112%, color-mix(in srgb, var(--color-line-saldos) 7%, transparent), transparent 70%),
+      var(--stage-void); }
+
+  /* Cursor acompañante: nunca sustituye al nativo ni tapa el foco */
+  .cursor { position: fixed; left: 0; top: 0; z-index: 60; width: 1.5rem; height: 1.5rem;
+    margin: -0.75rem 0 0 -0.75rem; border-radius: var(--radius-pill); pointer-events: none;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 55%, transparent);
+    background: color-mix(in srgb, var(--color-line-panel) 14%, transparent);
+    transition: transform 140ms var(--ease-out), width 200ms var(--ease-out), height 200ms var(--ease-out),
+                margin 200ms var(--ease-out), opacity 300ms linear, border-color 200ms linear;
+    mix-blend-mode: screen; opacity: 0; }
+  @media (hover: hover) and (pointer: fine) { .cursor.on { opacity: 1; } }
+  .cursor.hot { width: 3rem; height: 3rem; margin: -1.5rem 0 0 -1.5rem; border-color: var(--color-line-panel);
+    background: color-mix(in srgb, var(--color-line-panel) 20%, transparent); }
+
+  /* Navegación mínima */
+  .nav { position: fixed; inset: 0 0 auto; z-index: 40; display: flex; align-items: center; gap: 1rem;
+    padding: 1.125rem clamp(1.25rem, 4vw, 3.5rem);
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--stage-void) 82%, transparent), transparent); }
+  .nav { transition: background-color 240ms var(--ease-out), box-shadow 240ms var(--ease-out); }
+  .nav.scrolled { background: color-mix(in srgb, var(--stage-void) 94%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+    box-shadow: 0 1px 0 var(--stage-edge); }
+  .brand { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-text);
+    font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.02em; color: var(--color-ink); text-decoration: none; }
+  .brand svg { color: var(--color-line-panel); }
+  .nav .status { margin-left: auto; text-align: right; color: var(--color-muted); }
+  .nav .status strong { display: block; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--color-ink); }
+  .nav .status span { font-size: 0.75rem; }
+  .pause { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+    min-height: 2.75rem; min-width: 2.75rem; padding: 0.3125rem 0.875rem;
+    font: inherit; font-size: 0.75rem; font-weight: 550; color: var(--color-ink); cursor: pointer;
+    background: color-mix(in srgb, var(--color-ink) 7%, transparent); border: 0; border-radius: var(--radius-pill);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ink) 12%, transparent);
+    transition: background-color var(--dur-fast) var(--ease-out); }
+  .pause:hover { background: color-mix(in srgb, var(--color-ink) 12%, transparent); }
+  .pause .dot { width: 0.375rem; height: 0.375rem; border-radius: var(--radius-pill); background: var(--color-line-socios); }
+
+  /* Portada */
+  .opening { position: relative; z-index: 2; min-height: 100svh; display: flex; align-items: flex-end;
+    padding: clamp(6rem, 9vh, 8.5rem) 0 clamp(3rem, 6vh, 4.5rem); }
+  .opening::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(96deg, color-mix(in srgb, var(--stage-void) 92%, transparent) 0%,
+      color-mix(in srgb, var(--stage-void) 58%, transparent) 46%, transparent 78%); }
+  .open-grid { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem; align-items: end; }
+  .open-main { grid-column: 1 / span 8; }
+  .open-main h1 { font-size: clamp(2.625rem, 6.9vw, 7rem); line-height: 0.94; letter-spacing: -0.035em;
+    margin: 0.875rem 0 0; max-width: 16ch; }
+  .open-main h1 em { font-style: italic; letter-spacing: -0.03em;
+    color: color-mix(in srgb, var(--color-ink) 55%, var(--color-line-panel)); }
+  .line { display: block; overflow: hidden; padding-bottom: 0.06em; }
+  .line > span { display: block; transform: translateY(112%); animation: lineIn 1000ms var(--ease-out) both; }
+  .line:nth-child(2) > span { animation-delay: 90ms; }
+  .line:nth-child(3) > span { animation-delay: 180ms; }
+  @keyframes lineIn { to { transform: translateY(0); } }
+  .open-lead { margin: 1.5rem 0 0; max-width: 34rem; font-size: clamp(1rem, 1.5vw, 1.125rem);
+    line-height: 1.6; color: var(--color-muted); }
+  .open-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; margin-top: 1.75rem; }
+  .btn { display: inline-flex; align-items: center; gap: 0.625rem; min-height: 3rem; padding: 0.75rem 1.5rem;
+    font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--color-on-accent); text-decoration: none;
+    background: var(--color-line-panel); border: 0; border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-line-panel) 60%, transparent),
+                0 10px 40px -12px color-mix(in srgb, var(--color-line-panel) 70%, transparent);
+    transition: transform 260ms var(--ease-out), background-color var(--dur-fast) var(--ease-out),
+                box-shadow 260ms var(--ease-out); }
+  .btn:hover { background: color-mix(in srgb, var(--color-line-panel) 86%, white); }
+  .btn:active { transform: scale(0.98); }
+  .btn .arrow { transition: transform 260ms var(--ease-out); }
+  .btn:hover .arrow { transform: translateX(4px); }
+  .open-note { font-size: 0.8125rem; color: var(--color-muted); }
+  .open-side { grid-column: 10 / span 3; display: grid; gap: 1.25rem; align-content: end; }
+  .open-side .route { display: grid; gap: 0.5rem; font-size: 0.75rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .route span { display: flex; align-items: center; gap: 0.5rem; }
+  .route i { width: 0.4375rem; height: 0.4375rem; border-radius: var(--radius-pill); background: var(--c);
+    box-shadow: 0 0 10px var(--c); }
+  .scroll-hint { display: flex; align-items: center; gap: 0.625rem; font-size: 0.75rem; color: var(--color-muted); }
+  .scroll-hint::after { content: ''; width: 3.5rem; height: 1px; background: linear-gradient(90deg, var(--color-ink), transparent);
+    animation: hint 2.4s var(--ease-out) infinite; transform-origin: left; }
+  @keyframes hint { 0% { transform: scaleX(0.2); opacity: 0.4; } 55% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+
+  /* Capítulos: la cámara avanza por el hilo */
+  .journey { position: relative; z-index: 2; }
+  .chapter { position: relative; min-height: 108svh; display: flex; align-items: center; overflow: clip; }
+  .chapter::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(92deg, color-mix(in srgb, var(--stage-void) 90%, transparent) 0%,
+      color-mix(in srgb, var(--stage-void) 58%, transparent) 44%, transparent 74%); }
+  .chapter.flip::before { background: linear-gradient(268deg, color-mix(in srgb, var(--stage-void) 90%, transparent) 0%,
+      color-mix(in srgb, var(--stage-void) 58%, transparent) 44%, transparent 74%); }
+  .chapter-ghost { position: absolute; z-index: 0; right: -0.04em; top: 6%; font-family: var(--font-display);
+    font-size: clamp(12rem, 34vw, 30rem); line-height: 0.8; font-weight: 500;
+    color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--color-ink) 13%, transparent);
+    -webkit-text-stroke-width: 1px; pointer-events: none; }
+  .chapter.flip .chapter-ghost { right: auto; left: -0.04em; }
+  .chapter-inner { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1.25rem 1rem; align-items: end; width: 100%; padding-block: 8rem 6rem; }
+  .chapter-head { grid-column: 1 / span 7; }
+  .chapter-body { grid-column: 9 / span 4; align-self: center; padding-top: 4rem; }
+  .chapter.flip .chapter-head { grid-column: 6 / span 7; }
+  .chapter.flip .chapter-body { grid-column: 1 / span 4; padding-top: 4rem; }
+  .chapter h2 { font-size: clamp(2.125rem, 5.4vw, 4.5rem); line-height: 0.98; letter-spacing: -0.03em;
+    margin-top: 1rem; max-width: 18ch; text-shadow: 0 2px 30px rgb(0 0 0 / 0.45); }
+  .chapter-body p { color: var(--color-muted); font-size: 0.9375rem; line-height: 1.65;
+    text-shadow: 0 1px 18px rgb(0 0 0 / 0.75); }
+  .chapter-meta { display: grid; gap: 0.5rem; margin: 1.25rem 0 0; padding: 0;
+    border-top: 1px solid var(--stage-edge); }
+  .chapter-meta div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+    padding-top: 0.5rem; border-top: 1px solid color-mix(in srgb, var(--color-ink) 6%, transparent); }
+  .chapter-meta div:first-child { border-top: 0; }
+  .chapter-meta dt { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); }
+  .chapter-meta dd { margin: 0; font-size: 0.9375rem; font-weight: 600; color: var(--color-ink); text-align: right; }
+  .chapter-meta dd.ok { color: var(--color-ok); }
+  .chapter-meta dd.warn { color: var(--color-warn); }
+  .chapter-meta dd.accent { color: var(--color-line-panel); }
+
+  /* HUD de la travesía */
+  .hud { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center;
+    gap: 1rem; padding: 0.75rem clamp(1.25rem, 4vw, 3.5rem) 1rem;
+    background: linear-gradient(to top, color-mix(in srgb, var(--stage-void) 78%, transparent), transparent);
+    pointer-events: none; }
+  .hud .cap { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-muted); }
+  .hud .cap b { color: var(--color-ink); }
+  .hud .bar { position: relative; flex: 1; height: 1px; background: color-mix(in srgb, var(--color-ink) 14%, transparent); }
+  .hud .bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--color-line-panel);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-line-panel) 80%, transparent); transition: width 160ms linear; }
+  .hud .bar b { position: absolute; top: -2px; width: 1px; height: 5px; background: color-mix(in srgb, var(--color-ink) 28%, transparent); }
+  .hud .to { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); }
+
+  /* Manifiesto editorial (la cámara se detiene) */
+  .manifesto { position: relative; z-index: 3; background: var(--stage-deep);
+    border-top: 1px solid var(--stage-edge); padding: clamp(4rem, 8vw, 7rem) 0; }
+  .manifesto-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem 1rem; }
+  .manifesto h2 { grid-column: 1 / span 5; font-size: clamp(2rem, 4.4vw, 3.75rem); line-height: 1.02;
+    letter-spacing: -0.03em; max-width: 12ch; }
+  .manifesto .say { grid-column: 7 / span 6; align-self: end; }
+  .manifesto .say p { color: var(--color-muted); font-size: 1.0625rem; max-width: 40ch; }
+  .manifesto .say p strong { color: var(--color-ink); font-weight: 600; }
+  .facts { grid-column: 7 / span 6; margin: 2rem 0 0; padding: 0; display: grid; gap: 0; }
+  .facts div { display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem; padding: 0.875rem 0;
+    border-top: 1px solid var(--stage-edge); }
+  .facts dt { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); padding-top: 0.2rem; }
+  .facts dd { margin: 0; font-size: 0.9375rem; }
+  .facts dd b { font-weight: 600; }
+  .caveats { grid-column: 1 / span 5; margin-top: 2.5rem; }
+  .caveats ul { margin: 0.75rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.625rem; }
+  .caveats li { display: grid; grid-template-columns: 1rem 1fr; gap: 0.625rem; color: var(--color-muted);
+    font-size: 0.875rem; line-height: 1.55; }
+  .caveats li::before { content: ''; width: 0.375rem; height: 0.375rem; margin-top: 0.55rem;
+    border-radius: var(--radius-pill); background: color-mix(in srgb, var(--color-ink) 40%, transparent); }
+  .caveats b { color: var(--color-ink); font-weight: 600; }
+
+  /* Cierre: la acción principal, en tamaño de titular */
+  .close { position: relative; z-index: 3; background: var(--stage-deep); padding: 0 0 clamp(3rem, 6vw, 5rem); }
+  .close-rule { height: 1px; background: var(--stage-edge); }
+  .close-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; padding-top: clamp(3rem, 6vw, 5rem); }
+  .close-copy { grid-column: 1 / span 5; }
+  .close-copy p { color: var(--color-muted); font-size: 0.9375rem; max-width: 30ch; }
+  .close-action { grid-column: 7 / span 6; align-self: center; }
+  .mega { display: inline-flex; align-items: flex-start; gap: 0.75rem; font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6.4vw, 5.5rem); line-height: 0.95; letter-spacing: -0.035em;
+    color: var(--color-ink); text-decoration: none; border-bottom: 2px solid var(--color-line-panel);
+    padding-bottom: 0.12em; transition: color 240ms var(--ease-out), border-color 240ms var(--ease-out); }
+  .mega:hover { color: var(--color-line-panel); }
+  .mega .arrow { font-family: var(--font-text); font-size: 0.5em; padding-top: 0.35em;
+    transition: transform 320ms var(--ease-out); }
+  .mega:hover .arrow { transform: translate(6px, -6px); }
+  .demo-note { margin-top: 1.25rem; font-size: 0.8125rem; color: var(--color-muted); }
+
+  .footer { position: relative; z-index: 3; background: var(--stage-deep); padding: 0 0 2.5rem;
+    color: var(--color-muted); font-size: 0.8125rem; }
+  .footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
+  .footer p { margin: 0; }
+
+  /* Revelado: el contenido existe sin JS; con JS entra por máscara */
+  .js .reveal { opacity: 0; transform: translateY(20px);
+    transition: opacity 760ms var(--ease-out), transform 760ms var(--ease-out); }
+  .js .reveal.in { opacity: 1; transform: none; }
+  .js .chapter h2.reveal { opacity: 1; transform: none; }
+  .js .chapter h2 .mask { display: block; overflow: hidden; }
+  .js .chapter h2 .mask > span { display: block; transform: translateY(110%);
+    transition: transform 900ms var(--ease-out); }
+  .js .chapter.in h2 .mask > span { transform: none; }
+
+  @media (max-width: 62rem) {
+    .open-main { grid-column: 1 / -1; }
+    .open-side { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between;
+      align-items: center; gap: 0.75rem 1.5rem; }
+    .open-side .route { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+    .chapter-head, .chapter.flip .chapter-head { grid-column: 1 / -1; }
+    .chapter-body, .chapter.flip .chapter-body { grid-column: 1 / -1; padding-top: 0; }
+    .manifesto h2, .manifesto .say, .facts, .caveats { grid-column: 1 / -1; }
+    .facts { margin-top: 2rem; }
+    .facts div { grid-template-columns: 7rem 1fr; }
+    .close-copy, .close-action { grid-column: 1 / -1; }
+    .hud .to { display: none; }
+    .chapter-ghost { font-size: clamp(10rem, 42vw, 20rem); opacity: 0.7; }
+  }
+  @media (max-width: 34rem) {
+    .opening { padding-top: 7rem; }
+    .nav .status { display: none; }
+    .pause .txt { display: none; }
+    .facts div { grid-template-columns: 1fr; gap: 0.25rem; }
+    .chapter-meta dd { text-align: left; }
+    .chapter-meta div { flex-direction: column; gap: 0.125rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .line > span { transform: none; }
+    .js .reveal { opacity: 1; transform: none; }
+    .js .chapter h2 .mask > span { transform: none; }
+    .cursor { display: none; }
+    .scroll-hint::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<div class="atmosphere" aria-hidden="true"></div>
+<div class="cursor" id="cursor" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<canvas class="scene-canvas" id="scene" aria-hidden="true"></canvas>
+<div class="scene-fallback" aria-hidden="true">
+  <div class="fallback-line"></div>
+  <div class="fallback-stops wrap">
+    <span style="--c:var(--color-line-socios)">01 · Cuota</span>
+    <span style="--c:var(--color-line-cuotas)">02 · Extracto</span>
+    <span style="--c:var(--color-line-movimientos)">03 · Conciliación</span>
+    <span style="--c:var(--color-line-saldos)">04 · Saldos</span>
+  </div>
+</div>
+
+<header class="nav">
+  <a class="brand" href="#inicio" aria-label="Nexo, volver al inicio">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="7" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="17" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M10.4 12h3.2" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    Nexo
+  </a>
+  <button class="pause" id="pause" type="button" aria-pressed="false" aria-label="Pausar la animación de la escena">
+    <span class="dot" aria-hidden="true"></span><span class="txt">Pausar escena</span>
+  </button>
+  <p class="status"><strong>Demo 2026</strong><span>Datos ficticios</span></p>
+</header>
+
+<main id="contenido">
+  <!-- ============ APERTURA: la cámara espera en el hilo ============ -->
+  <section class="opening" id="inicio" aria-labelledby="titular">
+    <div class="wrap open-grid">
+      <div class="open-main">
+        <p class="label">Tesorería para asociaciones</p>
+        <h1 id="titular" class="display">
+          <span class="line"><span>Las cuentas <em>claras</em></span></span>
+          <span class="line"><span>para quien venga</span></span>
+          <span class="line"><span>después.</span></span>
+        </h1>
+        <p class="open-lead">Socios, cuotas y movimientos del banco en un solo sitio. El recorrido de la cuota del socio al saldo conciliado, sin hojas sueltas.</p>
+        <div class="open-cta">
+          <a class="btn" href="/login">Entrar a la demo <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="open-note">Demo en construcción · datos ficticios</span>
+        </div>
+      </div>
+      <div class="open-side">
+        <div class="route" aria-label="Recorrido de la escena">
+          <span style="--c:var(--color-line-socios)"><i></i>Cuota</span>
+          <span style="--c:var(--color-line-cuotas)"><i></i>Extracto</span>
+          <span style="--c:var(--color-line-movimientos)"><i></i>Conciliación</span>
+          <span style="--c:var(--color-line-saldos)"><i></i>Saldos</span>
+        </div>
+        <p class="scroll-hint">Desplázate para viajar</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRAVESÍA: cuatro puertas, un solo escenario ============ -->
+  <div class="journey" id="journey">
+    <section class="chapter" data-cap="1" aria-labelledby="cap1">
+      <span class="chapter-ghost" aria-hidden="true">01</span>
+      <div class="wrap chapter-inner">
+        <div class="chapter-head">
+          <p class="label"><span class="n">Capítulo 01</span> · Cuota</p>
+          <h2 id="cap1" class="display reveal"><span class="mask"><span>Una cuota entra en la asociación.</span></span></h2>
+        </div>
+        <div class="chapter-body">
+          <p class="reveal">Ana paga 10,00 € porque se dio de alta en septiembre; Luis, 15,00 €. La cuota anual es de 15,00 € y hay dos exenciones. Nexo guarda quién está, desde cuándo y cuánto debe.</p>
+          <dl class="chapter-meta reveal">
+            <div><dt>Socios</dt><dd>34 · 2 exentos</dd></div>
+            <div><dt>Cuota anual</dt><dd>15,00 €</dd></div>
+            <div><dt>Cobrado</dt><dd class="ok">300,00 €</dd></div>
+            <div><dt>Pendiente</dt><dd class="warn">180,00 €</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter flip" data-cap="2" aria-labelledby="cap2">
+      <span class="chapter-ghost" aria-hidden="true">02</span>
+      <div class="wrap chapter-inner">
+        <div class="chapter-head">
+          <p class="label"><span class="n">Capítulo 02</span> · Extracto</p>
+          <h2 id="cap2" class="display reveal"><span class="mask"><span>El banco habla en CSV.</span></span></h2>
+        </div>
+        <div class="chapter-body">
+          <p class="reveal">El extracto de enero entra como archivo: 18 líneas con fecha, concepto e importe, tal como los dio el banco. No hay cobros reales ni conexión bancaria; solo un archivo que se importa.</p>
+          <dl class="chapter-meta reveal">
+            <div><dt>Archivo</dt><dd>extracto-enero.csv</dd></div>
+            <div><dt>Líneas</dt><dd>18</dd></div>
+            <div><dt>Ingreso</dt><dd class="ok">+30,00 €</dd></div>
+            <div><dt>Gasto</dt><dd style="color:var(--color-danger)">−84,50 €</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" data-cap="3" aria-labelledby="cap3">
+      <span class="chapter-ghost" aria-hidden="true">03</span>
+      <div class="wrap chapter-inner">
+        <div class="chapter-head">
+          <p class="label"><span class="n">Capítulo 03</span> · Conciliación</p>
+          <h2 id="cap3" class="display reveal"><span class="mask"><span>Un abono, dos cuotas.</span></span></h2>
+        </div>
+        <div class="chapter-body">
+          <p class="reveal">María transfiere 30,00 €. La tesorería lo reparte a mano entre la cuota de 2025 y la de 2026: 15,00 € a cada una. Lo que sobrara quedaría como «sin asignar», a la vista, sin esconderlo.</p>
+          <dl class="chapter-meta reveal">
+            <div><dt>Abono</dt><dd class="accent">30,00 €</dd></div>
+            <div><dt>Cuota 2025</dt><dd class="ok">15,00 €</dd></div>
+            <div><dt>Cuota 2026</dt><dd class="ok">15,00 €</dd></div>
+            <div><dt>Sin asignar</dt><dd>0,00 €</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter flip" data-cap="4" aria-labelledby="cap4">
+      <span class="chapter-ghost" aria-hidden="true">04</span>
+      <div class="wrap chapter-inner">
+        <div class="chapter-head">
+          <p class="label"><span class="n">Capítulo 04</span> · Saldos</p>
+          <h2 id="cap4" class="display reveal"><span class="mask"><span>La junta lee. La tesorería trabaja.</span></span></h2>
+        </div>
+        <div class="chapter-body">
+          <p class="reveal">El ejercicio cierra con el banco, la deuda por ejercicio y lo que sigue sin conciliar en la misma pantalla. Dos roles —tesorería y junta— y un código TOTP de seis cifras para entrar.</p>
+          <dl class="chapter-meta reveal">
+            <div><dt>En banco</dt><dd>1.842,50 €</dd></div>
+            <div><dt>Deuda 2026</dt><dd class="warn">180,00 €</dd></div>
+            <div><dt>Sin conciliar</dt><dd class="ok">0,00 €</dd></div>
+            <div><dt>Acceso</dt><dd>2 roles · TOTP</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ MANIFIESTO: qué es Nexo, cuando la cámara se detiene ============ -->
+  <section class="manifesto" aria-labelledby="que-es">
+    <div class="wrap manifesto-grid">
+      <h2 id="que-es" class="display reveal">Cuentas claras para el siguiente equipo.</h2>
+      <div class="say reveal">
+        <p><strong>Nexo es la tesorería de una asociación cultural ficticia.</strong> Reúne socios, cuotas y movimientos del banco, y convierte la conciliación en una decisión visible: qué abono paga qué cuota y qué queda pendiente.</p>
+        <p>La demo incluye socios, cuota anual con exenciones y pagos, importación de extractos en CSV, conciliación manual con reparto de un abono entre varias cuotas y un resumen de saldos con la deuda por ejercicio.</p>
+      </div>
+      <dl class="facts reveal">
+        <div><dt>Acceso</dt><dd><b>Dos roles:</b> tesorería edita; junta consulta. Contraseña y código TOTP de seis cifras.</dd></div>
+        <div><dt>Extracto</dt><dd>Importado de un <b>archivo CSV</b>. Sin cobros reales ni conexión bancaria.</dd></div>
+        <div><dt>Conciliación</dt><dd><b>Manual y movimiento a movimiento</b>, con reparto de un abono entre varias cuotas.</dd></div>
+        <div><dt>Saldos</dt><dd>Banco, deuda por ejercicio y lo que sigue <b>sin conciliar</b>.</dd></div>
+      </dl>
+      <div class="caveats reveal">
+        <p class="label">Lo que esta demo no hace</p>
+        <ul>
+          <li><span><b>No hay dinero real ni conexión bancaria.</b> El extracto se importa desde un archivo.</span></li>
+          <li><span><b>No uses datos personales.</b> Todo lo que se ve es de una asociación ficticia.</span></li>
+          <li><span><b>No garantiza cumplimiento fiscal, contable ni legal.</b> Ordena las cuentas; no sustituye a una asesoría.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CIERRE ============ -->
+  <section class="close" aria-labelledby="cierre">
+    <div class="wrap"><div class="close-rule" role="presentation"></div></div>
+    <div class="wrap close-grid">
+      <div class="close-copy">
+        <h2 id="cierre" class="display" style="font-size:clamp(1.5rem,2.4vw,2rem);line-height:1.15">El recorrido termina donde empieza: en una cuota bien apuntada.</h2>
+        <p>Entra con datos ficticios y recorre la misma escena por dentro.</p>
+      </div>
+      <div class="close-action">
+        <a class="mega" href="/login">Entrar a la demo <span class="arrow" aria-hidden="true">↗</span></a>
+        <p class="demo-note">Demo en construcción · Datos ficticios · Sin cobros reales ni conexión bancaria</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>Nexo · Tesorería para asociaciones</p>
+    <p>Demo con datos ficticios · No uses datos personales ni dinero real</p>
+  </div>
+</footer>
+
+<!-- HUD fuera del main: es información de la travesía, no del documento -->
+<div class="hud" id="hud" aria-hidden="true">
+  <span class="cap" id="hud-cap"><b>Cap. 00</b> / 04</span>
+  <span class="bar" id="hud-bar"><i></i><b style="left:25%"></b><b style="left:50%"></b><b style="left:75%"></b></span>
+  <span class="to" id="hud-word">Cuota</span>
+</div>
+
+<!-- Sonda de color: las partículas usan exactamente los tokens del sistema -->
+<div class="sr-only" aria-hidden="true">
+  <span id="p-ink" style="color:var(--color-ink)"></span>
+  <span id="p-socios" style="color:var(--color-line-socios)"></span>
+  <span id="p-cuotas" style="color:var(--color-line-cuotas)"></span>
+  <span id="p-movimientos" style="color:var(--color-line-movimientos)"></span>
+  <span id="p-saldos" style="color:var(--color-line-saldos)"></span>
+  <span id="p-panel" style="color:var(--color-line-panel)"></span>
+  <span id="p-canvas" style="color:var(--color-canvas)"></span>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var canvas = document.getElementById('scene');
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    var journey = document.getElementById('journey');
+    var chapters = Array.prototype.slice.call(document.querySelectorAll('.chapter'));
+    var hud = document.getElementById('hud');
+    var hudCap = document.getElementById('hud-cap');
+    var hudBar = document.getElementById('hud-bar').firstElementChild;
+    var hudWord = document.getElementById('hud-word');
+    var pause = document.getElementById('pause');
+    var cursor = document.getElementById('cursor');
+    var words = ['Cuota', 'Extracto', 'Conciliación', 'Saldos'];
+    var ctx = null;
+    var W = 0, H = 0, cx = 0, cy = 0, focal = 900;
+    var dpr = 1;
+    var particles = [];
+    var progress = 0;          /* 0..1 dentro de la travesía */
+    var targetProgress = 0;
+    var camX = 0, camY = 0;
+    var pointerX = 0, pointerY = 0;
+    var time = 0;
+    var last = 0;
+    var raf = 0;
+    var paused = false;
+    var palette = {};
+
+    function readPalette() {
+      ['ink', 'socios', 'cuotas', 'movimientos', 'saldos', 'panel', 'canvas'].forEach(function (key) {
+        var el = document.getElementById('p-' + key);
+        palette[key] = el ? getComputedStyle(el).color : (palette.ink || 'rgb(236,239,246)');
+      });
+    }
+    /* Convierte un token rgb() en rgba() para los degradados del canvas. */
+    function withAlpha(color, alpha) {
+      var m = color.match(/([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+      if (!m) return 'rgba(255,255,255,' + alpha + ')';
+      return 'rgba(' + Math.round(+m[1]) + ',' + Math.round(+m[2]) + ',' + Math.round(+m[3]) + ',' + alpha + ')';
+    }
+
+    function resize() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx = W * 0.56;
+      cy = H * 0.5;
+      focal = Math.min(W, H) * 0.82;
+    }
+
+    /* Polvo del pasillo: posiciones en un volumen delante de la cámara. */
+    function seed() {
+      particles = [];
+      for (var i = 0; i < 760; i++) {
+        particles.push({
+          x: (Math.random() - 0.5) * 1700,
+          y: (Math.random() - 0.5) * 1150,
+          z: Math.random() * 3600,
+          r: 0.5 + Math.random() * 1.32,
+          ph: Math.random() * Math.PI * 2,
+          sp: 0.35 + Math.random() * 0.9,
+          near: Math.random() < 0.12
+        });
+      }
+    }
+
+    /* El hilo: una curva suave que atraviesa las cuatro puertas. */
+    function thread(z) {
+      return {
+        x: Math.sin(z * 0.0026) * 250 + Math.sin(z * 0.0011 + 1.2) * 110,
+        y: Math.cos(z * 0.0020) * 140 + Math.sin(z * 0.0043 + 0.4) * 42
+      };
+    }
+    function zoneColor(z) {
+      if (z < 850) return palette.socios;
+      if (z < 1750) return palette.cuotas;
+      if (z < 2650) return palette.movimientos;
+      return palette.saldos;
+    }
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+    function draw(t, p) {
+      ctx.clearRect(0, 0, W, H);
+      var camZ = -320 + p * 3500;
+      var swayX = camX * 80 + Math.sin(t * 0.00018) * 26;
+      var swayY = camY * 52 + Math.cos(t * 0.00014) * 16;
+
+      /* Halo del fondo: da profundidad al vacío antes de que lleguen las motas */
+      var hz = ctx.createRadialGradient(cx, cy * 0.94, 0, cx, cy * 0.94, Math.max(W, H) * 0.62);
+      hz.addColorStop(0, withAlpha(palette.panel, 0.16));
+      hz.addColorStop(0.34, withAlpha(palette.movimientos, 0.09));
+      hz.addColorStop(0.68, withAlpha(palette.canvas || palette.ink, 0.03));
+      hz.addColorStop(1, withAlpha(palette.panel, 0));
+      ctx.fillStyle = hz;
+      ctx.fillRect(0, 0, W, H);
+
+      /* Polvo */
+      for (var i = 0; i < particles.length; i++) {
+        var d = particles[i];
+        var dz = d.z - camZ;
+        if (dz < 45 || dz > 3200) continue;
+        var s = focal / dz;
+        var sx = cx + (d.x - swayX) * s;
+        var sy = cy + (d.y - swayY) * s;
+        if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
+        var tw = 0.55 + 0.45 * Math.sin(t * 0.001 * d.sp + d.ph);
+        ctx.globalAlpha = clamp(1 - dz / 3200, 0, 1) * (d.near ? 0.7 : 0.42) * tw;
+        ctx.fillStyle = d.near ? palette.ink : palette.ink;
+        var rad = clamp(d.r * s * 1.7, 0.4, d.near ? 3.2 : 2.2);
+        ctx.beginPath();
+        ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+        ctx.fill();
+        if (d.near) {
+          ctx.globalAlpha *= 0.1;
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad * 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      /* Hilo luminoso: la ruta del dinero */
+      ctx.globalCompositeOperation = 'lighter';
+      for (var z = 0; z <= 3600; z += 20) {
+        var dz2 = z - camZ;
+        if (dz2 < 45 || dz2 > 3100) continue;
+        var pt = thread(z);
+        var s2 = focal / dz2;
+        var x2 = cx + (pt.x - swayX) * s2;
+        var y2 = cy + (pt.y - swayY) * s2;
+        var fade = clamp(1 - dz2 / 3100, 0, 1);
+        ctx.globalAlpha = fade * 0.58;
+        ctx.fillStyle = zoneColor(z);
+        ctx.beginPath();
+        ctx.arc(x2, y2, clamp(3.1 * s2, 0.6, 4.2), 0, Math.PI * 2);
+        ctx.fill();
+        if (Math.round(z / 20) % 2 === 0) {
+          ctx.globalAlpha = fade * 0.13;
+          ctx.beginPath();
+          ctx.arc(x2, y2, clamp(12 * s2, 1.8, 18), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      /* Puertas: una por capítulo, como marcos de cámara */
+      var gates = [520, 1420, 2320, 3220];
+      for (var g = 0; g < gates.length; g++) {
+        var gz = gates[g] - camZ;
+        if (gz < 70 || gz > 2800) continue;
+        var gp = thread(gates[g]);
+        var gs = focal / gz;
+        var gx = cx + (gp.x - swayX) * gs;
+        var gy = cy + (gp.y - swayY) * gs;
+        var gr = 165 * gs;
+        var ga = clamp(1 - gz / 2800, 0, 1) * 0.5;
+        ctx.globalAlpha = ga;
+        ctx.strokeStyle = zoneColor(gates[g]);
+        ctx.lineWidth = Math.max(0.6, 1.4 * Math.min(gs, 2));
+        ctx.beginPath();
+        ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = ga * 0.5;
+        ctx.beginPath();
+        ctx.arc(gx, gy, gr * 0.72, 0.4, 2.1);
+        ctx.stroke();
+        ctx.globalAlpha = Math.min(1, ga * 2.2);
+        ctx.fillStyle = zoneColor(gates[g]);
+        ctx.beginPath();
+        ctx.arc(gx, gy, Math.max(1.4, 4 * Math.min(gs, 2)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      /* Chispa: el dinero recorriendo el hilo, en bucle lento */
+      var sz = ((t * 0.000055) % 1) * 3600;
+      var sdz = sz - camZ;
+      if (sdz > 50 && sdz < 3100) {
+        var sp = thread(sz);
+        var ss = focal / sdz;
+        var sx2 = cx + (sp.x - swayX) * ss;
+        var sy2 = cy + (sp.y - swayY) * ss;
+        var sfade = clamp(1 - sdz / 3100, 0, 1);
+        ctx.globalAlpha = sfade * 0.9;
+        ctx.fillStyle = palette.ink;
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, clamp(4.5 * ss, 1.4, 6), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = sfade * 0.28;
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, clamp(28 * ss, 6, 34), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+
+    function hudUpdate() {
+      var idx = clamp(Math.ceil(progress * 4), 1, 4);
+      if (progress <= 0.001) {
+        hudCap.innerHTML = '<b>Cap. 00</b> / 04';
+        hudWord.textContent = 'La escena';
+        hudBar.style.width = '0%';
+        return;
+      }
+      hudCap.innerHTML = '<b>Cap. 0' + idx + '</b> / 04';
+      hudWord.textContent = words[idx - 1];
+      hudBar.style.width = (progress * 100).toFixed(1) + '%';
+    }
+
+    function readScroll() {
+      var rect = journey.getBoundingClientRect();
+      var span = journey.offsetHeight - window.innerHeight;
+      targetProgress = span > 0 ? clamp(-rect.top / span, 0, 1) : 0;
+      /* Capítulo activo para las máscaras de texto */
+      var mid = window.innerHeight * 0.5;
+      chapters.forEach(function (ch) {
+        var r = ch.getBoundingClientRect();
+        ch.classList.toggle('in', r.top < mid && r.bottom > mid * 0.4);
+      });
+      hud.hidden = !(rect.top < window.innerHeight && rect.bottom > 0);
+    }
+
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      if (!last) last = now;
+      var dt = Math.min(64, now - last);
+      last = now;
+      if (!paused) time += dt;
+      progress += (targetProgress - progress) * (paused ? 1 : 0.075);
+      draw(time, progress);
+      hudUpdate();
+    }
+
+    function start() {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (reduce.matches) {
+        /* Versión estática completa: una sola composición, sin bucle. */
+        progress = 0.42;
+        draw(0, progress);
+        hudUpdate();
+        return;
+      }
+      last = 0;
+      raf = requestAnimationFrame(frame);
+    }
+
+    /* -------- Cursor acompañante y magnetismo del botón -------- */
+    var cursorX = 0, cursorY = 0;
+    if (fine.matches && !reduce.matches) {
+      window.addEventListener('pointermove', function (event) {
+        cursorX = event.clientX;
+        cursorY = event.clientY;
+        cursor.style.transform = 'translate3d(' + cursorX + 'px,' + cursorY + 'px,0)';
+        cursor.classList.add('on');
+        pointerX = (cursorX / window.innerWidth - 0.5) * 2;
+        pointerY = (cursorY / window.innerHeight - 0.5) * 2;
+        camX += (pointerX * 0.6 - camX) * 0.18;
+        camY += (pointerY * 0.6 - camY) * 0.18;
+        var hot = event.target.closest('a, button');
+        cursor.classList.toggle('hot', Boolean(hot));
+      }, { passive: true });
+      document.addEventListener('pointerleave', function () { cursor.classList.remove('on'); });
+    }
+
+    var magnets = Array.prototype.slice.call(document.querySelectorAll('.btn, .mega'));
+    magnets.forEach(function (el) {
+      el.addEventListener('pointermove', function (event) {
+        if (reduce.matches || !fine.matches) return;
+        var r = el.getBoundingClientRect();
+        var mx = (event.clientX - r.left - r.width / 2) / r.width;
+        var my = (event.clientY - r.top - r.height / 2) / r.height;
+        el.style.transform = 'translate(' + (mx * 6).toFixed(1) + 'px,' + (my * 4).toFixed(1) + 'px)';
+      });
+      el.addEventListener('pointerleave', function () { el.style.transform = ''; });
+    });
+
+    pause.addEventListener('click', function () {
+      paused = !paused;
+      pause.setAttribute('aria-pressed', String(paused));
+      pause.querySelector('.txt').textContent = paused ? 'Reanudar escena' : 'Pausar escena';
+      if (!reduce.matches) {
+        if (paused) { cancelAnimationFrame(raf); raf = 0; draw(time, progress); }
+        else start();
+      }
+    });
+
+    /* Revelado */
+    var items = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { entry.target.classList.add('in'); io.unobserve(entry.target); }
+        });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+      items.forEach(function (item) { io.observe(item); });
+      setTimeout(function () { items.forEach(function (item) { item.classList.add('in'); }); }, 4000);
+    } else {
+      items.forEach(function (item) { item.classList.add('in'); });
+    }
+
+    /* Arranque */
+    try {
+      ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('sin contexto 2d');
+      readPalette();
+      resize();
+      seed();
+      readScroll();
+      progress = targetProgress;
+      start();
+      window.addEventListener('resize', function () { resize(); if (reduce.matches) draw(0, targetProgress); });
+      window.addEventListener('scroll', readScroll, { passive: true });
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
+        else if (!reduce.matches && !paused) start();
+      });
+    } catch (error) {
+      ctx = null;
+      root.classList.add('no-canvas');
+      var p = document.getElementById('pause');
+      if (p) p.hidden = true;
+    }
+
+    function applyMotion() {
+      if (reduce.matches) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        pause.hidden = true;
+        cursor.style.display = 'none';
+        readScroll();
+        progress = 0.42;
+        if (ctx) draw(0, progress);
+      } else if (!ctx) {
+        pause.hidden = true;
+      } else {
+        pause.hidden = false;
+        cursor.style.display = '';
+        start();
+      }
+    }
+    applyMotion();
+    if (reduce.addEventListener) reduce.addEventListener('change', applyMotion);
+
+    /* La barra se vuelve opaca al bajar, para que el contenido no choque con ella. */
+    var nav = document.querySelector('.nav');
+    function navState() { if (nav) nav.classList.toggle('scrolled', window.scrollY > 24); }
+    window.addEventListener('scroll', navState, { passive: true });
+    navState();
+  })();
+</script>
+</body>
+</html>

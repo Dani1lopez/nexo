@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexo · dirección 02 · La ventana que flota</title>
+<style>
+  /* ---------- Tokens del sistema (design/system.md, copiados de resources/css/app.css) ---------- */
+  :root {
+    color-scheme: light dark;
+    --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --color-canvas: light-dark(#dde3ec, #202634);
+    --color-surface: light-dark(#f2f5f9, #2a3142);
+    --color-raised: light-dark(#fbfcfe, #333b50);
+    --color-ink: light-dark(#172033, #eceff6);
+    --color-muted: light-dark(#4b566e, #aab3c7);
+    --color-rule: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-on-accent: light-dark(#ffffff, #141925);
+    --color-line-panel: light-dark(#3a50c8, #8b9cff);
+    --color-line-saldos: light-dark(#9d174d, #f9a8d4);
+    --color-line-socios: light-dark(#0f766e, #2dd4bf);
+    --color-line-cuotas: light-dark(#b45309, #fbbf24);
+    --color-line-movimientos: light-dark(#6d28d9, #b79cff);
+    --color-danger: light-dark(#b42318, #f97066);
+    --color-ok: light-dark(#067647, #47cd89);
+    --color-ok-soft: light-dark(rgb(18 183 106 / 0.14), rgb(18 183 106 / 0.15));
+    --color-warn: light-dark(#93370d, #fec84b);
+    --color-warn-soft: light-dark(rgb(247 144 9 / 0.18), rgb(247 144 9 / 0.15));
+    --color-info: light-dark(#3538cd, #a4bcfd);
+    --color-info-soft: light-dark(rgb(99 102 241 / 0.14), rgb(99 102 241 / 0.2));
+    --color-neutral-text: light-dark(#475467, #cbd2dd);
+    --color-neutral-soft: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    --color-skeleton: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    --topbar-bg: light-dark(rgb(242 245 249 / 0.82), rgb(32 38 52 / 0.78));
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+    --dur-slow: 320ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --shadow-ring:
+        0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
+        inset 0 1px 0 light-dark(transparent, color-mix(in srgb, var(--color-ink) 6%, transparent)),
+        0 1px 2px light-dark(rgb(15 23 42 / 0.06), rgb(0 0 0 / 0.25));
+    --shadow-lift:
+        0 0 0 1px color-mix(in srgb, var(--color-ink) 9%, transparent),
+        0 16px 40px -14px light-dark(rgb(15 23 42 / 0.3), rgb(0 0 0 / 0.7));
+    --line: var(--color-line-movimientos);
+    --line-soft: color-mix(in srgb, var(--line) 12%, var(--color-surface));
+    --glow: light-dark(color-mix(in srgb, var(--line) 14%, transparent), color-mix(in srgb, var(--line) 26%, transparent));
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; font-family: var(--font-sans); font-size: 0.9375rem; line-height: 1.6;
+    color: var(--color-ink); background-color: var(--color-canvas);
+    background-image: radial-gradient(ellipse 62rem 24rem at 50% -8rem, var(--glow), transparent);
+    background-repeat: no-repeat; font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--line); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+      text-decoration-color: color-mix(in srgb, var(--line) 38%, transparent); }
+  a:hover { text-decoration-color: currentColor; }
+  :focus-visible { outline: 2px solid var(--line); outline-offset: 2px; border-radius: 0.25rem; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.125rem, 5vw, 3.5rem); line-height: 1.05; font-weight: 600; letter-spacing: -0.04em; }
+  h2 { font-size: 1.25rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+  h3 { font-size: 1rem; line-height: 1.4; font-weight: 600; }
+  p { margin: 0.5rem 0; max-width: 65ch; }
+  .wrap { width: 100%; max-width: 72rem; margin-inline: auto; padding-inline: 1rem; }
+  .skip { position: absolute; top: 0; left: 1rem; z-index: 60; padding: 0.5rem 1rem;
+    color: var(--color-canvas); text-decoration: none; background: var(--color-ink);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm); transform: translateY(-120%); }
+  .skip:focus { transform: translateY(0); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; }
+  [hidden] { display: none !important; }
+
+  .topbar { position: sticky; top: 0; z-index: 40; background: var(--topbar-bg);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); }
+  .topbar-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem;
+    min-height: 3.5rem; padding-block: 0.5rem; }
+  .brand { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1.125rem;
+    font-weight: 650; letter-spacing: -0.02em; color: var(--color-ink); text-decoration: none; }
+  .brand svg { color: var(--line); }
+  .topbar .meta { margin-left: auto; color: var(--color-muted); font-size: 0.8125rem; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 2.75rem; padding: 0.5rem 1.25rem; font: inherit; font-size: 0.9375rem;
+    font-weight: 550; line-height: 1.25; color: var(--color-on-accent); text-decoration: none;
+    background: var(--line); border: 1px solid color-mix(in srgb, var(--line) 80%, white);
+    border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 1px 2px rgb(0 0 0 / 0.4);
+    transition: background-color var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out), transform 160ms var(--ease-out); }
+  .btn:hover { background: color-mix(in srgb, var(--line) 86%, white); }
+  .btn:active { transform: scale(0.97); }
+  .btn-secondary { color: var(--color-ink); background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+    border-color: transparent; box-shadow: var(--shadow-ring); }
+  .btn-secondary:hover { background: color-mix(in srgb, var(--color-ink) 10%, transparent); }
+  .btn-sm { min-height: 2.25rem; padding: 0.25rem 0.875rem; font-size: 0.875rem; }
+
+  /* Portada centrada: la ventana es el argumento */
+  .hero { padding: 2.5rem 0 0; text-align: center; }
+  .kicker { margin: 0 0 0.875rem; font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .hero h1 { max-width: 26ch; margin-inline: auto; }
+  .lead { max-width: 44rem; margin: 0.75rem auto 0; font-size: 1.125rem; line-height: 1.55; color: var(--color-muted); }
+  .cta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    gap: 0.5rem 0.75rem; margin-top: 1.25rem; }
+  .notice { margin-top: 0.75rem; font-size: 0.875rem; color: var(--color-muted); }
+  .keywords { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.375rem 1.25rem;
+    margin: 1rem 0 0; padding: 0; list-style: none; font-size: 0.875rem; color: var(--color-muted); }
+  .keywords li { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .keywords li::before { content: ''; width: 0.5rem; height: 0.5rem; border-radius: var(--radius-pill);
+    background: var(--dot); }
+
+  /* Escena: tres placas en profundidad y la ventana del producto delante. */
+  .scene-frame { position: relative; margin-top: 1.5rem; isolation: isolate; }
+  .scene-frame::before { content: ''; position: absolute; inset: -1rem -1rem auto; z-index: -1; height: 34rem;
+    pointer-events: none;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 18%, transparent) 1px, transparent 1.3px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 75% at 50% 10%, #000 20%, transparent 78%);
+    mask-image: radial-gradient(ellipse 70% 75% at 50% 10%, #000 20%, transparent 78%); }
+  .stage { position: relative; height: 32rem; perspective: 1500px; perspective-origin: 50% 24%;
+    overflow: hidden; }
+  .rig { position: relative; width: min(52rem, 92%); height: 100%; margin-inline: auto;
+    transform-style: preserve-3d;
+    transform: rotateX(calc(8deg + var(--rx, 0deg))) rotateY(calc(-12deg + var(--ry, 0deg)));
+    transition: transform 500ms var(--ease-out); }
+  .rig-inner { position: relative; height: 100%; transform-style: preserve-3d;
+    animation: float 8s var(--ease-standard) infinite; }
+
+  .plate { position: absolute; width: 21.5%; padding: 0.6rem 0.8rem;
+    background: var(--color-surface); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-ring); transform-style: preserve-3d; }
+  .plate .label { font-size: 0.625rem; font-weight: 650; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .plate .val { font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; }
+  .plate .sub { font-size: 0.6875rem; color: var(--color-muted); }
+  /* Las placas flotan en fila por encima de la ventana: nada de texto tapado. */
+  .plate-1 { left: 1%; top: 0.9rem; transform: translateZ(-10rem) rotateZ(-4deg) scale(0.95); }
+  .plate-2 { left: 24%; top: 0.15rem; transform: translateZ(-5rem) rotateZ(2.5deg) scale(0.98); }
+  .plate-3 { left: 47%; top: 1.1rem; transform: translateZ(-1.5rem) rotateZ(-1.5deg); }
+
+  .app-window { position: absolute; left: 50%; top: 6.5rem; width: 44rem; margin-left: -22rem;
+    overflow: hidden; background: var(--color-surface); border-radius: var(--radius-lg);
+    transform: translateZ(2rem);
+    box-shadow: var(--shadow-lift),
+      0 50px 90px -42px color-mix(in srgb, var(--line) 45%, transparent),
+      0 24px 50px -30px light-dark(rgb(15 23 42 / 0.35), rgb(0 0 0 / 0.75)); }
+  .app-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.875rem 1.25rem;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 8%, transparent); }
+  .app-bar .title { font-weight: 600; letter-spacing: -0.01em; }
+  .badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.125rem 0.625rem;
+    font-size: 0.75rem; font-weight: 550; border-radius: var(--radius-pill); }
+  .badge::before { content: ''; width: 0.375rem; height: 0.375rem; background: currentColor;
+    border-radius: var(--radius-pill); }
+  .badge-info { color: var(--color-info); background: var(--color-info-soft); }
+  .badge-ok { color: var(--color-ok); background: var(--color-ok-soft); }
+  .badge-pending { color: var(--color-warn); background: var(--color-warn-soft); }
+
+  .board-head { display: grid; grid-template-columns: 6.5rem 1fr 7rem; column-gap: 1rem;
+    padding: 0.5rem 1.25rem; font-size: 0.75rem; font-weight: 550; color: var(--color-muted);
+    background: color-mix(in srgb, var(--color-ink) 3%, transparent);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent); }
+  .board-head span:last-child { text-align: right; }
+  .row-m { display: grid; grid-template-columns: 6.5rem 1fr 7rem; align-items: center;
+    column-gap: 1rem; padding: 0.7rem 1.25rem; font-size: 0.875rem; }
+  .row-m + .row-m { box-shadow: 0 -1px 0 color-mix(in srgb, var(--color-ink) 7%, transparent); }
+  .row-m .date { color: var(--color-muted); font-size: 0.8125rem; }
+  .row-m .concept { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  .row-m .amt { text-align: right; font-weight: 600; white-space: nowrap; }
+  .in { color: var(--color-ok); }
+  .out { color: var(--color-danger); }
+  .split-panel { grid-column: 1 / -1; margin-top: 0.6rem; padding-top: 0.6rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 7%, transparent); }
+  .split-panel .hint { margin: 0 0 0.4rem; font-size: 0.75rem; color: var(--color-muted); }
+  .alloc { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: 0.6rem; align-items: center;
+    font-size: 0.8125rem; padding: 0.2rem 0; }
+  .alloc .y { color: var(--color-muted); }
+  .alloc .a { text-align: right; font-weight: 600; }
+  .alloc-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: 0.375rem;
+    margin-top: 0.5rem; border-radius: var(--radius-pill); overflow: hidden;
+    background: color-mix(in srgb, var(--color-ink) 10%, transparent); }
+  .alloc-bar i { background: var(--color-ok); border-radius: var(--radius-pill); }
+  .alloc-bar i:last-child { background: var(--color-line-cuotas); }
+
+  .chip-saldo { position: absolute; left: 70%; top: 0.5rem; width: 27%; display: grid; gap: 0;
+    padding: 0.55rem 0.8rem; background: var(--color-raised); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lift); transform: translateZ(3rem) rotateZ(1.5deg); }
+  .chip-saldo .k { font-size: 0.625rem; font-weight: 650; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--color-muted); }
+  .chip-saldo .v { font-size: 1.25rem; font-weight: 680; letter-spacing: -0.02em; }
+  .chip-saldo .s { font-size: 0.6875rem; color: var(--color-muted); }
+
+  .viz-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 0.5rem 1rem; margin-top: 0.5rem; }
+  .viz-bar p { margin: 0; font-size: 0.8125rem; color: var(--color-muted); max-width: none; }
+
+  /* Secciones */
+  section[id] { scroll-margin-top: 5rem; }
+  .band { padding: 3.5rem 0 0; }
+  .band > h2 { font-size: 1.75rem; font-weight: 650; letter-spacing: -0.025em; line-height: 1.2; }
+  .band .lede { color: var(--color-muted); margin-top: 0.5rem; max-width: 60ch; }
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 1.5rem;
+    overflow: hidden; background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-ring); }
+  .step { display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.25rem 0.875rem;
+    padding: 1.15rem 1.25rem 1.35rem; background: var(--color-surface); }
+  .step .num { grid-row: 1 / span 2; font-size: 1.25rem; font-weight: 680; color: var(--color-muted);
+    letter-spacing: -0.02em; }
+  .step h3 { margin: 0; }
+  .step p { margin: 0; color: var(--color-muted); font-size: 0.875rem; }
+
+  .csv { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr); gap: 1rem;
+    align-items: center; margin-top: 1.5rem; }
+  .file { overflow: hidden; background: var(--color-surface); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-ring); }
+  .file .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.7rem 1rem; font-size: 0.8125rem;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 8%, transparent); }
+  .file .head b { font-weight: 600; }
+  .file .head span { color: var(--color-muted); font-size: 0.75rem; }
+  .file pre { margin: 0; padding: 0.85rem 1rem; overflow-x: auto; font-family: var(--font-sans);
+    font-size: 0.75rem; line-height: 1.7; color: var(--color-muted); letter-spacing: 0.01em; }
+  .file pre b { color: var(--color-ink); font-weight: 600; }
+  .arrow-3d { display: grid; place-items: center; gap: 0.25rem; color: var(--color-muted);
+    font-size: 0.6875rem; text-align: center; }
+  .arrow-3d i { display: block; width: 2.5rem; height: 2px;
+    background: linear-gradient(to right, var(--color-line-movimientos), var(--color-info));
+    border-radius: var(--radius-pill); position: relative; }
+  .arrow-3d i::after { content: ''; position: absolute; right: -1px; top: -3px; width: 8px; height: 8px;
+    border-right: 2px solid var(--color-info); border-top: 2px solid var(--color-info);
+    transform: rotate(45deg); }
+
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+  .role { padding: 1.25rem; background: var(--color-surface); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-ring); }
+  .role h3 { margin-bottom: 0.375rem; }
+  .role p { margin: 0; color: var(--color-muted); font-size: 0.875rem; }
+  .role ul { margin: 0.5rem 0 0; padding-left: 1.15rem; color: var(--color-muted); font-size: 0.875rem; }
+  .role li { margin: 0.2rem 0; }
+
+  .limits { margin: 2.5rem 0 0; padding: 1.25rem 1.25rem 1.25rem 1rem;
+    border-left: 2px solid var(--color-warn);
+    background: color-mix(in srgb, var(--color-warn) 7%, var(--color-surface));
+    border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .limits h2 { font-size: 1rem; margin-bottom: 0.375rem; }
+  .limits ul { margin: 0.25rem 0 0; padding-left: 1.15rem; color: var(--color-muted); font-size: 0.875rem; }
+  .footer { margin-top: 3rem; padding: 1.5rem 1rem 2rem; text-align: center;
+    color: var(--color-muted); font-size: 0.8125rem; }
+  .footer p { max-width: none; margin: 0; }
+
+  @keyframes float {
+    0%, 100% { transform: translate3d(0, -0.35rem, 0); }
+    50% { transform: translate3d(0, 0.55rem, 0); }
+  }
+  @keyframes enter {
+    from { opacity: 0; transform: rotateX(22deg) rotateY(-26deg) scale(0.94); }
+    to { opacity: 1; }
+  }
+  @keyframes plate-in {
+    from { opacity: 0; }
+  }
+  @keyframes fill {
+    0%, 8% { grid-template-columns: 0fr 0fr; }
+    22%, 78% { grid-template-columns: 1fr 1fr; }
+    100% { grid-template-columns: 1fr 1fr; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .rig { animation: enter 800ms var(--ease-standard) both; }
+    .plate { animation: plate-in 700ms var(--ease-standard) both; }
+    .plate-2 { animation-delay: 90ms; }
+    .plate-3 { animation-delay: 160ms; }
+    .app-window { animation: plate-in 700ms var(--ease-standard) 220ms both; }
+    .chip-saldo { animation: plate-in 700ms var(--ease-standard) 320ms both; }
+    .alloc-bar { animation: fill 9s var(--ease-standard) infinite; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .rig, .rig-inner, .plate, .app-window, .chip-saldo, .alloc-bar { animation: none !important; }
+    .rig { transform: none; }
+    .alloc-bar { grid-template-columns: 1fr 1fr; }
+    .stage { height: auto; perspective: none; padding-block: 1rem; }
+    .rig { height: auto; }
+    .rig-inner { display: grid; gap: 0.75rem; height: auto; }
+    .plate, .app-window, .chip-saldo { position: static; width: auto; margin: 0; translate: none;
+      transform: none; opacity: 1; }
+    .viz-bar { justify-content: flex-start; }
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+  .scene.is-paused * { animation-play-state: paused !important; }
+
+  @media (max-width: 60rem) {
+    .stage { height: 30rem; }
+    .app-window { width: 36rem; margin-left: -18rem; top: 6.5rem; }
+    .plate .sub { display: none; }
+    .csv { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+    .arrow-3d { grid-auto-flow: column; justify-content: start; gap: 0.5rem; }
+    .arrow-3d i { rotate: 90deg; }
+  }
+  @media (max-width: 48rem) {
+    .topbar .meta { display: none; }
+    .hero { padding-top: 2.5rem; }
+    .steps, .roles { grid-template-columns: 1fr; }
+    .board-head, .row-m { grid-template-columns: 5rem 1fr 6rem; }
+    .keywords { font-size: 0.8125rem; }
+    /* En pantallas estrechas la composición pasa a flujo: nada se recorta y todo se lee. */
+    .stage { height: auto; perspective: none; overflow: visible; border-radius: 0; padding-block: 1rem; background: none; }
+    .rig { height: auto; transform: none !important; transition: none; }
+    .rig-inner { display: grid; gap: 0.75rem; height: auto; animation: none; }
+    .plate, .app-window, .chip-saldo { position: static; width: auto; margin: 0; translate: none;
+      transform: none; opacity: 1; box-shadow: var(--shadow-ring); }
+    .app-window { box-shadow: var(--shadow-lift); }
+    .chip-saldo { right: auto; top: auto; }
+    .viz-bar { justify-content: flex-start; }
+    .viz-bar .viz-pause { display: none; }
+  }
+  @media (max-width: 40rem) {
+    .board-head, .row-m { grid-template-columns: 4.5rem 1fr 5.5rem; font-size: 0.8125rem; }
+    .row-m .concept .badge { display: none; }
+    .stage { height: 23rem; }
+    .chip-saldo { display: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#contenido">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="6" cy="12" r="3.25" stroke="currentColor" stroke-width="2"/>
+        <circle cx="18" cy="12" r="3.25" fill="currentColor"/>
+        <path d="M9.25 12h5.5" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Nexo
+    </a>
+    <span class="meta">Asociación cultural La Ribera · demo</span>
+    <button class="btn btn-secondary btn-sm" type="button" id="theme">Modo claro</button>
+    <a class="btn btn-secondary btn-sm" href="#entrar">Acceder</a>
+  </div>
+</header>
+
+<main id="contenido" tabindex="-1">
+  <div class="wrap">
+    <section class="hero" id="entrar" aria-labelledby="titular">
+      <p class="kicker">Tesorería para asociaciones</p>
+      <h1 id="titular">La tesorería de tu asociación, en una sola ventana.</h1>
+      <p class="lead">Nexo reúne a los socios, sus cuotas y los movimientos que importas del banco, y te deja conciliarlos a mano. Lo que ves aquí es la aplicación con datos ficticios.</p>
+      <div class="cta">
+        <a class="btn" href="#entrar">Entrar a la demo</a>
+        <a class="btn btn-secondary" href="#como-funciona">Cómo funciona</a>
+      </div>
+      <p class="notice">Demo en construcción · Sin cobros reales ni conexión bancaria</p>
+      <ul class="keywords" aria-label="Lo que incluye">
+        <li style="--dot: var(--color-line-socios)">Socios</li>
+        <li style="--dot: var(--color-line-cuotas)">Cuotas</li>
+        <li style="--dot: var(--color-line-movimientos)">Banco por CSV</li>
+        <li style="--dot: var(--color-info)">Conciliación</li>
+        <li style="--dot: var(--color-line-saldos)">Saldos</li>
+      </ul>
+    </section>
+
+    <section class="scene-frame" aria-labelledby="escena-titulo">
+      <h2 class="sr-only" id="escena-titulo">La aplicación, en una ventana flotante</h2>
+      <div class="stage scene" id="scene">
+        <div class="rig" id="rig">
+          <div class="rig-inner" aria-hidden="true">
+            <div class="plate plate-1"><div class="label">Socios</div><div class="val">34 socios</div><div class="sub">2 exentos</div></div>
+            <div class="plate plate-2"><div class="label">Cuotas 2026</div><div class="val">300,00 €</div><div class="sub">180,00 € pendientes</div></div>
+            <div class="plate plate-3"><div class="label">Extracto</div><div class="val">18 movimientos</div><div class="sub">Importado en CSV</div></div>
+
+            <div class="app-window">
+              <div class="app-bar">
+                <span class="title">Movimientos bancarios</span>
+                <span class="badge badge-info">Ejemplo con datos ficticios</span>
+              </div>
+              <div class="board-head"><span>Fecha</span><span>Concepto</span><span>Importe</span></div>
+              <div class="row-m">
+                <span class="date">12/01/2026</span>
+                <span class="concept">Cuota Ana Alcaraz <span class="badge badge-ok">Conciliado</span></span>
+                <span class="amt in">+15,00 €</span>
+              </div>
+              <div class="row-m">
+                <span class="date">15/01/2026</span>
+                <span class="concept">Recibo luz enero <span class="badge badge-pending">Sin conciliar</span></span>
+                <span class="amt out">−84,50 €</span>
+              </div>
+              <div class="row-m">
+                <span class="date">20/01/2026</span>
+                <span class="concept">Transferencia María Ferrer <span class="badge badge-ok">Conciliado</span></span>
+                <span class="amt in">+30,00 €</span>
+                <div class="split-panel">
+                  <p class="hint">Repartido en 2 cuotas · queda 0,00 € sin asignar</p>
+                  <div class="alloc"><span class="y">2025</span><span>Cuota anual · María Ferrer</span><span class="a">15,00 €</span></div>
+                  <div class="alloc"><span class="y">2026</span><span>Cuota anual · María Ferrer</span><span class="a">15,00 €</span></div>
+                  <div class="alloc-bar"><i></i><i></i></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chip-saldo">
+              <span class="k">Saldo en banco</span>
+              <span class="v">1.842,50 €</span>
+              <span class="s">3 sin conciliar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="viz-bar">
+        <p>La ventana se inclina con el cursor. La escena es decorativa: todo lo que cuenta está escrito en la página.</p>
+        <button class="btn btn-secondary btn-sm viz-pause" type="button" id="pause" aria-pressed="false" aria-controls="scene">Pausar animación</button>
+      </div>
+    </section>
+
+    <section class="band" id="como-funciona" aria-labelledby="pasos">
+      <h2 id="pasos">Qué hace Nexo, paso a paso</h2>
+      <p class="lede">Cuatro operaciones, siempre con el mismo orden. Ninguna mueve dinero: dejan constancia de lo que ya pasó.</p>
+      <div class="steps">
+        <div class="step">
+          <span class="num" aria-hidden="true">01</span>
+          <h3>Das de alta a los socios</h3>
+          <p>Nombre, número y exenciones. La cuota anual, 15,00 € en esta demo, sale de esa lista.</p>
+        </div>
+        <div class="step">
+          <span class="num" aria-hidden="true">02</span>
+          <h3>Importas el extracto en CSV</h3>
+          <p>Lo descargas del banco y lo subes. Cada línea se convierte en un movimiento con fecha, concepto e importe.</p>
+        </div>
+        <div class="step">
+          <span class="num" aria-hidden="true">03</span>
+          <h3>Concilias cada abono</h3>
+          <p>Un abono puede cubrir una cuota o varias: se reparte y el movimiento conserva lo que dice el banco.</p>
+        </div>
+        <div class="step">
+          <span class="num" aria-hidden="true">04</span>
+          <h3>Lees los saldos</h3>
+          <p>Saldo en banco, pendiente de cobro y deuda por ejercicio. Sin cifras que no puedas justificar.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="banco">
+      <h2 id="banco">El banco entra por un archivo, nunca por una API</h2>
+      <p class="lede">Nexo no pide credenciales bancarias ni cobra recibos. La conexión es un CSV que ya tienes: eso también significa que la conciliación es una decisión humana, no un adivino.</p>
+      <div class="csv">
+        <div class="file">
+          <div class="head"><b>extracto-enero.csv</b><span>3 filas · 2026</span></div>
+          <pre>fecha,concepto,importe
+12/01/2026,<b>Cuota Ana Alcaraz</b>,15,00
+15/01/2026,<b>Recibo luz enero</b>,-84,50
+20/01/2026,<b>Transferencia María Ferrer</b>,30,00</pre>
+        </div>
+        <div class="arrow-3d" aria-hidden="true"><i></i><span>importar</span></div>
+        <div class="file">
+          <div class="head"><b>Movimientos en Nexo</b><span>2 conciliados · 1 pendiente</span></div>
+          <div class="row-m" style="grid-template-columns:1fr auto">
+            <span>Cuota Ana Alcaraz</span><span class="amt in">+15,00 €</span>
+          </div>
+          <div class="row-m" style="grid-template-columns:1fr auto">
+            <span>Recibo luz enero</span><span class="amt out">−84,50 €</span>
+          </div>
+          <div class="row-m" style="grid-template-columns:1fr auto">
+            <span>Transferencia María Ferrer <span class="badge badge-ok">Repartido</span></span>
+            <span class="amt in">+30,00 €</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="roles">
+      <h2 id="roles">Dos roles y un código de seis cifras</h2>
+      <p class="lede">La tesorería trabaja; la junta revisa. El acceso pide contraseña y un código TOTP de 30 segundos generado en el móvil.</p>
+      <div class="roles">
+        <div class="role">
+          <h3><span class="badge badge-ok">Tesorería</span></h3>
+          <p>Edita socios y cuotas, importa el extracto y concilia.</p>
+          <ul>
+            <li>Altas, bajas y exenciones.</li>
+            <li>Importación del CSV.</li>
+            <li>Reparto de un abono entre cuotas.</li>
+          </ul>
+        </div>
+        <div class="role">
+          <h3><span class="badge badge-info">Junta</span></h3>
+          <p>Consulta el panel y los saldos; no puede cambiar importes.</p>
+          <ul>
+            <li>Saldos y deuda por ejercicio.</li>
+            <li>Movimientos sin conciliar.</li>
+            <li>Sin acceso a importar ni editar.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="limites">
+      <div class="limits">
+        <h2 id="limites">Lo que esta demo no hace</h2>
+        <ul>
+          <li>No hay cobros reales ni conexión bancaria: el extracto se importa desde un archivo CSV.</li>
+          <li>No garantiza cumplimiento fiscal, contable ni legal.</li>
+          <li>Los datos son ficticios. No uses datos personales ni dinero real.</li>
+          <li>Está en construcción: faltan pantallas y el reparto de abonos todavía se hace a mano.</li>
+        </ul>
+      </div>
+      <p style="margin-top:1.5rem"><a class="btn" href="#entrar">Entrar a la demo</a></p>
+    </section>
+  </div>
+</main>
+
+<footer class="footer"><p>Nexo · Demo con datos ficticios · No uses datos personales ni dinero real</p></footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var theme = document.getElementById('theme');
+    var pause = document.getElementById('pause');
+    var scene = document.getElementById('scene');
+    var rig = document.getElementById('rig');
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+    function setTheme(next) {
+      root.setAttribute('data-theme', next);
+      theme.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+    }
+    setTheme(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    theme.addEventListener('click', function () {
+      setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+
+    function setPaused(paused) {
+      scene.classList.toggle('is-paused', paused);
+      pause.setAttribute('aria-pressed', String(paused));
+      pause.textContent = paused ? 'Reanudar animación' : 'Pausar animación';
+    }
+    pause.addEventListener('click', function () {
+      setPaused(pause.getAttribute('aria-pressed') !== 'true');
+    });
+
+    // Parallax suave con el cursor: solo puntero fino y sin movimiento reducido.
+    var frame = 0;
+    scene.addEventListener('pointermove', function (event) {
+      if (reduce.matches || !fine.matches || scene.classList.contains('is-paused')) return;
+      if (frame) return;
+      frame = requestAnimationFrame(function () {
+        frame = 0;
+        var box = scene.getBoundingClientRect();
+        var x = (event.clientX - box.left) / box.width - 0.5;
+        var y = (event.clientY - box.top) / box.height - 0.5;
+        rig.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
+        rig.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
+      });
+    });
+    scene.addEventListener('pointerleave', function () {
+      rig.style.setProperty('--ry', '0deg');
+      rig.style.setProperty('--rx', '0deg');
+    });
+
+    function applyPreference() {
+      if (reduce.matches) {
+        setPaused(true);
+        pause.setAttribute('hidden', '');
+      } else {
+        pause.removeAttribute('hidden');
+        setPaused(false);
+      }
+    }
+    applyPreference();
+    if (reduce.addEventListener) reduce.addEventListener('change', applyPreference);
+  })();
+</script>
+</body>
+</html>

@@ -45,6 +45,15 @@ Cada ejecución crea su propia base temporal. `E2E_TMP` no permite elegir la rut
 
 La política del CI está en [CONTRIBUTING.md](CONTRIBUTING.md#integración-continua).
 
+El peso de los recursos propios se comprueba después de compilar, con dos presupuestos separados: uno para el resto de la aplicación y otro, medido en la compilación real, para la portada (el único recurso que carga Three.js):
+
+```sh
+npm run build
+npm run check:weight
+```
+
+Las variables `WEIGHT_CSS_GZIP_KB`, `WEIGHT_CSS_RAW_KB`, `WEIGHT_JS_GZIP_KB` y `WEIGHT_JS_RAW_KB` bajan los límites del resto de la aplicación; `WEIGHT_LANDING_CSS_GZIP_KB`, `WEIGHT_LANDING_CSS_RAW_KB`, `WEIGHT_LANDING_JS_GZIP_KB` y `WEIGHT_LANDING_JS_RAW_KB` hacen lo mismo con la portada. `npm run e2e` compila, pasa ese presupuesto y ejecuta sus propias pruebas de Node antes de Playwright.
+
 `composer test` ejecuta PHPUnit directamente. `php artisan test` puede mostrar una advertencia de phpdotenv por la ausencia deliberada del archivo de entorno. No uses datos ni credenciales reales.
 
 ## Primera versión
@@ -69,7 +78,7 @@ No se garantiza cumplimiento fiscal, contable o legal. No se publicarán datos p
 
 ## Dirección técnica
 
-Base inicial: PHP 8.4+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. Los estilos (tema oscuro por defecto y tema claro, con un acento de color por sección) se escriben con Tailwind 4 y CSS propio en `resources/css/app.css` (los tokens de diseño viven en su bloque `@theme`) y se compilan con Vite: `npm run build` genera `public/build`, que no se versiona, y `npm run dev` recompila mientras se edita. Las vistas Blade comparten el diseño `resources/views/layouts/app.blade.php`. El único JavaScript propio es un fragmento de unas pocas líneas en el diseño base que cambia entre el tema claro y el oscuro y recuerda la elección en el navegador; sin él, el tema sigue la preferencia del sistema. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
+Base inicial: PHP 8.4+ y Laravel 13 con Blade y HTML. Las versiones exactas están fijadas en `composer.lock`. Los estilos (tema oscuro por defecto y tema claro, con un acento de color por sección) se escriben con Tailwind 4 y CSS propio en `resources/css/app.css` (los tokens de diseño viven en su bloque `@theme`) y se compilan con Vite: `npm run build` genera `public/build`, que no se versiona, y `npm run dev` recompila mientras se edita. Las vistas Blade comparten el diseño `resources/views/layouts/app.blade.php`. El JavaScript propio son dos entradas de Vite: `resources/js/theme.js` (unas pocas líneas en el diseño base que cambian entre el tema claro y el oscuro y recuerdan la elección; sin él, el tema sigue la preferencia del sistema) y `resources/js/landing.js`, que solo incluye la portada. La portada es una escena 3D con Three.js cargada en su propio recurso y en ningún otro: sin JavaScript, con movimiento reducido o sin WebGL se ve el fotograma estático y el texto completo. Su presupuesto de peso es propio (`npm run check:weight`, medido en `scripts/check-weight.mjs`), y el resto de la aplicación conserva el suyo. SQLite es la base local de la demo; el alojamiento gratuito sigue pendiente de verificación.
 
 El código se organiza como un monolito modular: cada área de negocio vive en `app/Modules/<Área>`, separada en `Actions` (casos de uso), `Http/Controllers`, `Http/Requests` (validación), `Models` y `Authorization`. Los módulos son `Access` (acceso y roles), `Members` (socios), `Fees` (cuota anual, exenciones y pagos), `Bank` (importación de extractos y conciliación) y `Dashboard` (panel y saldos, ambos de solo lectura). Rutas, vistas, migraciones, pruebas y proveedores mantienen las ubicaciones convencionales de Laravel. Solo se crea un módulo o una carpeta cuando contiene código real.
 

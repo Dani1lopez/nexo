@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "chosen": "07-cristal-y-camino.html",
+  "handoffs": {
+    "04-viaje-de-camara.html": {
+      "status": "implemented",
+      "queued": false,
+      "sentAt": "2026-11-18T22:35:48.956Z",
+      "startedAt": "2026-11-18T22:35:56.805Z",
+      "implementedAt": "2026-11-18T23:38:13.848Z",
+      "feature": "odd/tasks/landing-3d.md",
+      "note": "Implementada en la PR #61 (feat/60-landing-3d). Sin bloom, cursor propio ni botones magnéticos. Pendiente de CI y de la revisión nativa.",
+      "previewUrl": "http://127.0.0.1:8000/"
+    },
+    "07-cristal-y-camino.html": {
+      "status": "implemented",
+      "queued": false,
+      "sentAt": "2026-11-19T00:02:59.493Z",
+      "startedAt": null,
+      "implementedAt": "2026-11-19T00:08:26.975Z",
+      "feature": "odd/tasks/landing-3d.md",
+      "note": "Cristal de 4 facetas en Three.js sobre la portada real. 60 fps medidos, e2e 11/11, peso dentro del presupuesto. Sin commit.",
+      "previewUrl": "http://127.0.0.1:8000/"
+    }
+  }
+}
