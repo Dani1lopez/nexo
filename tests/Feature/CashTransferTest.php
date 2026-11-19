@@ -157,6 +157,23 @@ class CashTransferTest extends AuthTestCase
         $this->assertSame(1, BankExpense::query()->count());
     }
 
+    /** Rule 5b: a movement already marked as a transfer refuses every other destination. */
+    public function test_a_transfer_blocks_another_destination_written_afterwards(): void
+    {
+        $charge = $this->movement(-8000, 'COMPRA MATERIAL');
+        app(MarkCashTransfer::class)->handle($charge, 'to_cash', 'Retirada', (string) Str::uuid(), (int) $this->treasury()->id);
+
+        try {
+            app(ClassifyBankExpense::class)->handle($charge, 'material', 'Material', (string) Str::uuid(), (int) $this->treasury()->id);
+            $this->fail('A charge marked as a transfer should not become an expense.');
+        } catch (ValidationException $e) {
+            $this->assertSame('El movimiento ya está marcado como traspaso: anúlalo antes de clasificarlo como gasto.', $e->errors()['movement'][0]);
+        }
+
+        $this->assertSame(0, BankExpense::query()->count());
+        $this->assertSame(1, CashTransfer::query()->count());
+    }
+
     /** Rule 6: voiding keeps the history, undoes the cash effect and frees the movement. */
     public function test_voiding_undoes_the_cash_effect_and_frees_the_movement(): void
     {

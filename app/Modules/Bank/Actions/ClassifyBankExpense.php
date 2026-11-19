@@ -5,6 +5,7 @@ namespace App\Modules\Bank\Actions;
 use App\Modules\Bank\Models\BankExpense;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Bank\Models\OtherIncome;
+use App\Modules\Cash\Models\CashTransfer;
 use App\Modules\Fees\Models\Payment;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,8 @@ class ClassifyBankExpense
     private const AMOUNT = 'bank_expenses_amount_mismatch';
 
     private const CREDIT = 'bank_expenses_credit';
+
+    private const TRANSFERRED = 'bank_movement_has_transfer';
 
     /**
      * @throws ValidationException
@@ -152,6 +155,18 @@ class ClassifyBankExpense
             ]);
         }
 
+        // A movement has one destination: once it is a transfer it cannot become an expense too.
+        $transferred = CashTransfer::query()
+            ->where('bank_movement_id', $movement->id)
+            ->whereNull('voided_at')
+            ->exists();
+
+        if ($transferred) {
+            throw ValidationException::withMessages([
+                'movement' => 'El movimiento ya está marcado como traspaso: anúlalo antes de clasificarlo como gasto.',
+            ]);
+        }
+
         $classified = BankExpense::query()
             ->where('bank_movement_id', $movement->id)
             ->whereNull('voided_at')
@@ -187,6 +202,12 @@ class ClassifyBankExpense
         if (str_contains($message, self::AMOUNT)) {
             return ValidationException::withMessages([
                 'movement' => 'El cargo ha cambiado mientras se clasificaba: vuelve a intentarlo.',
+            ]);
+        }
+
+        if (str_contains($message, self::TRANSFERRED)) {
+            return ValidationException::withMessages([
+                'movement' => 'El movimiento ya está marcado como traspaso: anúlalo antes de clasificarlo como gasto.',
             ]);
         }
 

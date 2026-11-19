@@ -157,7 +157,7 @@
                             </form>
                         @endcan
                     @endif
-                    @if ($movement->amount_cents < 0 && $expense === null && $linkedPayments->isEmpty())
+                    @if ($movement->amount_cents < 0 && $expense === null && $transfer === null && $linkedPayments->isEmpty())
                         @can('edit-treasury')
                             <form method="post" action="/bank/movements/{{ $movement->id }}/expenses" class="form-block reconcile">
                                 @csrf
@@ -176,7 +176,7 @@
                             </form>
                         @endcan
                     @endif
-                    @if ($movement->amount_cents > 0 && $left > 0 && $income === null)
+                    @if ($movement->amount_cents > 0 && $left > 0 && $income === null && $transfer === null)
                         @can('edit-treasury')
                             @if ($pendingDues->isNotEmpty())
                                 <form method="post" action="/bank/movements/{{ $movement->id }}/reconcile" class="form-block reconcile">

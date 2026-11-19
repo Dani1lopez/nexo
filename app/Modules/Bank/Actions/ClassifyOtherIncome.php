@@ -4,6 +4,7 @@ namespace App\Modules\Bank\Actions;
 
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Bank\Models\OtherIncome;
+use App\Modules\Cash\Models\CashTransfer;
 use App\Modules\Fees\Models\Payment;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,8 @@ class ClassifyOtherIncome
     private const AMOUNT = 'other_incomes_amount_mismatch';
 
     private const CHARGE = 'other_incomes_charge';
+
+    private const TRANSFERRED = 'bank_movement_has_transfer';
 
     /**
      * @throws ValidationException
@@ -137,6 +140,18 @@ class ClassifyOtherIncome
             ]);
         }
 
+        // A movement has one destination: once it is a transfer it cannot become another income too.
+        $transferred = CashTransfer::query()
+            ->where('bank_movement_id', $movement->id)
+            ->whereNull('voided_at')
+            ->exists();
+
+        if ($transferred) {
+            throw ValidationException::withMessages([
+                'movement' => 'El abono ya está marcado como traspaso: anúlalo antes de clasificarlo como otro ingreso.',
+            ]);
+        }
+
         $classified = OtherIncome::query()
             ->where('bank_movement_id', $movement->id)
             ->whereNull('voided_at')
@@ -172,6 +187,12 @@ class ClassifyOtherIncome
         if (str_contains($message, self::AMOUNT)) {
             return ValidationException::withMessages([
                 'movement' => 'El abono ha cambiado mientras se clasificaba: vuelve a intentarlo.',
+            ]);
+        }
+
+        if (str_contains($message, self::TRANSFERRED)) {
+            return ValidationException::withMessages([
+                'movement' => 'El abono ya está marcado como traspaso: anúlalo antes de clasificarlo como otro ingreso.',
             ]);
         }
 
