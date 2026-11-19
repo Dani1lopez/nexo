@@ -32,6 +32,15 @@ Route::middleware(['auth', 'can:view-treasury'])->prefix('caja')->name('cash.')-
     Route::get('/', [CashController::class, 'index'])->name('index');
     // The base is fixed once: the request checks the role again and the action never overwrites it.
     Route::post('/saldo-inicial', [CashController::class, 'storeOpening'])->middleware('can:edit-treasury')->name('opening.store');
+
+    // The expenses of issue #62: drafts first, a single confirmation and corrections by void.
+    Route::middleware('can:edit-treasury')->group(function (): void {
+        Route::post('/gastos', [CashController::class, 'storeExpense'])->name('expenses.store');
+        Route::get('/gastos/{expense}/edit', [CashController::class, 'editExpense'])->name('expenses.edit');
+        Route::put('/gastos/{expense}', [CashController::class, 'updateExpense'])->name('expenses.update');
+        Route::post('/gastos/{expense}/confirm', [CashController::class, 'confirmExpense'])->name('expenses.confirm');
+        Route::post('/gastos/{expense}/void', [CashController::class, 'voidExpense'])->name('expenses.void');
+    });
 });
 
 Route::middleware(['auth', 'can:view-treasury'])->prefix('members')->name('members.')->group(function (): void {
