@@ -4,29 +4,32 @@ namespace App\Modules\Dashboard\Actions;
 
 use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
+use App\Modules\Cash\Actions\BuildCashBalance;
 use App\Modules\Fees\Actions\SumDues;
 use App\Modules\Fees\Models\Due;
 use App\Modules\Fees\Models\FeeYear;
 use Illuminate\Support\Carbon;
 
 /**
- * Read-only figures for the balances screen: the balance of the imported statement, the credits still
- * to reconcile and the debt broken down by fee year.
+ * Read-only figures for the balances screen: the balance of the imported statement, the money in the
+ * safe, the credits still to reconcile and the debt broken down by fee year.
  *
- * Dues are summed with their own rules (exemptions, voided payments), never re-derived here. Both the
- * credits and the dues are read in chunks, so the screen never loads the whole statement or every due
- * of every year at once.
+ * Dues are summed with their own rules (exemptions, voided payments), never re-derived here, and the
+ * cash keeps its own source: the active cash payments. Both the credits and the dues are read in
+ * chunks, so the screen never loads the whole statement or every due of every year at once.
  */
 class BuildBalances
 {
     private const CHUNK = 200;
 
-    public function __construct(private SumDues $sumDues) {}
+    public function __construct(private SumDues $sumDues, private BuildCashBalance $cashBalance) {}
 
     /**
      * @return array{
      *     balanceCents: int,
      *     movements: int,
+     *     cashCents: int,
+     *     cashPayments: int,
      *     unreconciledCents: int,
      *     unreconciledCount: int,
      *     otherIncomeCents: int,
@@ -90,6 +93,7 @@ class BuildBalances
             'otherIncomeCents' => $otherIncomeCents,
             'otherIncomeCount' => $otherIncomeCount,
             'lastImportAt' => BankImport::query()->latest('id')->value('created_at'),
+            ...$this->cashBalance->handle(),
             'years' => $years,
             'totalPendingCents' => (int) array_sum(array_column($years, 'pendingCents')),
             'totalPendingDues' => (int) array_sum(array_column($years, 'pendingDues')),

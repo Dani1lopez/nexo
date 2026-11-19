@@ -82,7 +82,7 @@ class SummaryTest extends AuthTestCase
             ->assertSee('Saldo en el banco')
             ->assertSee('120,00 €')
             ->assertSee('El saldo es el del extracto importado')
-            ->assertSee('La caja todavía no está incluida');
+            ->assertSee('Los pagos en efectivo no cambian este saldo');
     }
 
     /** Rule 2: the debt is broken down by fee year, newest first, with a link to each year. */
@@ -182,7 +182,8 @@ class SummaryTest extends AuthTestCase
         $this->actingAs($this->board())->get('/saldos')
             ->assertOk()
             ->assertSee('Todavía no se ha importado ningún extracto')
-            ->assertSee('Todavía no se ha fijado ninguna cuota');
+            ->assertSee('Todavía no se ha fijado ninguna cuota')
+            ->assertSeeInOrder(['Saldo en caja', '0,00 €', '0 pagos de cuotas en efectivo']);
     }
 
     public function test_payments_reference_the_movement_so_the_credit_is_not_offered_twice(): void
@@ -231,5 +232,86 @@ class SummaryTest extends AuthTestCase
         $this->actingAs($this->board())->get('/saldos')
             ->assertOk()
             ->assertSeeInOrder(['Sin conciliar', '10,00 €', '1 abono sin conciliar']);
+    }
+
+    /**
+     * Rule 8 of issue #62 (S1, S4): the cash balance is the sum of the active cash fee payments.
+     * A bank payment neither adds to the cash nor moves the statement balance, so both figures are
+     * shown apart.
+     */
+    public function test_the_cash_balance_sums_the_active_cash_payments_and_leaves_the_bank_alone(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $luis = $this->member('luis@example.test', 'Luis ficticio');
+        $year = $this->year(2026, 3000);
+        $this->movement(10000, 'CUOTA ANA');
+        app(RegisterPayment::class)->handle($this->dueFor($ana, $year), 2000, '2026-02-01', 'cash', null, 'key-cash-ana');
+        app(RegisterPayment::class)->handle($this->dueFor($luis, $year), 1000, '2026-02-02', 'cash', null, 'key-cash-luis');
+        app(RegisterPayment::class)->handle($this->dueFor($ana, $year), 1000, '2026-02-03', 'bank', null, 'key-bank-ana');
+
+        $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSeeInOrder(['Saldo en el banco', '100,00 €'])
+            ->assertSeeInOrder(['Saldo en caja', '30,00 €', '2 pagos de cuotas en efectivo']);
+    }
+
+    /**
+     * Rule 9 (S4): the cash figure does not wait for a bank import. Without a statement the bank is
+     * still the empty state, but the cash already shows the money in the safe.
+     */
+    public function test_the_cash_balance_is_shown_even_without_a_bank_import(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $year = $this->year(2026, 3000);
+        app(RegisterPayment::class)->handle($this->dueFor($ana, $year), 2500, '2026-02-01', 'cash', null, 'key-cash-only');
+
+        $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSee('Todavía no se ha importado ningún extracto')
+            ->assertSeeInOrder(['Saldo en caja', '25,00 €', '1 pago de cuota en efectivo'])
+            ->assertDontSee('Saldo en el banco');
+    }
+
+    /**
+     * Rule 10 (S1): a voided cash payment keeps its history but stops holding money, exactly like a
+     * voided payment stops counting as collected.
+     */
+    public function test_a_voided_cash_payment_stops_counting_in_the_cash_balance(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $year = $this->year(2026, 3000);
+        $payment = app(RegisterPayment::class)->handle($this->dueFor($ana, $year), 3000, '2026-02-01', 'cash', null, 'key-cash-void');
+
+        $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSeeInOrder(['Saldo en caja', '30,00 €', '1 pago de cuota en efectivo']);
+
+        app(VoidPayment::class)->handle($payment, 'Error de importe');
+
+        $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSeeInOrder(['Saldo en caja', '0,00 €', '0 pagos de cuotas en efectivo']);
+    }
+
+    /**
+     * Preserve (#44, #62): the cash section is read-only for the board too. It adds no form and the
+     * route still rejects writes, so consulting the cash never registers money.
+     */
+    public function test_the_cash_figure_is_read_only_for_the_board(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $year = $this->year(2026, 3000);
+        app(RegisterPayment::class)->handle($this->dueFor($ana, $year), 1000, '2026-02-01', 'cash', null, 'key-cash-board');
+
+        $html = $this->actingAs($this->board())->get('/saldos')
+            ->assertOk()
+            ->assertSeeInOrder(['Saldo en caja', '10,00 €'])
+            ->getContent();
+
+        preg_match('/aria-label="Caja".*?<\/section>/s', $html, $section);
+
+        $this->assertNotEmpty($section);
+        $this->assertStringNotContainsString('<form', $section[0]);
+        $this->actingAs($this->board())->post('/saldos', ['amount' => '10'])->assertStatus(405);
     }
 }

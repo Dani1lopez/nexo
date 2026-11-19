@@ -32,6 +32,7 @@
     --color-line-socios: light-dark(#0f766e, #2dd4bf);
     --color-line-cuotas: light-dark(#b45309, #fbbf24);
     --color-line-movimientos: light-dark(#6d28d9, #b79cff);
+    --color-line-caja: light-dark(#4d7c0f, #bef264);
 
     --color-danger: light-dark(#b42318, #f97066);
     --color-danger-strong: light-dark(#912018, #fda29b);
@@ -128,6 +129,10 @@
 
     body.line-movimientos {
         --line: var(--color-line-movimientos);
+    }
+
+    body.line-caja {
+        --line: var(--color-line-caja);
     }
 
     ::selection {
@@ -518,6 +523,10 @@
 
     .stop-movimientos {
         --stop: var(--color-line-movimientos);
+    }
+
+    .stop-caja {
+        --stop: var(--color-line-caja);
     }
 
     @media (min-width: 48rem) {
