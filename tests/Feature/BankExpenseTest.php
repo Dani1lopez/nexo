@@ -59,6 +59,31 @@ class BankExpenseTest extends AuthTestCase
         return app(ClassifyBankExpense::class)->handle($movement, $category, $description, (string) Str::uuid(), (int) $this->treasury()->id);
     }
 
+    public function test_description_is_trimmed_without_coercing_non_string_input(): void
+    {
+        $movement = $this->movement(-8000, 'Gasto de prueba');
+        $route = "/bank/movements/{$movement->id}/expenses";
+        $description = str_repeat('á', 200);
+        $data = [
+            'submission_key' => (string) Str::uuid(),
+            'category' => 'material',
+        ];
+
+        $this->actingAs($this->treasury());
+        foreach ([123, ['texto'], '   ', $description.'á'] as $invalid) {
+            $this->postJson($route, $data + ['description' => $invalid])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('description');
+        }
+        $this->assertSame(0, BankExpense::query()->count());
+
+        $this->post($route, $data + ['description' => ' '.$description.' '])
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($description, BankExpense::query()->sole()->description);
+    }
+
     /** Rule 1: a complete charge is classified with its absolute amount and never moves the bank. */
     public function test_a_charge_is_classified_and_the_bank_balance_does_not_move(): void
     {
@@ -119,7 +144,12 @@ class BankExpenseTest extends AuthTestCase
             $this->assertSame('El cargo ya está clasificado como gasto.', $e->errors()['movement'][0]);
         }
 
-        $this->assertSame(1, BankExpense::query()->count());
+        $unchanged = BankExpense::query()->sole();
+        $this->assertTrue($first->is($unchanged));
+        $this->assertSame('material', $unchanged->category);
+        $this->assertSame('Material de taller', $unchanged->description);
+        $this->assertSame(2550, $unchanged->amount_cents);
+        $this->assertNull($unchanged->voided_at);
     }
 
     /** Rule 4: voiding with a reason keeps the row, frees the charge and leaves the balance alone. */

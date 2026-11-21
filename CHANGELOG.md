@@ -4,6 +4,10 @@ Los cambios se agrupan por versión. Las etiquetas siguen las reglas de [CONTRIB
 
 ## Sin publicar
 
+### Corregido
+
+- Los formularios de gastos bancarios y traspasos recortan la descripción antes de aplicar el límite de 200 caracteres y rechazan valores que no sean texto.
+
 ### Añadido
 
 - Acceso individual ficticio, cierre de sesión y permisos de tesorería y junta; panel de identidad de solo lectura.

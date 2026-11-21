@@ -42,6 +42,10 @@ class CashTransferRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['description' => trim((string) $this->input('description'))]);
+        $description = $this->input('description');
+
+        if (is_string($description)) {
+            $this->merge(['description' => trim($description)]);
+        }
     }
 }

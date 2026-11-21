@@ -57,6 +57,31 @@ class CashTransferTest extends AuthTestCase
         ]);
     }
 
+    public function test_description_is_trimmed_without_coercing_non_string_input(): void
+    {
+        $movement = $this->movement(-8000, 'Traslado de prueba');
+        $route = "/bank/movements/{$movement->id}/transfers";
+        $description = str_repeat('á', 200);
+        $data = [
+            'submission_key' => (string) Str::uuid(),
+            'direction' => 'to_cash',
+        ];
+
+        $this->actingAs($this->treasury());
+        foreach ([123, ['texto'], '   ', $description.'á'] as $invalid) {
+            $this->postJson($route, $data + ['description' => $invalid])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('description');
+        }
+        $this->assertSame(0, CashTransfer::query()->count());
+
+        $this->post($route, $data + ['description' => ' '.$description.' '])
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($description, CashTransfer::query()->sole()->description);
+    }
+
     /** Rule 1: a withdrawal funds the safe without moving the bank balance. */
     public function test_a_withdrawal_funds_the_safe_and_the_bank_stays(): void
     {
@@ -179,12 +204,17 @@ class CashTransferTest extends AuthTestCase
     {
         $withdrawal = $this->movement(-8000);
 
-        $this->actingAs($this->treasury())
-            ->post("/bank/movements/{$withdrawal->id}/transfers", [
-                'submission_key' => (string) Str::uuid(),
-                'direction' => 'to_cash',
-                'description' => 'Retirada para la caja',
-            ]);
+        $route = "/bank/movements/{$withdrawal->id}/transfers";
+        $data = [
+            'submission_key' => (string) Str::uuid(),
+            'direction' => 'to_cash',
+            'description' => 'Retirada para la caja',
+        ];
+
+        $this->actingAs($this->treasury())->post($route, $data)
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors();
+        $this->post($route, $data)->assertRedirect('/bank')->assertSessionHasNoErrors();
         $this->assertSame(8000, app(BuildCashBalance::class)->handle()['cashCents']);
 
         $transfer = CashTransfer::query()->firstOrFail();
@@ -195,6 +225,11 @@ class CashTransferTest extends AuthTestCase
         $voided = CashTransfer::query()->firstOrFail();
         $this->assertNotNull($voided->voided_at);
         $this->assertSame('No era una retirada', $voided->void_reason);
+
+        $this->postJson($route, $data)->assertUnprocessable()
+            ->assertJsonPath('errors.submission_key.0', 'El formulario ha caducado: anulaste este traspaso. Recarga la página y vuelve a marcarlo.');
+
+        $this->assertSame(1, CashTransfer::query()->count());
         $this->assertSame(0, app(BuildCashBalance::class)->handle()['cashCents']);
     }
 
