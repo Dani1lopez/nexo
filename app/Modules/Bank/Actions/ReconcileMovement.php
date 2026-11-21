@@ -19,6 +19,10 @@ class ReconcileMovement
     /**
      * Split one credit movement into the payments the person chose.
      *
+     * Since #71 the split no longer has to use the whole credit: it may take less than what is
+     * free and the rest stays pending. It never exceeds the free amount of the movement nor what
+     * each chosen due still owes.
+     *
      * @param  array<int, int>  $allocations  due id => amount in cents
      * @return list<Payment>
      *
@@ -44,7 +48,7 @@ class ReconcileMovement
             $keys[$dueId] = Uuid::uuid5($submissionKey, (string) $dueId)->toString();
         }
 
-        $replayed = $this->replayed($keys);
+        $replayed = $this->replayed($movement, $keys, $allocations);
         if ($replayed !== null) {
             return $replayed;
         }
@@ -56,8 +60,8 @@ class ReconcileMovement
             // The whole credit already went to the other destination, so this money is not free.
             $this->refuseIfClassifiedElsewhere($movement);
 
-            // Read inside the transaction: a concurrent void must not leave the equality stale.
-            $this->refuseUnlessAllocationsMatch($movement, $allocations);
+            // Read inside the transaction: a concurrent void must not leave the free amount stale.
+            $free = $this->refuseUnlessAllocationsFit($movement, $allocations);
             $this->refuseDuesAlreadyPaidBy($movement, array_keys($allocations));
 
             $created = [];
@@ -75,13 +79,14 @@ class ReconcileMovement
                 );
             }
 
-            // Post-condition: this split must leave the movement fully reconciled. A void committed
-            // between the check above and these inserts would leave a remainder behind, and the
-            // capacity trigger only enforces an upper bound, so the end state is verified here and
-            // the whole split rolls back when it does not hold.
+            // Post-condition: this split used exactly the free amount it read. A void committed
+            // between the check above and these inserts would leave a different remainder behind,
+            // and the capacity trigger only enforces an upper bound, so the end state is verified
+            // here and the whole split rolls back when it does not hold. The money left over by a
+            // split that took less than what was free stays pending, as #71 asks.
             $left = $this->remainingCents($movement);
 
-            if ($left !== 0) {
+            if ($left !== $free - array_sum($allocations)) {
                 throw ValidationException::withMessages([
                     'allocations' => 'El movimiento ha cambiado mientras se repartía: quedan '.Money::format($left).' por conciliar. Vuelve a intentarlo.',
                 ]);
@@ -94,18 +99,34 @@ class ReconcileMovement
     /**
      * The payments an earlier submission of the same form already created, or null when this is a new split.
      *
+     * A key identifies one payload, so a resend carrying other lines, other amounts or another
+     * movement is refused instead of being honoured as a fresh split: that would change the
+     * previous split silently.
+     *
      * @param  array<int, string>  $keys  due id => submission key
+     * @param  array<int, int>  $allocations  due id => amount in cents
      * @return list<Payment>|null
      *
-     * @throws ValidationException when the form was already used and any of its payments was voided
+     * @throws ValidationException
      */
-    private function replayed(array $keys): ?array
+    private function replayed(BankMovement $movement, array $keys, array $allocations): ?array
     {
         $found = Payment::query()
             ->whereIn('submission_key', array_values($keys))
             ->orderBy('id')
             ->get()
             ->keyBy('submission_key');
+
+        if ($found->isEmpty()) {
+            return null;
+        }
+
+        // A key belongs to the movement whose form rendered it: reusing it elsewhere is a stale form.
+        if ($found->contains(fn (Payment $payment): bool => $payment->bank_movement_id !== $movement->id)) {
+            throw ValidationException::withMessages([
+                'submission_key' => 'El formulario ha caducado. Recarga la página e inténtalo de nuevo.',
+            ]);
+        }
 
         // A voided payment still holds its submission key, so this form can no longer be honoured:
         // replaying it would announce a reconciliation that no longer exists, and retrying it as a
@@ -116,14 +137,20 @@ class ReconcileMovement
             ]);
         }
 
-        if ($found->count() !== count($keys)) {
-            return null;
-        }
-
         $payments = [];
-        foreach ($keys as $key) {
-            /** @var Payment $payment */
+
+        foreach ($keys as $dueId => $key) {
+            /** @var Payment|null $payment */
             $payment = $found->get($key);
+
+            // The same key with other lines or other amounts is a changed form: the stored split
+            // keeps what it has, and the mismatch is announced instead of confirmed as a success.
+            if ($payment === null || (int) $payment->amount_cents !== $allocations[$dueId]) {
+                throw ValidationException::withMessages([
+                    'submission_key' => 'El formulario enviado no coincide con el reparto ya guardado. Recarga la página e inténtalo de nuevo.',
+                ]);
+            }
+
             $payments[] = $payment;
         }
 
@@ -175,23 +202,24 @@ class ReconcileMovement
     }
 
     /**
-     * What is left to reconcile: the movement amount minus its active payments.
-     */
-    /**
-     * The split has to use exactly what is left of the movement, read inside the transaction so a
-     * concurrent void cannot leave the comparison stale and close the split with money unassigned.
+     * The split must be a positive amount that never exceeds what is still free. Since #71 it no
+     * longer has to use the whole credit: whatever is left stays pending.
+     *
+     * The free amount is read inside the transaction so a concurrent void cannot leave it stale
+     * and let this split take more than the movement holds.
      *
      * @param  array<int, int>  $allocations
+     * @return int the free amount this split was measured against
      *
      * @throws ValidationException
      */
-    private function refuseUnlessAllocationsMatch(BankMovement $movement, array $allocations): void
+    private function refuseUnlessAllocationsFit(BankMovement $movement, array $allocations): int
     {
         $remaining = $this->remainingCents($movement);
         $allocated = array_sum($allocations);
 
-        if ($allocated === $remaining) {
-            return;
+        if ($allocated > 0 && $allocated <= $remaining) {
+            return $remaining;
         }
 
         throw ValidationException::withMessages([
@@ -201,6 +229,9 @@ class ReconcileMovement
         ]);
     }
 
+    /**
+     * What is left to reconcile: the movement amount minus its active payments.
+     */
     private function remainingCents(BankMovement $movement): int
     {
         $used = (int) $movement->payments()->whereNull('voided_at')->sum('amount_cents');

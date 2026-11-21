@@ -1,9 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { logIn } from '../support/session';
 
 const uploadLabel = 'Archivo CSV con las columnas fecha, importe y concepto';
 
-test('tesorería reparte un abono entre dos socios y la suma tiene que cuadrar', async ({ page }) => {
+/** Reads the pending figure of the bank block on /saldos, in cents. */
+async function pendingCents(page: Page): Promise<number> {
+  await page.goto('/saldos');
+  const text = await page.locator('.kpis > div', { hasText: 'Sin conciliar' }).innerText();
+  const match = text.match(/(\d{1,3}(?:\.\d{3})*,\d{2}) €/);
+
+  return match ? Math.round(Number(match[1].replace(/\./g, '').replace(',', '.')) * 100) : 0;
+}
+
+test('tesorería concilia parte de un abono y Banco y Saldos muestran lo que sigue pendiente', async ({ page }) => {
   const stamp = Date.now();
   const ana = `Ana reparto ${stamp}`;
   const luis = `Luis reparto ${stamp}`;
@@ -35,25 +44,47 @@ test('tesorería reparte un abono entre dos socios y la suma tiene que cuadrar',
 
   const movement = page.locator('article', { has: page.getByRole('heading', { name: concept }) });
   await expect(movement).toContainText('Quedan 20,00 € por conciliar');
+  await expect(movement.getByText('la suma no puede superar lo que queda por conciliar')).toBeVisible();
+
+  // Everything pending in the whole statement before any split.
+  const pendingAfterImport = await pendingCents(page);
+
+  // A split above what is still free is refused and changes nothing, here nor in Saldos.
+  await page.goto('/bank');
 
   const anaInput = movement.getByLabel(new RegExp(`${ana} · 2031 · pendiente`));
   const luisInput = movement.getByLabel(new RegExp(`${luis} · 2031 · pendiente`));
   // A third pending due stays untouched in every submission: an empty row must not take part.
   await expect(movement.getByLabel(new RegExp(`${sinPagar} · 2031 · pendiente`))).toHaveValue('');
 
-  // A split that does not add up is refused and changes nothing.
+  await anaInput.fill('15');
+  await luisInput.fill('10');
+  await movement.getByRole('button', { name: 'Conciliar el reparto' }).click();
+  await expect(page.getByRole('alert')).toContainText('El reparto suma 25,00 €');
+  await expect(movement).toContainText('Quedan 20,00 € por conciliar');
+  await expect(movement).not.toContainText('Ya se han conciliado');
+  expect(await pendingCents(page)).toBe(pendingAfterImport);
+
+  // Less than the credit is now a valid split: it pays the chosen dues and the rest stays pending.
+  await page.goto('/bank');
   await anaInput.fill('5');
   await luisInput.fill('5');
-  await movement.getByRole('button', { name: 'Conciliar el reparto' }).click();
-  await expect(page.getByRole('alert')).toContainText('El reparto suma 10,00 €');
-  await expect(movement).toContainText('Quedan 20,00 € por conciliar');
-
-  // The split that adds up pays both dues and leaves nothing to reconcile.
-  await anaInput.fill('10');
-  await luisInput.fill('10');
   await movement.getByRole('button', { name: 'Conciliar el reparto' }).click();
   await expect(page.getByRole('status')).toHaveText('Reparto conciliado desde el extracto.');
   await expect(movement).toContainText(`Conciliado con ${ana}`);
   await expect(movement).toContainText(`Conciliado con ${luis}`);
+  await expect(movement).toContainText('Quedan 10,00 € por conciliar');
+  await expect(movement).toContainText('Ya se han conciliado 10,00 € de este abono; el resto sigue pendiente de destino');
+
+  // Saldos drops by exactly the 10,00 € Banco no longer offers for this credit.
+  expect(await pendingCents(page)).toBe(pendingAfterImport - 1000);
+
+  // The free remainder is offered again. It closes the credit on the member still unpaid: a due this
+  // movement already pays cannot be used twice, so the rest goes to the untouched third due.
+  await page.goto('/bank');
+  await movement.getByLabel(new RegExp(`${sinPagar} · 2031 · pendiente`)).fill('10');
+  await movement.getByRole('button', { name: 'Conciliar el reparto' }).click();
+  await expect(page.getByRole('status')).toHaveText('Pago conciliado desde el extracto.');
   await expect(movement).not.toContainText('por conciliar');
+  expect(await pendingCents(page)).toBe(pendingAfterImport - 2000);
 });

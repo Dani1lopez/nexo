@@ -95,22 +95,188 @@ class SplitReconcileTest extends AuthTestCase
         $this->assertSame('paid', $luis->fresh()->status());
     }
 
-    /** Rule 3: a split that does not add up creates nothing at all. */
-    public function test_a_split_that_does_not_add_up_creates_no_payment_at_all(): void
+    /** Rule 3 and #71 S3: a split above the credit creates nothing at all. */
+    public function test_a_split_above_the_movement_amount_creates_no_payment_at_all(): void
     {
         $year = $this->year(2026, 1000);
         $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
         $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
         $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
 
-        foreach ([[$ana->id => '10', $luis->id => '5'], [$ana->id => '10', $luis->id => '15']] as $allocations) {
+        foreach ([[$ana->id => '10', $luis->id => '15'], [$ana->id => '15', $luis->id => '10']] as $allocations) {
             $this->split($movement->id, $allocations)
-                ->assertSessionHasErrors('allocations');
+                ->assertSessionHasErrors('allocations')
+                ->assertSessionMissing('status');
 
             $this->assertDatabaseCount('payments', 0);
             $this->assertSame(0, $ana->fresh()->paidCents());
             $this->assertSame(0, $luis->fresh()->paidCents());
         }
+    }
+
+    /**
+     * Spec #71 S1 and S2: a split may use less than the whole credit.
+     * The chosen due is paid and the rest stays pending, counted once.
+     */
+    public function test_a_split_below_the_free_amount_leaves_the_rest_pending(): void
+    {
+        $year = $this->year(2026, 2000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA ANA');
+
+        $this->split($movement->id, [$ana->id => '10'])
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Pago conciliado desde el extracto.');
+
+        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(1000, $ana->fresh()->paidCents());
+        $this->assertSame('partial', $ana->fresh()->status());
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 10,00 € por conciliar');
+    }
+
+    /** Spec #71 S2: two partial splits reconcile the credit once, never twice. */
+    public function test_two_partial_splits_reconcile_the_credit_once(): void
+    {
+        $year = $this->year(2026, 2000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->split($movement->id, [$ana->id => '10'])->assertSessionHasNoErrors();
+        $this->split($movement->id, [$luis->id => '10'])->assertSessionHasNoErrors();
+
+        $this->assertSame(2, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(2000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(1000, $ana->fresh()->paidCents());
+        $this->assertSame(1000, $luis->fresh()->paidCents());
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertDontSee('Quedan 10,00 € por conciliar');
+    }
+
+    /** Spec #71 S3: a line never goes beyond what its own due still owes, even with free money around. */
+    public function test_a_line_above_what_is_pending_for_its_due_is_refused(): void
+    {
+        $year = $this->year(2026, 1000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $movement = $this->movement(5000, 'TRANSFERENCIA ANA');
+
+        $this->split($movement->id, [$ana->id => '15'])
+            ->assertSessionHasErrors('amount')
+            ->assertSessionMissing('status');
+
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame(0, $ana->fresh()->paidCents());
+        $this->assertSame('pending', $ana->fresh()->status());
+    }
+
+    /** Spec #71 S4: resending the same partial split neither duplicates nor changes the rest. */
+    public function test_resending_the_same_partial_split_does_not_duplicate_and_keeps_the_rest_pending(): void
+    {
+        $year = $this->year(2026, 2000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA ANA');
+        $allocations = [$ana->id => '10'];
+        $key = (string) Str::uuid();
+
+        $this->split($movement->id, $allocations, $key)->assertSessionHasNoErrors();
+        $this->split($movement->id, $allocations, $key)
+            ->assertRedirect('/bank')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Pago conciliado desde el extracto.');
+
+        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(1000, $ana->fresh()->paidCents());
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 10,00 € por conciliar');
+    }
+
+    /** Spec #71 S4: a changed resend of a partial split is refused and leaves everything as it was. */
+    public function test_a_changed_resend_of_a_partial_split_is_refused_and_changes_nothing(): void
+    {
+        $year = $this->year(2026, 2000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+        $other = $this->movement(2000, 'TRANSFERENCIA LUIS');
+        $key = (string) Str::uuid();
+
+        $this->split($movement->id, [$ana->id => '10'], $key)->assertSessionHasNoErrors();
+
+        // The same form key with another amount, or with an added line, is a changed form: refused.
+        $this->split($movement->id, [$ana->id => '5'], $key)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        $this->split($movement->id, [$ana->id => '10', $luis->id => '5'], $key)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        // The same form key on another movement is a stale form, never a second reconciliation.
+        $this->split($other->id, [$ana->id => '10'], $key)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        // A resend whose lines share no due with the stored split is indistinguishable from a new
+        // split: it never touches the stored payment and only takes what is still free.
+        $this->split($movement->id, [$luis->id => '5'], $key)->assertSessionHasNoErrors();
+
+        $this->assertSame(2, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(1500, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(0, Payment::where('bank_movement_id', $other->id)->count());
+        $this->assertSame(1000, $ana->fresh()->paidCents());
+        $this->assertSame(500, $luis->fresh()->paidCents());
+    }
+
+    /** Spec #71 S3 and S4: voiding one part of a partial split returns exactly that part. */
+    public function test_voiding_part_of_a_partial_split_returns_exactly_that_part_to_pending(): void
+    {
+        $year = $this->year(2026, 2000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+        $allocations = [$ana->id => '5', $luis->id => '5'];
+        $key = (string) Str::uuid();
+
+        $this->split($movement->id, $allocations, $key)->assertSessionHasNoErrors();
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+
+        $anaPayment = Payment::where('due_id', $ana->id)->firstOrFail();
+        $this->actingAs($this->treasury())
+            ->post("/bank/payments/{$anaPayment->id}/void", ['reason' => 'Se repartió mal.'])
+            ->assertSessionHasNoErrors();
+
+        // Exactly the voided 5,00 € comes back: 15,00 € are free again and nothing else moved.
+        $this->assertSame(500, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(0, $ana->fresh()->paidCents());
+        $this->assertSame(500, $luis->fresh()->paidCents());
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 15,00 € por conciliar');
+
+        // The same form no longer announces a reconciliation that was partly voided.
+        $this->split($movement->id, $allocations, $key)
+            ->assertSessionHasErrors('submission_key')
+            ->assertSessionMissing('status');
+
+        $this->assertSame(2, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(500, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+
+        // A fresh form reconciles the freed part only.
+        $this->split($movement->id, [$ana->id => '5'])->assertSessionHasNoErrors();
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(500, $ana->fresh()->paidCents());
+        $this->assertSame('partial', $ana->fresh()->status());
     }
 
     /** Rule 2: an empty split and a negative amount are refused. */
@@ -359,18 +525,28 @@ class SplitReconcileTest extends AuthTestCase
         $this->assertSame('paid', $luis->fresh()->status());
     }
 
-    /** Rule 5: the capacity is the movement amount, not a single payment. */
-    public function test_a_split_beyond_the_movement_amount_is_refused(): void
+    /** Rule 5 and #71 S3: the capacity of a split is what is still free, never the whole amount. */
+    public function test_a_second_split_beyond_what_is_left_is_refused(): void
     {
-        $year = $this->year(2026, 1000);
+        $year = $this->year(2026, 2000);
         $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
         $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
         $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
 
-        $this->split($movement->id, [$ana->id => '10'])->assertSessionHasErrors('allocations');
-        $this->assertDatabaseCount('payments', 0);
+        // The first split uses half of the credit and leaves 10,00 € free.
+        $this->split($movement->id, [$ana->id => '10'])->assertSessionHasNoErrors();
 
-        $this->split($movement->id, [$ana->id => '10', $luis->id => '10'])->assertSessionHasNoErrors();
+        // 15,00 € do not fit in the 10,00 € left: nothing is created.
+        $this->split($movement->id, [$luis->id => '15'])->assertSessionHasErrors('allocations');
+        $this->assertSame(1, Payment::where('bank_movement_id', $movement->id)->count());
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+        $this->assertSame(0, $luis->fresh()->paidCents());
+
+        // The free part is offered again and closes the credit.
+        $this->split($movement->id, [$luis->id => '10'])->assertSessionHasNoErrors();
+        $this->assertSame(2000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+
+        // Nothing is free any more: a new line is refused instead of overdrawing the movement.
         $this->split($movement->id, [$ana->id => '5'])->assertSessionHasErrors('allocations');
         $this->assertSame(2, Payment::where('bank_movement_id', $movement->id)->count());
     }
@@ -489,6 +665,51 @@ class SplitReconcileTest extends AuthTestCase
         $this->assertSame('paid', $luis->fresh()->status());
     }
 
+    /**
+     * Spec #71 S1 and S2: the form no longer asks for an exact fit. What is not assigned stays
+     * pending, and the screen says so before the person types anything.
+     */
+    public function test_the_bank_form_no_longer_asks_for_an_exact_fit(): void
+    {
+        $year = $this->year(2026, 1000);
+        $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertDontSee('debe dar exactamente')
+            ->assertSee('la suma no puede superar lo que queda por conciliar')
+            ->assertSee('lo que no asignes seguirá pendiente');
+    }
+
+    /**
+     * Spec #71 S1 and S2: after a partial split the screen shows the amount still pending and the
+     * amount already reconciled of that same credit, so nobody has to work it out by hand.
+     */
+    public function test_the_bank_screen_shows_what_is_pending_and_what_is_already_reconciled(): void
+    {
+        $year = $this->year(2026, 3000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA ANA');
+
+        $this->split($movement->id, [$ana->id => '10'])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 10,00 € por conciliar')
+            ->assertSee('Ya se han conciliado 10,00 € de este abono')
+            ->assertSee('el resto sigue pendiente de destino');
+
+        // A credit nothing was taken from yet shows no reconciled part at all, not even a zero.
+        $this->movement(3000, 'TRANSFERENCIA LUIS');
+
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 30,00 € por conciliar')
+            ->assertDontSee('Ya se han conciliado 30,00 € de este abono')
+            ->assertDontSee('Ya se han conciliado 0,00 €');
+    }
+
     public function test_the_bank_screen_offers_only_what_is_left_of_each_credit(): void
     {
         $year = $this->year(2026, 1000);
@@ -496,16 +717,19 @@ class SplitReconcileTest extends AuthTestCase
         $luis = $this->dueFor($this->member('luis@example.test', 'Luis ficticio'), $year);
         $movement = $this->movement(2000, 'TRANSFERENCIA CONJUNTA');
 
-        $this->split($movement->id, [$ana->id => '10'])->assertSessionHasErrors('allocations');
+        $this->split($movement->id, [$ana->id => '10'])->assertSessionHasNoErrors();
+
+        // #71: the 10,00 € still free are the only thing the screen offers.
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 10,00 € por conciliar')
+            ->assertDontSee('Quedan 20,00 € por conciliar');
+
+        $this->split($movement->id, [$luis->id => '10'])->assertSessionHasNoErrors();
 
         $this->actingAs($this->treasury())->get('/bank')
             ->assertOk()
-            ->assertSee('Quedan 20,00 € por conciliar');
-
-        $this->split($movement->id, [$ana->id => '10', $luis->id => '10'])->assertSessionHasNoErrors();
-
-        $this->actingAs($this->treasury())->get('/bank')
-            ->assertOk()
+            ->assertDontSee('Quedan 10,00 € por conciliar')
             ->assertDontSee('Quedan 20,00 € por conciliar')
             ->assertSee('Anular y liberar')
             ->assertSee('10,00 €');

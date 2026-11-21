@@ -235,6 +235,43 @@ class SummaryTest extends AuthTestCase
     }
 
     /**
+     * Spec #71 S1, S2 and S5: after a partial split the bank screen and the balances screen show
+     * the same pending amount, both roles can read it and only treasury can reconcile.
+     */
+    public function test_the_bank_and_the_balances_screen_show_the_same_pending_amount_after_a_partial_split(): void
+    {
+        $ana = $this->member('ana@example.test');
+        $year = $this->year(2026, 2000);
+        $movement = $this->movement(2000, 'TRANSFERENCIA ANA');
+        $due = $this->dueFor($ana, $year);
+
+        app(ReconcileMovement::class)->handle($movement, [$due->id => 1000], (string) Str::uuid());
+
+        // Banco: half of the credit is reconciled and the other half is still waiting for a destination.
+        $this->actingAs($this->treasury())->get('/bank')
+            ->assertOk()
+            ->assertSee('Quedan 10,00 € por conciliar')
+            ->assertSee('Ya se han conciliado 10,00 € de este abono');
+
+        // Saldos: the same 10,00 € as the only pending credit, for treasury and for the board.
+        foreach ([$this->treasury(), $this->board()] as $user) {
+            $this->actingAs($user)->get('/saldos')
+                ->assertOk()
+                ->assertSeeInOrder(['Sin conciliar', '10,00 €', '1 abono sin conciliar']);
+        }
+
+        // The board keeps consulting only: reconciling stays a treasury action.
+        $this->actingAs($this->board())
+            ->post("/bank/movements/{$movement->id}/reconcile", [
+                'submission_key' => (string) Str::uuid(),
+                'allocations' => [$due->id => 1000],
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(1000, (int) Payment::where('bank_movement_id', $movement->id)->whereNull('voided_at')->sum('amount_cents'));
+    }
+
+    /**
      * Rule 8 of issue #62 (S1, S4): the cash balance is the sum of the active cash fee payments.
      * A bank payment neither adds to the cash nor moves the statement balance, so both figures are
      * shown apart.

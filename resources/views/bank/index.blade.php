@@ -91,6 +91,7 @@
                     @php($expense = $expenses->get($movement->id))
                     @php($transfer = $transfers->get($movement->id, collect()->first()))
                     @php($left = $remaining[$movement->id] ?? 0)
+                    @php($reconciled = $movement->amount_cents - $left)
                     @if ($transfer)
                         <p class="notice linked">Traspaso · {{ $transfer->directionLabel() }} · {{ \App\Modules\Fees\Support\Money::format($transfer->amount()) }}</p>
                         <p class="notice">{{ $transfer->description }}</p>
@@ -182,8 +183,11 @@
                                 <form method="post" action="/bank/movements/{{ $movement->id }}/reconcile" class="form-block reconcile">
                                     @csrf
                                     <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
-                                    <p class="notice linked">Quedan {{ \App\Modules\Fees\Support\Money::format($left) }} por conciliar</p>
-                                    <p class="notice">Escribe el importe de cada cuota que pague este abono. Una cuota vacía no participa y la suma debe dar exactamente lo que queda por conciliar.</p>
+                                    <p class="notice linked">Quedan {{ \App\Modules\Fees\Support\Money::format($left) }} por conciliar.</p>
+                                    @if ($reconciled > 0)
+                                        <p class="notice">Ya se han conciliado {{ \App\Modules\Fees\Support\Money::format($reconciled) }} de este abono; el resto sigue pendiente de destino.</p>
+                                    @endif
+                                    <p class="notice">Escribe el importe de cada cuota que pague este abono. Una cuota vacía no participa y la suma no puede superar lo que queda por conciliar: lo que no asignes seguirá pendiente.</p>
                                     @foreach ($pendingDues as $due)
                                         <label for="split-{{ $movement->id }}-{{ $due->id }}">{{ $due->member->name }} · {{ $due->feeYear->year }} · pendiente {{ \App\Modules\Fees\Support\Money::format($due->pendingCents()) }}</label>
                                         <input id="split-{{ $movement->id }}-{{ $due->id }}" name="allocations[{{ $due->id }}]" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">

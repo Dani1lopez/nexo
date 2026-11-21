@@ -30,6 +30,8 @@ Los cambios se agrupan por versión. Las etiquetas siguen las reglas de [CONTRIB
 
 ### Cambiado
 
+- La conciliación de un abono permite repartir una parte sin inventar importes: el sobrante queda visible como pendiente de destino en Banco y Saldos, y puede conciliarse después sin duplicar pagos.
+
 - La caja de efectivo (`app/Modules/Cash`) deja de ser un pendiente y se calcula a partir de datos reales: saldo de caja = base inicial + cuotas cobradas en efectivo vigentes − gastos confirmados. No se guarda un saldo duplicado y un pago anulado deja de contar. `Saldos` muestra banco y caja por separado y una página `/caja` reúne la cifra, su desglose y los gastos. Tesorería fija el saldo inicial una sola vez (reenviar el mismo importe no cambia nada, otro importe se rechaza sin sobrescribir) y registra gastos con fecha, importe, categoría y concepto, con motivo obligatorio si no hay justificante: nacen en borrador editable, confirmarlos descuenta una sola vez y corregirlos exige anular con motivo, devolviendo el importe y conservando el historial. Junta consulta sin ninguna acción de escritura. Requiere ejecutar las migraciones.
 
 - Las transacciones de SQLite pasan a modo `IMMEDIATE` para que la comprobación de lo pendiente y el registro de un pago sean atómicos frente a peticiones simultáneas.
