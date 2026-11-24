@@ -28,16 +28,18 @@
                         <dt>Fecha de alta</dt><dd>{{ $member->joined_on->format('d/m/Y') }}</dd>
                         <dt>Estado</dt><dd>{{ $member->status === 'active' ? 'Activo' : 'De baja' }}</dd>
                     </dl>
-                    @can('edit-treasury')
-                        <div class="mt-3 flex flex-wrap items-center gap-3">
-                            <a href="/members/{{ $member->id }}/edit" class="btn btn-secondary btn-sm">Editar {{ $member->name }}</a>
-                            @if ($member->status === 'active')
-                                <form method="post" action="/members/{{ $member->id }}/deactivate">@csrf<button type="submit" class="btn-danger btn-sm">Dar de baja a {{ $member->name }}</button></form>
-                            @else
-                                <form method="post" action="/members/{{ $member->id }}/reactivate">@csrf<button type="submit" class="btn-secondary btn-sm">Reactivar a {{ $member->name }}</button></form>
-                            @endif
-                        </div>
-                    @endcan
+                    @if (! $demoSession)
+                        @can('edit-treasury')
+                            <div class="mt-3 flex flex-wrap items-center gap-3">
+                                <a href="/members/{{ $member->id }}/edit" class="btn btn-secondary btn-sm">Editar {{ $member->name }}</a>
+                                @if ($member->status === 'active')
+                                    <form method="post" action="/members/{{ $member->id }}/deactivate">@csrf<button type="submit" class="btn-danger btn-sm">Dar de baja a {{ $member->name }}</button></form>
+                                @else
+                                    <form method="post" action="/members/{{ $member->id }}/reactivate">@csrf<button type="submit" class="btn-secondary btn-sm">Reactivar a {{ $member->name }}</button></form>
+                                @endif
+                            </div>
+                        @endcan
+                    @endif
                 </article>
             @endforeach
         </div>

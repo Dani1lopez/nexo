@@ -7,6 +7,7 @@ use App\Modules\Bank\Models\BankImport;
 use App\Modules\Bank\Models\BankMovement;
 use App\Modules\Demo\Support\GuideSteps;
 use App\Modules\Fees\Actions\SetFeeYear;
+use App\Modules\Fees\Models\FeeYear;
 use App\Modules\Members\Models\Member;
 use Illuminate\Support\Carbon;
 use Tests\Support\AuthTestCase;
@@ -192,7 +193,11 @@ class GuideNoticeTest extends AuthTestCase
         $sources = [
             GuideSteps::PANEL => ['Movimientos bancarios' => 'resources/views/dashboard.blade.php'],
             GuideSteps::BANK => ['Conciliar el reparto' => 'resources/views/components/reconcile-form.blade.php'],
+            // H3b and V3: the third step names the real control that leads to /saldos —«Saldos», the
+            // menu link— and the real control of that screen it points at, «Movimientos», by its label.
             GuideSteps::SALDOS => [
+                'Saldos' => 'resources/views/layouts/app.blade.php',
+                'Movimientos' => 'resources/views/summary.blade.php',
                 'Sin conciliar' => 'resources/views/components/bank-kpis.blade.php',
                 'Por cobrar' => 'resources/views/summary.blade.php',
             ],
@@ -210,6 +215,88 @@ class GuideNoticeTest extends AuthTestCase
                 );
             }
         }
+    }
+
+    /**
+     * S17, V3 and H3b: the third step names the real control on the screen, not an invented one.
+     *
+     * The screen it lives on is /saldos, so the step says where the visitor is with the label of
+     * the real menu link and names the real link of that screen it sends them back to.
+     */
+    public function test_the_third_step_names_the_real_control_of_the_balances_screen(): void
+    {
+        $this->enterDemo();
+
+        $copy = GuideSteps::notice(GuideSteps::SALDOS);
+
+        $this->assertStringContainsString('«Saldos»', $copy, 'el paso 3 nombra «Saldos» con la etiqueta del menú real');
+        $this->assertStringContainsString('«Movimientos»', $copy, 'el paso 3 nombra el control real que tiene debajo');
+        $this->assertStringContainsString(
+            "'label' => 'Saldos', 'href' => '/saldos'",
+            (string) file_get_contents(base_path('resources/views/layouts/app.blade.php')),
+            '«Saldos» sigue siendo la etiqueta del enlace real que lleva a /saldos',
+        );
+    }
+
+    /**
+     * S19, V2 and H3a: closing the notice with the keyboard hands the focus to the real control.
+     *
+     * The notice carries the selector of the control its step names, in its own markup and only in
+     * a demo session: the real control stays where it is and a real account keeps its markup.
+     */
+    public function test_the_notice_points_the_keyboard_focus_at_the_real_control(): void
+    {
+        $this->enterDemo();
+
+        $targets = [
+            '/dashboard' => [GuideSteps::PANEL, 'nav.next a[href="/bank"]'],
+            '/bank' => [GuideSteps::BANK, 'form.reconcile button[type="submit"]'],
+            '/saldos' => [GuideSteps::SALDOS, 'p.notice a[href="/bank"]'],
+        ];
+
+        foreach ($targets as $url => [$step, $selector]) {
+            $notice = $this->notice($this->html($url), $step);
+
+            $this->assertStringContainsString(
+                'data-guide-target="'.e($selector).'"',
+                $notice,
+                'el aviso dice a qué control real devuelve el foco en '.$url,
+            );
+        }
+
+        // Each selector names markup the screen already renders, and exactly one control.
+        $panel = $this->html('/dashboard');
+        $this->assertSame(1, substr_count($panel, '<a href="/bank">'), 'un solo enlace real a Movimientos en el panel');
+
+        $bank = $this->html('/bank');
+        $form = $this->reconcileForm($bank);
+        $this->assertStringContainsString('class="form-block reconcile"', $form);
+        $this->assertStringContainsString('<button type="submit"', $form);
+        $this->assertSame(1, substr_count($bank, 'class="form-block reconcile"'), 'un solo bloque de conciliación en la demo');
+
+        $saldos = $this->html('/saldos');
+        $this->assertSame(1, substr_count($saldos, '<a href="/bank">Movimientos</a>'), 'el control real bajo el aviso');
+    }
+
+    /** H3a: the focus move is progressive enhancement in the compiled entry, never an inline script. */
+    public function test_the_focus_move_is_progressive_enhancement_without_inline_scripts(): void
+    {
+        $this->enterDemo();
+
+        $js = (string) file_get_contents(resource_path('js/guide.js'));
+        $this->assertStringContainsString('dataset.guideTarget', $js);
+        $this->assertStringContainsString('.focus(', $js);
+
+        // Only a demo session loads the entry; the CSP keeps the inline form out.
+        $this->assertStringContainsString(
+            "\$demoMode ? ['resources/js/guide.js'] : []",
+            (string) file_get_contents(base_path('resources/views/layouts/app.blade.php')),
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<script(?![^>]*\bsrc=)[^>]*>/i',
+            $this->html('/bank'),
+            'la guía no añade ningún script en línea',
+        );
     }
 
     /** S19 and V2: the notice is not a dialog and never navigates. */
@@ -250,9 +337,10 @@ class GuideNoticeTest extends AuthTestCase
             $this->assertStringContainsString('Cerrar la guía', $notice);
             $this->assertStringContainsString('Ver la guía otra vez', $notice);
 
-            // Nothing inside the notice can navigate, post or change the URL.
+            // Nothing inside the notice can navigate, post or change the URL. The selector it
+            // carries names a control of the screen but is only an attribute value, never a link.
             $this->assertStringNotContainsString('<a ', $notice);
-            $this->assertStringNotContainsString('href=', $notice);
+            $this->assertStringNotContainsString('href="', $notice);
             $this->assertStringNotContainsString('<form', $notice);
             $this->assertStringNotContainsString('<script', $notice);
             $this->assertStringNotContainsString('<meta', $notice);
@@ -316,6 +404,44 @@ class GuideNoticeTest extends AuthTestCase
         $this->assertStringNotContainsString('href="/fees/', $saldos);
         $this->assertStringContainsString('Cuota de 2026', $saldos);
 
+        // H4: the demo hides every real write its middleware answers with a redirect.
+        $members = $this->html('/members');
+        $this->assertStringContainsString('Socia Ejemplo A', $members, 'la demo recorre la pantalla real de socios');
+        $this->assertStringNotContainsString('Editar Socia Ejemplo A', $members);
+        $this->assertStringNotContainsString('Dar de baja a', $members);
+        $this->assertStringNotContainsString('/deactivate"', $members);
+        $this->assertStringNotContainsString('/reactivate"', $members);
+
+        $fees = $this->html('/fees');
+        $this->assertStringContainsString('Cuota de 2026', $fees, 'la demo ve el ejercicio real del escenario');
+        $this->assertStringNotContainsString('/fees/create', $fees);
+        $this->assertStringNotContainsString('Fijar cuota de un año', $fees);
+        $this->assertStringNotContainsString('Fijar la primera cuota', $fees);
+
+        // The demo opens the real year screen it links to, without a single write of its own.
+        $this->assertSame(1, preg_match('/href="\/fees\/(\d+)"/', $fees, $year));
+        $show = $this->html('/fees/'.$year[1]);
+        $this->assertStringContainsString('Cuota de 2026', $show);
+        $this->assertStringContainsString('Socia Ejemplo A', $show);
+        $this->assertStringContainsString('Pendiente', $show);
+        $this->assertStringNotContainsString('/fees/'.$year[1].'/edit', $show);
+        $this->assertStringNotContainsString('Cambiar el importe', $show);
+        $this->assertStringNotContainsString('/payments"', $show);
+        $this->assertStringNotContainsString('Registrar pago', $show);
+        $this->assertStringNotContainsString('/exemptions"', $show);
+        $this->assertStringNotContainsString('Conceder exención', $show);
+        $this->assertStringNotContainsString('Anular exención', $show);
+        $this->assertStringNotContainsString('Anular pago', $show);
+        $this->assertStringNotContainsString('/void"', $show);
+
+        $cash = $this->html('/caja');
+        $this->assertStringContainsString('Saldo en caja', $cash, 'la demo ve las cifras reales de caja');
+        $this->assertStringContainsString('Gastos en efectivo', $cash);
+        $this->assertStringNotContainsString('action="/caja/saldo-inicial"', $cash);
+        $this->assertStringNotContainsString('Fijar saldo inicial', $cash);
+        $this->assertStringNotContainsString('action="/caja/gastos', $cash);
+        $this->assertStringNotContainsString('Guardar en borrador', $cash);
+
         // After a split the demo does not offer to void the parts it just reconciled.
         $form = $this->reconcileForm($bank);
         preg_match('/action="([^"]+)"/', $form, $action);
@@ -356,6 +482,41 @@ class GuideNoticeTest extends AuthTestCase
         $this->assertSame(2, substr_count($real, 'href="/members/create"'), 'la pantalla real conserva sus dos enlaces');
         $this->assertStringContainsString('Nuevo socio', $real);
         $this->assertStringContainsString('Añadir un socio', $real);
+    }
+
+    /**
+     * PRESERVE (H4): a real treasury session keeps every control the demo hides, on the four screens
+     * the guide walks. The demo gating is a condition of the view, not a removal of the control.
+     */
+    public function test_a_real_treasury_session_keeps_the_controls_the_demo_hides(): void
+    {
+        $treasury = $this->treasury();
+        $this->seedTreasury();
+
+        $members = (string) $this->actingAs($treasury)->get('/members')->assertOk()->getContent();
+        $this->assertStringContainsString('Editar Ana ficticia', $members);
+        $this->assertStringContainsString('Dar de baja a Ana ficticia', $members);
+        $this->assertStringContainsString('/deactivate"', $members);
+        $this->assertStringContainsString('href="/members/create"', $members);
+
+        $fees = (string) $this->actingAs($treasury)->get('/fees')->assertOk()->getContent();
+        $this->assertStringContainsString('href="/fees/create"', $fees);
+        $this->assertStringContainsString('Fijar cuota de un año', $fees);
+
+        $year = FeeYear::query()->firstOrFail();
+        $show = (string) $this->actingAs($treasury)->get('/fees/'.$year->id)->assertOk()->getContent();
+        $this->assertStringContainsString('href="/fees/'.$year->id.'/edit"', $show);
+        $this->assertStringContainsString('Cambiar el importe', $show);
+        $this->assertStringContainsString('/payments"', $show);
+        $this->assertStringContainsString('Registrar pago', $show);
+        $this->assertStringContainsString('/exemptions"', $show);
+        $this->assertStringContainsString('Conceder exención', $show);
+
+        $cash = (string) $this->actingAs($treasury)->get('/caja')->assertOk()->getContent();
+        $this->assertStringContainsString('action="/caja/saldo-inicial"', $cash);
+        $this->assertStringContainsString('Fijar saldo inicial', $cash);
+        $this->assertStringContainsString('action="/caja/gastos"', $cash);
+        $this->assertStringContainsString('Guardar en borrador', $cash);
     }
 
     /** T10: the remainder of the real control lives in a polite output, fields untouched. */

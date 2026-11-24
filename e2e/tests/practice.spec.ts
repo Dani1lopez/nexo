@@ -41,8 +41,28 @@ const expectNoDialog = async (page: Page): Promise<void> => {
   expect(overflow).not.toBe('hidden');
 };
 
+/** V2 y H3a: foco al principio del documento, como lo deja una carga de página, para tabular desde ahí. */
+const blurFocus = async (page: Page): Promise<void> => {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+};
+
+/** Teclado real: Tab hasta que el objetivo tiene el foco. */
+const tabUntilFocused = async (page: Page, target: Locator, max = 25): Promise<void> => {
+  for (let i = 0; i < max; i += 1) {
+    await page.keyboard.press('Tab');
+
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+  }
+
+  throw new Error(`el objetivo no recibe el foco con Tab en ${max} pulsaciones`);
+};
+
 /** S19 and V6: it closes with the mouse and with the keyboard, and it repeats on the same URL. */
-const expectClosable = async (page: Page, step: 'panel' | 'bank' | 'saldos'): Promise<void> => {
+const expectClosable = async (
+  page: Page,
+  step: 'panel' | 'bank' | 'saldos',
+  control: Locator,
+): Promise<void> => {
   const notice = guide(page, step);
   const url = page.url();
 
@@ -61,19 +81,46 @@ const expectClosable = async (page: Page, step: 'panel' | 'bank' | 'saldos'): Pr
   await expect(notice.locator('.guide-copy')).toBeVisible();
   expect(page.url()).toBe(url);
 
-  // Keyboard: the toggle is focusable and Enter closes and reopens it, without navigating.
-  await notice.locator('summary').focus();
+  // Keyboard, with real Tab: the toggle is reached with Tab alone and closes with Enter.
+  await blurFocus(page);
+  await tabUntilFocused(page, notice.locator('summary'));
   await expect(notice.locator('summary')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(notice.locator('.guide-copy')).toBeHidden();
   expect(page.url()).toBe(url);
 
-  await page.keyboard.press('Enter');
+  // V2 y H3a: justo después de cerrar con el teclado, antes de reabrirlo, el foco está en el
+  // control real al que apunta el paso, no en el resumen, y la URL sigue siendo la misma.
+  await expect(control).toBeFocused();
+
+  // The notice repeats from the keyboard too: Tab back to the toggle and open it with Space.
+  await blurFocus(page);
+  await tabUntilFocused(page, notice.locator('summary'));
+  await page.keyboard.press('Space');
   await expect(notice.locator('.guide-copy')).toBeVisible();
   expect(page.url()).toBe(url);
+};
 
-  // The focus was never lost: the visible toggle still holds it.
-  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('SUMMARY');
+/** S19 and V6: without JavaScript the notice closes and repeats from the keyboard as well. */
+const expectClosableWithoutJs = async (page: Page, step: 'panel' | 'bank' | 'saldos'): Promise<void> => {
+  const notice = guide(page, step);
+  const url = page.url();
+
+  await blurFocus(page);
+  await tabUntilFocused(page, notice.locator('summary'));
+  await page.keyboard.press('Enter');
+  await expect(notice.locator('.guide-copy')).toBeHidden();
+  await expect(notice.locator('.guide-repeat')).toBeVisible();
+  expect(page.url()).toBe(url);
+
+  // Sin JavaScript no hay realce progresivo: el foco sigue en el resumen, que es un control real.
+  await expect(notice.locator('summary')).toBeFocused();
+
+  await blurFocus(page);
+  await tabUntilFocused(page, notice.locator('summary'));
+  await page.keyboard.press('Space');
+  await expect(notice.locator('.guide-copy')).toBeVisible();
+  expect(page.url()).toBe(url);
 };
 
 /** V7: no horizontal scrolling at a given width. */
@@ -129,7 +176,7 @@ test.describe('demo guiada sobre las pantallas reales', () => {
     await expect(panel).toContainText('Abre «Movimientos bancarios».');
     await expect(panel).toContainText('Sabrás que avanzas cuando veas ese abono.');
     await expectNoDialog(page);
-    await expectClosable(page, 'panel');
+    await expectClosable(page, 'panel', page.getByRole('link', { name: /Movimientos bancarios/ }));
     await expect(page.getByRole('link', { name: /Movimientos bancarios/ })).toBeVisible();
 
     // The visitor navigates with the real menu: there is no interstitial screen.
@@ -143,7 +190,7 @@ test.describe('demo guiada sobre las pantallas reales', () => {
     await expect(bank).toBeVisible();
     await expect(bank).toContainText('pulsa «Conciliar el reparto»');
     await expectNoDialog(page);
-    await expectClosable(page, 'bank');
+    await expectClosable(page, 'bank', page.getByRole('button', { name: 'Conciliar el reparto' }));
 
     // V5: one real reconcile form, with its real action and a single submission_key.
     const form = page.locator('form[action$="/reconcile"]');
@@ -178,9 +225,16 @@ test.describe('demo guiada sobre las pantallas reales', () => {
 
     const saldos = guide(page, 'saldos');
     await expect(saldos).toBeVisible();
-    await expect(saldos).toContainText('Compara «Sin conciliar» con «Por cobrar».');
+    await expect(saldos).toContainText('Estás en «Saldos», con el banco y las cuotas.');
+    await expect(saldos).toContainText(
+      'Compara «Sin conciliar» con «Por cobrar»; si falta parte, vuelve a «Movimientos».',
+    );
     await expectNoDialog(page);
-    await expectClosable(page, 'saldos');
+    await expectClosable(
+      page,
+      'saldos',
+      page.locator('main').getByRole('link', { name: 'Movimientos', exact: true }),
+    );
 
     await expect(page.locator('.kpis > div', { hasText: 'Saldo en el banco' })).toContainText('100,00 €');
     await expect(page.locator('.kpis > div', { hasText: 'Sin conciliar' })).toContainText('20,00 €');
@@ -218,6 +272,9 @@ test.describe('demo guiada sin JavaScript', () => {
     await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Movimientos', exact: true }).click();
     await expect(page).toHaveURL(/\/bank$/);
     await expect(guide(page, 'bank').locator('.guide-copy')).toBeVisible();
+
+    // S19: the bank's notice closes and repeats from the keyboard without any script either.
+    await expectClosableWithoutJs(page, 'bank');
 
     // The server phrase is what is left and the real form submits with the real action.
     await expect(page.locator('output[aria-live="polite"]')).toHaveText('Quedan 100,00 € por conciliar.');

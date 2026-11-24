@@ -9,6 +9,10 @@ namespace App\Modules\Demo\Support;
  * you know it worked. The step names the real control of the screen with the label that control
  * has today, so the views only place the notice next to it and never write copy of their own. The
  * whole notice stays under thirty words and never repeats the figures the screen already shows.
+ *
+ * The third step lives on /saldos, so it names the screen with the label of the real menu link that
+ * leads there («Saldos») and the real control the screen shows below the notice («Movimientos»),
+ * which is also where the keyboard focus goes when the visitor closes the notice (H3a, H3b, V3).
  */
 final class GuideSteps
 {
@@ -41,8 +45,8 @@ final class GuideSteps
         ],
         self::SALDOS => [
             'sentences' => [
-                'Aquí ves el banco y las cuotas del ejercicio.',
-                'Compara «Sin conciliar» con «Por cobrar».',
+                'Estás en «Saldos», con el banco y las cuotas.',
+                'Compara «Sin conciliar» con «Por cobrar»; si falta parte, vuelve a «Movimientos».',
                 'Sabrás que funcionó si «Por cobrar» queda a cero.',
             ],
         ],
