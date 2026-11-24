@@ -44,6 +44,20 @@ return [
             'transaction_mode' => 'IMMEDIATE',
         ],
 
+        // The public guided demo (issue #73) always uses this disposable in-memory database.
+        // It is explicit and has no environment fallback: the request that uses it creates it,
+        // migrates it and discards it, and the treasury connection is restored in a finally block.
+        'demo' => [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+            'busy_timeout' => null,
+            'journal_mode' => null,
+            'synchronous' => null,
+            'transaction_mode' => 'IMMEDIATE',
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
