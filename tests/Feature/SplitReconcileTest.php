@@ -734,4 +734,33 @@ class SplitReconcileTest extends AuthTestCase
             ->assertSee('Anular y liberar')
             ->assertSee('10,00 €');
     }
+
+    /**
+     * Issue #74 T4: extracting the reconcile block to a shared component keeps the real mode of
+     * /bank byte-for-byte in its fields, labels, names and button, and never shows the practice.
+     */
+    public function test_the_bank_screen_keeps_its_reconcile_markup_and_never_shows_the_practice(): void
+    {
+        $year = $this->year(2026, 3000);
+        $ana = $this->dueFor($this->member('ana@example.test', 'Ana ficticia'), $year);
+        $movement = $this->movement(2000, 'TRANSFERENCIA ANA');
+
+        $html = (string) $this->actingAs($this->treasury())->get('/bank')->assertOk()->getContent();
+
+        $this->assertStringContainsString('action="/bank/movements/'.$movement->id.'/reconcile"', $html);
+        $this->assertStringContainsString('name="submission_key"', $html);
+        $this->assertStringContainsString('name="allocations['.$ana->id.']"', $html);
+        $this->assertStringContainsString('id="split-'.$movement->id.'-'.$ana->id.'"', $html);
+        $this->assertStringContainsString('<label for="split-'.$movement->id.'-'.$ana->id.'">', $html);
+        $this->assertStringContainsString('Quedan 20,00 € por conciliar.', $html);
+        $this->assertStringContainsString('Escribe el importe de cada cuota que pague este abono.', $html);
+        $this->assertStringContainsString('Conciliar el reparto', $html);
+        $this->assertStringContainsString('action="/bank/movements/'.$movement->id.'/incomes"', $html);
+
+        // The practice never leaks its banner, its entry or its routes into the real screen.
+        $this->assertStringNotContainsString('aria-label="Modo práctica"', $html);
+        $this->assertStringNotContainsString('Salir de la práctica', $html);
+        $this->assertStringNotContainsString('action="/practica', $html);
+        $this->assertStringNotContainsString('resources/js/practice.js', $html);
+    }
 }

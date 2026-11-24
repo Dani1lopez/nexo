@@ -73,6 +73,9 @@
         </a>
     </nav>
 
+    {{-- Issue #74: the first step of the guide, right under the block of the real link it names. --}}
+    <x-guide-notice :step="\App\Modules\Demo\Support\GuideSteps::PANEL" />
+
     <p class="section-label">Tu acceso</p>
     <p class="stale">
         Sesión iniciada como <strong>{{ auth()->user()->name }}</strong> ·

@@ -1463,3 +1463,81 @@
         font-size: 0.8125rem;
     }
 }
+
+/*
+ * Aviso de la guía en contexto (issue #74, S19).
+ *
+ * No es un diálogo: vive en el flujo normal del bloque del control real, después del control, así
+ * que nunca lo tapa ni bloquea el desplazamiento. Es un <details> nativo, de modo que se cierra y
+ * se repite con ratón y con teclado y sin JavaScript, y cerrarlo no cambia la URL. La etiqueta del
+ * control alterna por CSS: «Cerrar la guía» abierto, «Ver la guía otra vez» cerrado.
+ */
+@layer components {
+    .guide {
+        margin: 0.75rem 0 0;
+        max-width: 42rem;
+        background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface));
+        border-radius: var(--radius-md);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-info) 32%, transparent);
+    }
+
+    .guide summary {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        padding: 0.6rem 1rem;
+        font-size: 0.8125rem;
+        font-weight: 620;
+        color: var(--color-ink);
+        cursor: pointer;
+        list-style: none;
+        border-radius: inherit;
+    }
+
+    .guide summary::-webkit-details-marker {
+        display: none;
+    }
+
+    /* En la lista de movimientos el aviso ocupa la fila entera, como el propio formulario. */
+    .movement > .guide {
+        grid-column: 1 / -1;
+    }
+
+    .guide .guide-close {
+        display: none;
+    }
+
+    .guide[open] .guide-close {
+        display: inline;
+    }
+
+    .guide[open] .guide-repeat {
+        display: none;
+    }
+
+    .guide .guide-mark {
+        margin-left: auto;
+        color: var(--color-muted);
+        transition: rotate var(--dur-fast) var(--ease-standard);
+    }
+
+    .guide[open] .guide-mark {
+        rotate: 180deg;
+    }
+
+    .guide .guide-copy {
+        margin: 0;
+        padding: 0 1rem 0.85rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--color-muted);
+    }
+
+    /* V7: en la sesión demo los controles reales que la guía señala se tocan sin apuntar. */
+    .demo-mode .next a,
+    .demo-mode .btn-sm,
+    .demo-mode .guide summary {
+        min-height: 44px;
+    }
+}

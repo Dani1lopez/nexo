@@ -1,12 +1,16 @@
 @extends('layouts.app')
 @section('title', 'Socios')
 @section('content')
+    {{-- A demo session walks this real screen, so it hides the controls the demo bounces. --}}
+    @php($demoSession = session(\App\Modules\Demo\Support\DemoSession::MARK) === true)
     <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="mb-0">Socios</h1>
-        @can('edit-treasury')
-            <a href="/members/create" class="btn mt-0">Nuevo socio</a>
-        @endcan
+        @if (! $demoSession)
+            @can('edit-treasury')
+                <a href="/members/create" class="btn mt-0">Nuevo socio</a>
+            @endcan
+        @endif
     </div>
     <p class="notice">Datos exclusivamente ficticios.</p>
     <nav aria-label="Filtrar por estado" class="filters">
@@ -40,9 +44,11 @@
     @else
         <div class="empty">
             <p>No hay socios que mostrar con este filtro.</p>
-            @can('edit-treasury')
-                <a href="/members/create" class="btn btn-secondary btn-sm">Añadir un socio</a>
-            @endcan
+            @if (! $demoSession)
+                @can('edit-treasury')
+                    <a href="/members/create" class="btn btn-secondary btn-sm">Añadir un socio</a>
+                @endcan
+            @endif
         </div>
     @endif
     @if ($members->hasPages())
