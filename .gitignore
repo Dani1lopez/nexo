@@ -13,6 +13,7 @@ secrets/
 .pi/
 .codegraph/
 .playwright-mcp/
+odd/
 
 # Dependencies and generated output
 /vendor/
