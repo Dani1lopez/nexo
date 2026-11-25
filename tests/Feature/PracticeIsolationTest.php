@@ -96,7 +96,7 @@ class PracticeIsolationTest extends AuthTestCase
         ])->assertOk()->assertSee('Reparto conciliado desde el extracto.');
 
         // /demo never writes a session mark and never leaves a demo session behind.
-        $this->assertArrayNotHasKey('demo.session', session()->all());
+        $this->assertFalse(session()->has('demo.session'), 'la marca demo vive anidada en demo');
     }
 
     /** V10: the demo session does not open /demo, and /demo never opens the demo session. */
@@ -172,7 +172,7 @@ class PracticeIsolationTest extends AuthTestCase
         // The demo entry is only for guests: a signed-in session is sent back to its own panel.
         $this->post('/demo/entrar')->assertRedirect('/dashboard');
 
-        $this->assertArrayNotHasKey('demo.session', session()->all());
+        $this->assertFalse(session()->has('demo.session'), 'el acceso a la demo no deja marca en una sesión real');
         $this->assertAuthenticatedAs($user);
         $this->assertSame('treasury', $user->fresh()->role);
 
@@ -201,7 +201,7 @@ class PracticeIsolationTest extends AuthTestCase
         $this->account('tesoreria@example.test', 'treasury', 'treasury-secret-value', 'Ana Ficticia');
         $this->attemptLogin('tesoreria@example.test', 'treasury-secret-value')->assertRedirect('/dashboard');
 
-        $this->assertArrayNotHasKey('demo.session', session()->all());
+        $this->assertFalse(session()->has('demo.session'), 'el login real borra la marca demo');
         $this->assertAuthenticated();
 
         $this->get('/dashboard')
@@ -222,8 +222,8 @@ class PracticeIsolationTest extends AuthTestCase
         $this->assertSame(['socia_a' => 4000, 'socio_b' => 4000], session('demo.split'));
 
         $this->post('/demo/salir')->assertRedirect('/');
-        $this->assertArrayNotHasKey('demo.session', session()->all());
-        $this->assertArrayNotHasKey('demo.split', session()->all());
+        $this->assertFalse(session()->has('demo.session'), 'la salida borra la marca demo');
+        $this->assertFalse(session()->has('demo.split'), 'la salida borra el reparto demo');
         $this->assertGuest();
 
         foreach (['/bank', '/saldos', '/dashboard', '/members', '/fees', '/caja'] as $url) {

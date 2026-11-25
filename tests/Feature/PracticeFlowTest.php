@@ -172,7 +172,7 @@ class PracticeFlowTest extends AuthTestCase
             'allocations' => [$form['allocations'][0] => '50,00'],
         ])->assertRedirect('/bank');
 
-        $this->assertArrayNotHasKey('demo.split', session()->all());
+        $this->assertFalse(session()->has('demo.split'), 'un reparto rechazado no se guarda');
 
         $this->get('/bank')
             ->assertOk()
@@ -207,7 +207,7 @@ class PracticeFlowTest extends AuthTestCase
             ->assertOk()
             ->assertSee('El formulario ha caducado. Recarga la página e inténtalo de nuevo.');
 
-        $this->assertArrayNotHasKey('demo.split', session()->all());
+        $this->assertFalse(session()->has('demo.split'), 'un formulario caducado no guarda el reparto');
     }
 
     /** S20: a request the sandbox cannot serve never falls through to the treasury database. */

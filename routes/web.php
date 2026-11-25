@@ -29,14 +29,17 @@ Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth'
 Route::get('/demo', [DemoController::class, 'show'])->middleware('throttle:10,1')->name('demo.show');
 Route::post('/demo/conciliar', [DemoController::class, 'reconcile'])->middleware('throttle:10,1')->name('demo.reconcile');
 
-// Issue #74: the demo without credentials is a session over the real screens. The entry is an
-// explicit POST with the session token and its own limiter, separate from the one of /demo, so a
-// visitor of one mode never spends the budget of the other. The mark is dropped by the exit, by a
-// real login and by leaving the demo; no guard of the treasury routes changes.
+// Issue #74: the demo without credentials is a session over the real screens. The entry and the
+// exit are explicit POSTs with the session token, each with its own named limiter, separate from
+// the one of /demo, so a visitor of one mode never spends the budget of the other. The mark is
+// dropped by the exit, by a real login and by leaving the demo; no guard of the treasury routes
+// changes.
 Route::post('/demo/entrar', [DemoSessionController::class, 'store'])
     ->middleware(['guest', 'throttle:demo-entry'])
     ->name('demo.enter');
-Route::post('/demo/salir', [DemoSessionController::class, 'destroy'])->name('demo.exit');
+Route::post('/demo/salir', [DemoSessionController::class, 'destroy'])
+    ->middleware('throttle:demo-exit')
+    ->name('demo.exit');
 Route::middleware('auth')->prefix('access/two-factor')->name('two-factor.')->group(function (): void {
     Route::get('/', [TwoFactorController::class, 'index'])->name('index');
     Route::post('/', [TwoFactorController::class, 'store'])->name('enable');

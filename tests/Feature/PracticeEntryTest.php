@@ -97,8 +97,8 @@ class PracticeEntryTest extends AuthTestCase
 
         $this->post('/demo/salir')->assertRedirect('/');
 
-        $this->assertArrayNotHasKey('demo.session', session()->all());
-        $this->assertArrayNotHasKey('demo.split', session()->all());
+        $this->assertFalse(session()->has('demo.session'), 'la marca demo no queda en la sesión');
+        $this->assertFalse(session()->has('demo.split'), 'el reparto demo no queda en la sesión');
 
         $this->get('/dashboard')->assertRedirect('/login');
         $this->get('/bank')->assertRedirect('/login');
@@ -114,6 +114,20 @@ class PracticeEntryTest extends AuthTestCase
         $this->post('/demo/entrar')->assertStatus(429);
 
         // /demo keeps its own counter and still answers.
+        $this->get('/demo')->assertOk()->assertSee('Demostración guiada');
+    }
+
+    /** H4: leaving the demo has its own named limiter, separate from the entry and from /demo. */
+    public function test_the_demo_exit_is_rate_limited_without_spending_the_entry_budget(): void
+    {
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->post('/demo/salir')->assertRedirect('/');
+        }
+
+        $this->post('/demo/salir')->assertStatus(429);
+
+        // The entry keeps its own budget, so a throttled exit never traps the next visit.
+        $this->post('/demo/entrar')->assertRedirect('/dashboard');
         $this->get('/demo')->assertOk()->assertSee('Demostración guiada');
     }
 }

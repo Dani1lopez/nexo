@@ -64,6 +64,21 @@ final class OpenDemoSession
         'two-factor.',
     ];
 
+    /**
+     * The pre-authentication second-factor challenge of a real login (route:list name
+     * `two-factor.challenge`, plus the unnamed POST of that same screen, which falls through the
+     * unnamed-route branch below).
+     *
+     * It is a guest screen that opens nothing: it only shows a form and, on a valid code, signs the
+     * real user in, which is what clears the demo mark. Bouncing it would leave a visitor who tried
+     * the demo unable to ever finish a real login with a second factor. The 2FA routes that manage
+     * an account (`two-factor.index`, `.enable`, `.confirm`, `.disable` under /access) stay in the
+     * treasury list and keep bouncing: inside the sandbox they would edit the throwaway actor.
+     */
+    private const PRE_AUTHENTICATION = [
+        'two-factor.challenge',
+    ];
+
     public function __construct(
         private OpenDemoScenario $sandbox,
         private DemoSession $state,
@@ -91,6 +106,12 @@ final class OpenDemoSession
             return $next($request);
         }
 
+        // A plain guest screen of the real login passes untouched, mark and all: it opens no
+        // sandbox, so the sandbox is never served on it, and it never relaxes a guard.
+        if (in_array($name, self::PRE_AUTHENTICATION, true)) {
+            return $next($request);
+        }
+
         if (! in_array($name, self::SERVED, true)) {
             return Str::startsWith($name, self::TREASURY) ? redirect('/dashboard') : $next($request);
         }
@@ -111,13 +132,18 @@ final class OpenDemoSession
         return $this->sandbox->handle(function (DemoScenario $scenario) use ($request, $next, $name): Response {
             $request->attributes->set('demo.scenario', $scenario);
 
-            // The actor is a row of this request's throwaway database and only lives in the guard
-            // while the request runs: it is never written to the session as an authenticated user.
-            Auth::guard('web')->setUser(User::query()->findOrFail($scenario->actorId));
-
-            $this->replay($scenario);
-
             try {
+                // The actor is a row of this request's throwaway database and only lives in the
+                // guard while the request runs: it is never written to the session as an
+                // authenticated user. Installing it and replaying the stored split happen inside
+                // the cleanup boundary, because with database sessions the framework copies the
+                // id of the guard into `sessions.user_id` when the request saves the session: a
+                // failure before the cleanup would persist the example actor as the owner of the
+                // visitor's session.
+                Auth::guard('web')->setUser(User::query()->findOrFail($scenario->actorId));
+
+                $this->replay($scenario);
+
                 $result = $next($request);
 
                 // A successful reconciliation is the only moment the demo stores anything.
