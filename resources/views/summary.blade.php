@@ -2,53 +2,23 @@
 @section('title', 'Saldos')
 @section('content')
     @php
+        // A demo session walks this real screen, so it hides the controls the demo bounces.
+        $demoSession = session(\App\Modules\Demo\Support\DemoSession::MARK) === true;
         $money = fn (int $cents) => \App\Modules\Fees\Support\Money::format($cents);
-        $abonos = $balances['unreconciledCount'];
         $movimientos = $balances['movements'];
         $pendientes = $balances['totalPendingDues'];
         $pagosEfectivo = $balances['cashPayments'];
     @endphp
 
-    <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
+    <nav aria-label="Navegación" class="back-link">
+        <a href="/dashboard">Volver al panel</a>
+    </nav>
     <h1>Saldos</h1>
     <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
 
     @if ($movimientos > 0)
-        <section class="kpis" aria-label="Banco">
-            <div>
-                <span class="k">Saldo en el banco</span>
-                <span class="n hero">{{ $money($balances['balanceCents']) }}</span>
-                <span class="sub">según el extracto importado</span>
-            </div>
-            <div>
-                <span class="k">Sin conciliar</span>
-                <span class="n">{{ $money($balances['unreconciledCents']) }}</span>
-                <span class="sub{{ $abonos > 0 ? ' warn' : '' }}">
-                    {{ $abonos }} {{ $abonos === 1 ? 'abono sin conciliar' : 'abonos sin conciliar' }}
-                </span>
-            </div>
-            @if ($balances['otherIncomeCount'] > 0)
-                @php($ingresos = $balances['otherIncomeCount'])
-                <div>
-                    <span class="k">Otros ingresos</span>
-                    <span class="n">{{ $money($balances['otherIncomeCents']) }}</span>
-                    <span class="sub">{{ $ingresos }} {{ $ingresos === 1 ? 'ingreso clasificado' : 'ingresos clasificados' }}. Ya incluidos en el saldo bancario.</span>
-                </div>
-            @endif
-            @if ($balances['bankExpenseCount'] > 0)
-                @php($gastosBanco = $balances['bankExpenseCount'])
-                <div>
-                    <span class="k">Gastos bancarios</span>
-                    <span class="n">{{ $money($balances['bankExpenseCents']) }}</span>
-                    <span class="sub">{{ $gastosBanco }} {{ $gastosBanco === 1 ? 'cargo clasificado' : 'cargos clasificados' }}. Ya restados en el saldo bancario.</span>
-                </div>
-            @endif
-            <div>
-                <span class="k">Movimientos</span>
-                <span class="n">{{ $movimientos }}</span>
-                <span class="sub">{{ $movimientos === 1 ? 'movimiento' : 'movimientos' }} en el extracto importado</span>
-            </div>
-        </section>
+        <x-bank-kpis :balances="$balances" />
+        <x-guide-notice :step="\App\Modules\Demo\Support\GuideSteps::SALDOS" />
         <p class="notice">
             El saldo es el del extracto importado: los abonos suman y los cargos restan.
             Los pagos en efectivo no cambian este saldo.
@@ -101,7 +71,9 @@
     <p class="notice">
         La caja suma los pagos de cuotas en efectivo vigentes más la base inicial y resta los gastos confirmados; los traspasos con el banco la mueven en la dirección del dinero.
         Un pago o un gasto anulado no cuenta y conserva su historial.
-        La base inicial se fija una sola vez en <a href="/caja">Caja</a> y no incluye los pagos ya registrados:
+        La base inicial se fija una sola vez en
+        <a href="/caja">Caja</a>
+        y no incluye los pagos ya registrados:
         si los incluyera, contarían dos veces.
         El banco y la caja se muestran por separado: un pago en efectivo no cambia el saldo bancario.
     </p>
@@ -112,7 +84,13 @@
             @foreach ($balances['years'] as $row)
                 @php($dues = $row['pendingDues'])
                 <article class="entry">
-                    <h2><a href="/fees/{{ $row['id'] }}">Cuota de {{ $row['year'] }}</a></h2>
+                    <h2>
+                        @if ($demoSession)
+                            Cuota de {{ $row['year'] }}
+                        @else
+                            <a href="/fees/{{ $row['id'] }}">Cuota de {{ $row['year'] }}</a>
+                        @endif
+                    </h2>
                     <dl>
                         <dt>A cobrar</dt><dd>{{ $money($row['payableCents']) }}</dd>
                         <dt>Cobrado</dt><dd>{{ $money($row['paidCents']) }}</dd>

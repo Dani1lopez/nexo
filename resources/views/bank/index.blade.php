@@ -1,7 +1,11 @@
 @extends('layouts.app')
 @section('title', 'Movimientos bancarios')
 @section('content')
-    <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
+    {{-- A demo session walks this real screen, so it hides the controls the demo bounces. --}}
+    @php($demoSession = session(\App\Modules\Demo\Support\DemoSession::MARK) === true)
+    <nav aria-label="Navegación" class="back-link">
+        <a href="/dashboard">Volver al panel</a>
+    </nav>
     <h1>Movimientos bancarios</h1>
     <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
 
@@ -28,15 +32,17 @@
         </section>
     @endif
 
-    @can('edit-treasury')
-        <form method="post" action="/bank/imports" enctype="multipart/form-data" class="form-block">
-            @csrf
-            <label for="file" class="mt-0">Archivo CSV con las columnas fecha, importe y concepto</label>
-            <input id="file" name="file" type="file" accept=".csv,.txt" required>
-            <p class="notice">Fechas dd/mm/aaaa o aaaa-mm-dd; importes como 10,50 o -10.50. El archivo no se guarda: solo se conservan los movimientos y el registro de la importación. No subas extractos reales.</p>
-            <button type="submit">Importar extracto</button>
-        </form>
-    @endcan
+    @if (! $demoSession)
+        @can('edit-treasury')
+            <form method="post" action="/bank/imports" enctype="multipart/form-data" class="form-block">
+                @csrf
+                <label for="file" class="mt-0">Archivo CSV con las columnas fecha, importe y concepto</label>
+                <input id="file" name="file" type="file" accept=".csv,.txt" required>
+                <p class="notice">Fechas dd/mm/aaaa o aaaa-mm-dd; importes como 10,50 o -10.50. El archivo no se guarda: solo se conservan los movimientos y el registro de la importación. No subas extractos reales.</p>
+                <button type="submit">Importar extracto</button>
+            </form>
+        @endcan
+    @endif
 
     <h2>Importaciones</h2>
     @if ($imports->isNotEmpty())
@@ -55,9 +61,11 @@
     @else
         <div class="empty">
             <p>Todavía no se ha importado ningún extracto.</p>
-            @can('edit-treasury')
-                <a href="#file" class="btn btn-secondary btn-sm">Elegir un archivo CSV</a>
-            @endcan
+            @if (! $demoSession)
+                @can('edit-treasury')
+                    <a href="#file" class="btn btn-secondary btn-sm">Elegir un archivo CSV</a>
+                @endcan
+            @endif
         </div>
     @endif
 
@@ -95,129 +103,109 @@
                     @if ($transfer)
                         <p class="notice linked">Traspaso · {{ $transfer->directionLabel() }} · {{ \App\Modules\Fees\Support\Money::format($transfer->amount()) }}</p>
                         <p class="notice">{{ $transfer->description }}</p>
-                        @can('edit-treasury')
-                            <form method="post" action="/bank/transfers/{{ $transfer->id }}/void" class="form-block reconcile">
-                                @csrf
-                                <label for="void-transfer-{{ $transfer->id }}" class="mt-0">Motivo de la anulación</label>
-                                <input id="void-transfer-{{ $transfer->id }}" name="reason" type="text" maxlength="500" required>
-                                <button type="submit" class="btn-danger btn-sm mt-3">Anular el traspaso</button>
-                            </form>
-                        @endcan
+                        @if (! $demoSession)
+                            @can('edit-treasury')
+                                <form method="post" action="/bank/transfers/{{ $transfer->id }}/void" class="form-block reconcile">
+                                    @csrf
+                                    <label for="void-transfer-{{ $transfer->id }}" class="mt-0">Motivo de la anulación</label>
+                                    <input id="void-transfer-{{ $transfer->id }}" name="reason" type="text" maxlength="500" required>
+                                    <button type="submit" class="btn-danger btn-sm mt-3">Anular el traspaso</button>
+                                </form>
+                            @endcan
+                        @endif
                     @endif
                     @if ($expense)
                         <p class="notice linked">Clasificado como gasto · {{ $expense->categoryLabel() }} · {{ \App\Modules\Fees\Support\Money::format($expense->amount()) }}</p>
                         <p class="notice">{{ $expense->description }}</p>
-                        @can('edit-treasury')
-                            <form method="post" action="/bank/expenses/{{ $expense->id }}/void" class="form-block reconcile">
-                                @csrf
-                                <label for="void-expense-{{ $expense->id }}" class="mt-0">Motivo de la anulación</label>
-                                <input id="void-expense-{{ $expense->id }}" name="reason" type="text" maxlength="500" required>
-                                <button type="submit" class="btn-danger btn-sm mt-3">Anular el gasto</button>
-                            </form>
-                        @endcan
+                        @if (! $demoSession)
+                            @can('edit-treasury')
+                                <form method="post" action="/bank/expenses/{{ $expense->id }}/void" class="form-block reconcile">
+                                    @csrf
+                                    <label for="void-expense-{{ $expense->id }}" class="mt-0">Motivo de la anulación</label>
+                                    <input id="void-expense-{{ $expense->id }}" name="reason" type="text" maxlength="500" required>
+                                    <button type="submit" class="btn-danger btn-sm mt-3">Anular el gasto</button>
+                                </form>
+                            @endcan
+                        @endif
                     @endif
                     @foreach ($linkedPayments as $linkedPayment)
                         <p class="notice linked">Conciliado con {{ $linkedPayment->due->member->name }} · {{ $linkedPayment->due->feeYear->year }} · {{ \App\Modules\Fees\Support\Money::format($linkedPayment->amount_cents) }}</p>
-                        @can('edit-treasury')
-                            <form method="post" action="/bank/payments/{{ $linkedPayment->id }}/void" class="form-block reconcile">
-                                @csrf
-                                <label for="void-payment-{{ $linkedPayment->id }}" class="mt-0">Motivo de la anulación</label>
-                                <input id="void-payment-{{ $linkedPayment->id }}" name="reason" type="text" maxlength="500" required>
-                                <button type="submit" class="btn-danger btn-sm mt-3">Anular y liberar esta parte</button>
-                            </form>
-                        @endcan
+                        @if (! $demoSession)
+                            @can('edit-treasury')
+                                <form method="post" action="/bank/payments/{{ $linkedPayment->id }}/void" class="form-block reconcile">
+                                    @csrf
+                                    <label for="void-payment-{{ $linkedPayment->id }}" class="mt-0">Motivo de la anulación</label>
+                                    <input id="void-payment-{{ $linkedPayment->id }}" name="reason" type="text" maxlength="500" required>
+                                    <button type="submit" class="btn-danger btn-sm mt-3">Anular y liberar esta parte</button>
+                                </form>
+                            @endcan
+                        @endif
                     @endforeach
                     @if ($income)
                         <p class="notice linked">Clasificado como otro ingreso · {{ $income->categoryLabel() }} · {{ \App\Modules\Fees\Support\Money::format($income->amount_cents) }}</p>
                         <p class="notice">{{ $income->description }}</p>
-                        @can('edit-treasury')
-                            <form method="post" action="/bank/incomes/{{ $income->id }}/void" class="form-block reconcile">
-                                @csrf
-                                <label for="void-income-{{ $income->id }}" class="mt-0">Motivo de la anulación</label>
-                                <input id="void-income-{{ $income->id }}" name="reason" type="text" maxlength="500" required>
-                                <button type="submit" class="btn-danger btn-sm mt-3">Anular la clasificación</button>
-                            </form>
-                        @endcan
+                        @if (! $demoSession)
+                            @can('edit-treasury')
+                                <form method="post" action="/bank/incomes/{{ $income->id }}/void" class="form-block reconcile">
+                                    @csrf
+                                    <label for="void-income-{{ $income->id }}" class="mt-0">Motivo de la anulación</label>
+                                    <input id="void-income-{{ $income->id }}" name="reason" type="text" maxlength="500" required>
+                                    <button type="submit" class="btn-danger btn-sm mt-3">Anular la clasificación</button>
+                                </form>
+                            @endcan
+                        @endif
                     @endif
                     @if ($transfer === null && $expense === null && $income === null && $linkedPayments->isEmpty())
-                        @can('edit-treasury')
-                            <form method="post" action="/bank/movements/{{ $movement->id }}/transfers" class="form-block reconcile">
-                                @csrf
-                                <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
-                                <input type="hidden" name="direction" value="{{ $movement->amount_cents < 0 ? 'to_cash' : 'to_bank' }}">
-                                <p class="notice">
-                                    @if ($movement->amount_cents < 0)
-                                        Si este cargo es dinero que sacaste del banco para la caja, márcalo como traspaso: la caja sube y el banco no cambia.
-                                    @else
-                                        Si este abono es efectivo que llevaste de la caja al banco, márcalo como traspaso: la caja baja y el banco no cambia.
-                                    @endif
-                                </p>
-                                <label for="transfer-description-{{ $movement->id }}">Descripción del traspaso</label>
-                                <input id="transfer-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
-                                <button type="submit" class="btn-secondary btn-sm mt-3">Marcar traspaso</button>
-                            </form>
-                        @endcan
+                        @if (! $demoSession)
+                            @can('edit-treasury')
+                                <form method="post" action="/bank/movements/{{ $movement->id }}/transfers" class="form-block reconcile">
+                                    @csrf
+                                    <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+                                    <input type="hidden" name="direction" value="{{ $movement->amount_cents < 0 ? 'to_cash' : 'to_bank' }}">
+                                    <p class="notice">
+                                        @if ($movement->amount_cents < 0)
+                                            Si este cargo es dinero que sacaste del banco para la caja, márcalo como traspaso: la caja sube y el banco no cambia.
+                                        @else
+                                            Si este abono es efectivo que llevaste de la caja al banco, márcalo como traspaso: la caja baja y el banco no cambia.
+                                        @endif
+                                    </p>
+                                    <label for="transfer-description-{{ $movement->id }}">Descripción del traspaso</label>
+                                    <input id="transfer-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
+                                    <button type="submit" class="btn-secondary btn-sm mt-3">Marcar traspaso</button>
+                                </form>
+                            @endcan
+                        @endif
                     @endif
                     @if ($movement->amount_cents < 0 && $expense === null && $transfer === null && $linkedPayments->isEmpty())
-                        @can('edit-treasury')
-                            <form method="post" action="/bank/movements/{{ $movement->id }}/expenses" class="form-block reconcile">
-                                @csrf
-                                <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
-                                <p class="notice">Si conoces el motivo de este cargo, clasifícalo como gasto. El saldo del banco no cambia: el cargo ya está restado en el extracto.</p>
-                                <label for="expense-category-{{ $movement->id }}">Categoría</label>
-                                <select id="expense-category-{{ $movement->id }}" name="category" required>
-                                    <option value="">Elige una categoría</option>
-                                    @foreach (\App\Modules\Bank\Models\BankExpense::CATEGORIES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                <label for="expense-description-{{ $movement->id }}">Descripción del gasto</label>
-                                <input id="expense-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
-                                <button type="submit" class="btn-secondary btn-sm mt-3">Clasificar el cargo</button>
-                            </form>
-                        @endcan
-                    @endif
-                    @if ($movement->amount_cents > 0 && $left > 0 && $income === null && $transfer === null)
-                        @can('edit-treasury')
-                            @if ($pendingDues->isNotEmpty())
-                                <form method="post" action="/bank/movements/{{ $movement->id }}/reconcile" class="form-block reconcile">
+                        @if (! $demoSession)
+                            @can('edit-treasury')
+                                <form method="post" action="/bank/movements/{{ $movement->id }}/expenses" class="form-block reconcile">
                                     @csrf
                                     <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
-                                    <p class="notice linked">Quedan {{ \App\Modules\Fees\Support\Money::format($left) }} por conciliar.</p>
-                                    @if ($reconciled > 0)
-                                        <p class="notice">Ya se han conciliado {{ \App\Modules\Fees\Support\Money::format($reconciled) }} de este abono; el resto sigue pendiente de destino.</p>
-                                    @endif
-                                    <p class="notice">Escribe el importe de cada cuota que pague este abono. Una cuota vacía no participa y la suma no puede superar lo que queda por conciliar: lo que no asignes seguirá pendiente.</p>
-                                    @foreach ($pendingDues as $due)
-                                        <label for="split-{{ $movement->id }}-{{ $due->id }}">{{ $due->member->name }} · {{ $due->feeYear->year }} · pendiente {{ \App\Modules\Fees\Support\Money::format($due->pendingCents()) }}</label>
-                                        <input id="split-{{ $movement->id }}-{{ $due->id }}" name="allocations[{{ $due->id }}]" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">
-                                    @endforeach
-                                    <button type="submit" class="btn-secondary btn-sm mt-3">Conciliar el reparto</button>
-                                </form>
-                            @else
-                                <p class="notice">No hay cuotas pendientes a las que asignar este abono.</p>
-                            @endif
-                            @if ($left === $movement->amount_cents)
-                                <form method="post" action="/bank/movements/{{ $movement->id }}/incomes" class="form-block reconcile">
-                                    @csrf
-                                    <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
-                                    <p class="notice">Si este abono no es dinero para las cuotas, clasifícalo como otro ingreso. El saldo del banco no cambia: el abono deja de estar pendiente de conciliación.</p>
-                                    <label for="income-category-{{ $movement->id }}">Categoría</label>
-                                    <select id="income-category-{{ $movement->id }}" name="category" required>
+                                    <p class="notice">Si conoces el motivo de este cargo, clasifícalo como gasto. El saldo del banco no cambia: el cargo ya está restado en el extracto.</p>
+                                    <label for="expense-category-{{ $movement->id }}">Categoría</label>
+                                    <select id="expense-category-{{ $movement->id }}" name="category" required>
                                         <option value="">Elige una categoría</option>
-                                        @foreach ($categories as $value => $label)
+                                        @foreach (\App\Modules\Bank\Models\BankExpense::CATEGORIES as $value => $label)
                                             <option value="{{ $value }}">{{ $label }}</option>
                                         @endforeach
                                     </select>
-                                    <label for="income-description-{{ $movement->id }}">Descripción del ingreso</label>
-                                    <input id="income-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
-                                    <button type="submit" class="btn-secondary btn-sm mt-3">Clasificar como otro ingreso</button>
+                                    <label for="expense-description-{{ $movement->id }}">Descripción del gasto</label>
+                                    <input id="expense-description-{{ $movement->id }}" name="description" type="text" maxlength="200" required>
+                                    <button type="submit" class="btn-secondary btn-sm mt-3">Clasificar el cargo</button>
                                 </form>
-                            @else
-                                <p class="notice">Un abono con parte asignada a cuotas no se puede clasificar como otro ingreso. Anula esos pagos o resuelve el sobrante cuando corresponda.</p>
-                            @endif
-                        @endcan
+                            @endcan
+                        @endif
                     @endif
+                    <x-reconcile-form
+                        :movement="$movement"
+                        :pending-dues="$pendingDues"
+                        :left="$left"
+                        :reconciled="$reconciled"
+                        :categories="$categories"
+                        :income="$income"
+                        :transfer="$transfer"
+                    />
                 </article>
             @endforeach
         </div>

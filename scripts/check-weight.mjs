@@ -10,6 +10,8 @@
 //   medido sobre la compilación real con algo de holgura. Se imprime siempre.
 // - Ninguna otra página puede alcanzar el recurso de la portada ni Three.js: si el cierre de
 //   importaciones de su entrada toca un archivo de la portada, el informe falla.
+// - La demo guiada (issue #74) tiene su propia entrada y su propio presupuesto; solo se mide
+//   cuando la compilación la declara, y sus límites propios no tocan los ámbitos app y landing.
 //
 // Los límites se pueden bajar por entorno para comprobar que la comprobación falla de verdad:
 // WEIGHT_CSS_GZIP_KB, WEIGHT_CSS_RAW_KB, WEIGHT_JS_GZIP_KB, WEIGHT_JS_RAW_KB para el resto de
@@ -45,10 +47,21 @@ export const PAGE_SCOPES = [
     },
 ];
 
+/**
+ * Ámbito propio de la demo guiada (issue #74). No forma parte de PAGE_SCOPES para que los
+ * ámbitos app y landing no cambien: se activa solo cuando la compilación declara su entrada.
+ */
+export const GUIDE_SCOPE = {
+    key: 'guide',
+    label: 'Demo guiada',
+    entries: ['resources/css/app.css', 'resources/js/guide.js'],
+};
+
 /** Presupuesto en KB. El de la portada se fija desde la compilación real (ver el informe). */
 export const DEFAULT_BUDGET_KB = {
     app: { cssGzip: 12, cssRaw: 48, jsGzip: 12, jsRaw: 16 },
     landing: { cssGzip: 5, cssRaw: 20, jsGzip: 205, jsRaw: 810 },
+    guide: { cssGzip: 12, cssRaw: 48, jsGzip: 12, jsRaw: 16 },
 };
 
 /** Variable de entorno que puede bajar cada límite, por página. */
@@ -64,6 +77,12 @@ export const BUDGET_ENV = {
         cssRaw: 'WEIGHT_LANDING_CSS_RAW_KB',
         jsGzip: 'WEIGHT_LANDING_JS_GZIP_KB',
         jsRaw: 'WEIGHT_LANDING_JS_RAW_KB',
+    },
+    guide: {
+        cssGzip: 'WEIGHT_GUIDE_CSS_GZIP_KB',
+        cssRaw: 'WEIGHT_GUIDE_CSS_RAW_KB',
+        jsGzip: 'WEIGHT_GUIDE_JS_GZIP_KB',
+        jsRaw: 'WEIGHT_GUIDE_JS_RAW_KB',
     },
 };
 
@@ -140,8 +159,13 @@ export function evaluateWeight({ buildDir, env = {}, budgetKb = DEFAULT_BUDGET_K
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     const failures = [];
     const reports = [];
-    const declared = new Set(scopes.flatMap((scope) => scope.entries));
-    const landingScope = scopes.find((scope) => scope.key === 'landing');
+    // El ámbito de la demo solo existe cuando la compilación declara su entrada, así que los
+    // manifiestos antiguos o de prueba siguen midiéndose exactamente igual que antes.
+    const activeScopes = scopes.some((scope) => scope.key === 'guide') || ! manifest['resources/js/guide.js']
+        ? scopes
+        : [...scopes, GUIDE_SCOPE];
+    const declared = new Set(activeScopes.flatMap((scope) => scope.entries));
+    const landingScope = activeScopes.find((scope) => scope.key === 'landing');
     const landingFiles = new Set();
 
     if (landingScope) {
@@ -175,7 +199,7 @@ export function evaluateWeight({ buildDir, env = {}, budgetKb = DEFAULT_BUDGET_K
         extras.set(key, files);
     }
 
-    for (const scope of scopes) {
+    for (const scope of activeScopes) {
         const files = new Set();
         for (const entryKey of scope.entries) {
             if (!manifest[entryKey]) {

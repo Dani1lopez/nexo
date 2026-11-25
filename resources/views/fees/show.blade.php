@@ -2,12 +2,16 @@
 @section('title', 'Cuota de '.$feeYear->year)
 @section('content')
     @php($money = fn (int $cents) => \App\Modules\Fees\Support\Money::format($cents))
+    {{-- A demo session walks this real screen, so it hides the controls the demo bounces. --}}
+    @php($demoSession = session(\App\Modules\Demo\Support\DemoSession::MARK) === true)
     <nav aria-label="Navegación" class="back-link"><a href="/fees">Volver a cuotas anuales</a></nav>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="mb-0">Cuota de {{ $feeYear->year }}</h1>
-        @can('edit-treasury')
-            <a href="/fees/{{ $feeYear->id }}/edit" class="btn btn-secondary btn-sm">Cambiar el importe</a>
-        @endcan
+        @if (! $demoSession)
+            @can('edit-treasury')
+                <a href="/fees/{{ $feeYear->id }}/edit" class="btn btn-secondary btn-sm">Cambiar el importe</a>
+            @endcan
+        @endif
     </div>
     <p>Importe: <strong>{{ $money($feeYear->amount_cents) }}</strong></p>
     <div class="tally" role="group" aria-label="Resumen del año">
@@ -39,14 +43,16 @@
                             {{ $payment->paid_on->format('d/m/Y') }} · {{ $money($payment->amount_cents) }} · {{ \App\Modules\Fees\Models\Payment::METHODS[$payment->method] ?? $payment->method }}
                             @if ($payment->note) · Nota: {{ $payment->note }} @endif
                             @if ($payment->isActive())
-                                @can('edit-treasury')
-                                    <form method="post" action="/payments/{{ $payment->id }}/void" class="form-block">
-                                        @csrf
-                                        <label for="void-{{ $payment->id }}" class="mt-0">Motivo de la anulación del pago de {{ $payment->paid_on->format('d/m/Y') }} ({{ $due->member->name }})</label>
-                                        <input id="void-{{ $payment->id }}" name="reason" type="text" maxlength="500" required>
-                                        <button type="submit" class="btn-danger btn-sm mt-3">Anular pago</button>
-                                    </form>
-                                @endcan
+                                @if (! $demoSession)
+                                    @can('edit-treasury')
+                                        <form method="post" action="/payments/{{ $payment->id }}/void" class="form-block">
+                                            @csrf
+                                            <label for="void-{{ $payment->id }}" class="mt-0">Motivo de la anulación del pago de {{ $payment->paid_on->format('d/m/Y') }} ({{ $due->member->name }})</label>
+                                            <input id="void-{{ $payment->id }}" name="reason" type="text" maxlength="500" required>
+                                            <button type="submit" class="btn-danger btn-sm mt-3">Anular pago</button>
+                                        </form>
+                                    @endcan
+                                @endif
                             @else
                                 — Anulado: {{ $payment->void_reason }}
                             @endif
@@ -54,9 +60,10 @@
                     @endforeach
                 </ul>
             @endif
-            @can('edit-treasury')
-                @if ($due->pendingCents() > 0)
-                    <form method="post" action="/dues/{{ $due->id }}/payments" class="form-block">
+            @if (! $demoSession)
+                @can('edit-treasury')
+                    @if ($due->pendingCents() > 0)
+                        <form method="post" action="/dues/{{ $due->id }}/payments" class="form-block">
                         @csrf
                         <input type="hidden" name="submission_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                         <p class="notice mt-0">No escribas datos personales reales en la nota.</p>
@@ -84,8 +91,9 @@
                         </div>
                         <button type="submit">Registrar pago</button>
                     </form>
-                @endif
-            @endcan
+                    @endif
+                @endcan
+            @endif
             @if ($due->exemptions->isNotEmpty())
                 <h3>Historial de exenciones</h3>
                 <ul>
@@ -101,23 +109,25 @@
                     @endforeach
                 </ul>
             @endif
-            @can('edit-treasury')
-                @if ($active)
-                    <form method="post" action="/exemptions/{{ $active->id }}/revoke" class="form-block">
-                        @csrf
-                        <label for="revoke-{{ $due->id }}" class="mt-0">Motivo de la anulación ({{ $due->member->name }})</label>
-                        <input id="revoke-{{ $due->id }}" name="reason" type="text" maxlength="500" required>
-                        <button type="submit" class="btn-danger">Anular exención</button>
-                    </form>
-                @else
-                    <form method="post" action="/dues/{{ $due->id }}/exemptions" class="form-block">
-                        @csrf
-                        <label for="grant-{{ $due->id }}" class="mt-0">Motivo de la exención ({{ $due->member->name }})</label>
-                        <input id="grant-{{ $due->id }}" name="reason" type="text" maxlength="500" required>
-                        <button type="submit" class="btn-secondary">Conceder exención</button>
-                    </form>
-                @endif
-            @endcan
+            @if (! $demoSession)
+                @can('edit-treasury')
+                    @if ($active)
+                        <form method="post" action="/exemptions/{{ $active->id }}/revoke" class="form-block">
+                            @csrf
+                            <label for="revoke-{{ $due->id }}" class="mt-0">Motivo de la anulación ({{ $due->member->name }})</label>
+                            <input id="revoke-{{ $due->id }}" name="reason" type="text" maxlength="500" required>
+                            <button type="submit" class="btn-danger">Anular exención</button>
+                        </form>
+                    @else
+                        <form method="post" action="/dues/{{ $due->id }}/exemptions" class="form-block">
+                            @csrf
+                            <label for="grant-{{ $due->id }}" class="mt-0">Motivo de la exención ({{ $due->member->name }})</label>
+                            <input id="grant-{{ $due->id }}" name="reason" type="text" maxlength="500" required>
+                            <button type="submit" class="btn-secondary">Conceder exención</button>
+                        </form>
+                    @endif
+                @endcan
+            @endif
         </article>
     @empty
         <p>Ningún socio tiene asignada esta cuota.</p>

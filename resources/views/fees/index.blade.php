@@ -1,12 +1,16 @@
 @extends('layouts.app')
 @section('title', 'Cuotas anuales')
 @section('content')
+    {{-- A demo session walks this real screen, so it hides the controls the demo bounces. --}}
+    @php($demoSession = session(\App\Modules\Demo\Support\DemoSession::MARK) === true)
     <nav aria-label="Navegación" class="back-link"><a href="/dashboard">Volver al panel</a></nav>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="mb-0">Cuotas anuales</h1>
-        @can('edit-treasury')
-            <a href="/fees/create" class="btn mt-0">Fijar cuota de un año</a>
-        @endcan
+        @if (! $demoSession)
+            @can('edit-treasury')
+                <a href="/fees/create" class="btn mt-0">Fijar cuota de un año</a>
+            @endcan
+        @endif
     </div>
     <p class="notice">Importes en euros, con datos exclusivamente ficticios.</p>
     @if ($years->isNotEmpty())
@@ -24,9 +28,11 @@
     @else
         <div class="empty">
             <p>Todavía no se ha fijado ninguna cuota.</p>
-            @can('edit-treasury')
-                <a href="/fees/create" class="btn btn-secondary btn-sm">Fijar la primera cuota</a>
-            @endcan
+            @if (! $demoSession)
+                @can('edit-treasury')
+                    <a href="/fees/create" class="btn btn-secondary btn-sm">Fijar la primera cuota</a>
+                @endcan
+            @endif
         </div>
     @endif
 @endsection

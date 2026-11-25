@@ -119,6 +119,29 @@ test('la portada incumple solo su propio presupuesto', () => {
   }
 });
 
+test('una compilación con la entrada de la demo mide su propio ámbito sin tocar los demás', () => {
+  const { directory, manifest } = defaultBuild();
+
+  try {
+    manifest['resources/js/guide.js'] = { file: 'assets/guide-1.js', src: 'resources/js/guide.js', isEntry: true };
+    writeFileSync(join(directory, 'assets', 'guide-1.js'), 'export {};');
+    writeFileSync(join(directory, 'manifest.json'), JSON.stringify(manifest));
+
+    const result = evaluateWeight({ buildDir: directory, env: {} });
+
+    assert.deepEqual(result.failures, []);
+    // Los ámbitos de siempre no cambian: la entrada de la demo no entra en ellos ni los mueve.
+    assert.deepEqual(scope(result, 'app').files.sort(), ['assets/app-1.css', 'assets/theme-1.js'].sort());
+
+    const guide = scope(result, 'guide');
+    assert.ok(guide, 'el informe declara el ámbito de la demo guiada');
+    assert.deepEqual(guide.files.sort(), ['assets/app-1.css', 'assets/guide-1.js'].sort());
+    assert.deepEqual(scope(result, 'app').failures, []);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('falla si otra página carga Three.js o el recurso de la portada', () => {
   const chunks = {
     'assets/app-1.js': { gzipBytes: 900 },
