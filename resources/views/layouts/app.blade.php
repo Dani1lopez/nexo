@@ -13,11 +13,15 @@
     $public = $__env->hasSection('public');
     $signedIn = ! $public && auth()->check();
     $narrow = $__env->hasSection('narrow');
+    // Issue #74: a demo session walks the real screens, but it is not a signed-in account.
+    $demoMode = ! $public && session(\App\Modules\Demo\Support\DemoSession::MARK) === true;
     // The landing (issue #60) is dark only, ships its own scene entry and never the theme toggle.
     $landing = $__env->hasSection('landing');
     $vite = array_merge(
         ['resources/css/app.css'],
         $landing ? ['resources/css/landing.css', 'resources/js/landing.js'] : ['resources/js/theme.js'],
+        // Issue #74: only the demo session loads the live remainder of the real reconcile control.
+        $demoMode ? ['resources/js/guide.js'] : [],
     );
 @endphp
 <!doctype html>
@@ -29,7 +33,7 @@
     <title>{{ $__env->hasSection('full_title') ? $__env->yieldContent('full_title') : $__env->yieldContent('title').' — Nexo' }}</title>
     @vite($vite)
 </head>
-<body class="flex min-h-screen flex-col line-{{ $line }}{{ $landing ? ' landing-page' : '' }}">
+<body class="flex min-h-screen flex-col line-{{ $line }}{{ $landing ? ' landing-page' : '' }}{{ $demoMode ? ' demo-mode' : '' }}">
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
     <header class="topbar">
         <div class="frame topbar-inner">
@@ -43,6 +47,12 @@
                     <span class="lp-pause-dot" aria-hidden="true"></span><span class="txt">Pausar escena</span>
                 </button>
                 <p class="lp-status"><strong>Demo 2026</strong><span>Datos ficticios</span></p>
+            @elseif ($demoMode)
+                {{-- S19: the demo can always be left from the screen the visitor is on. --}}
+                <div class="who">
+                    <span>Modo demo · datos ficticios</span>
+                    <form method="post" action="/demo/salir">@csrf<button type="submit" class="btn-secondary btn-sm">Salir de la demo</button></form>
+                </div>
             @elseif ($signedIn)
                 <div class="who">
                     <button type="button" class="btn-secondary btn-sm theme-toggle" id="theme-toggle" hidden>Modo claro</button>
