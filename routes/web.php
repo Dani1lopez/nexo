@@ -34,21 +34,30 @@ Route::post('/demo/conciliar', [DemoController::class, 'reconcile'])->middleware
 // from the one of /demo, so a visitor of one mode never spends the budget of the other; the exit
 // is never throttled, because a rate limit on leaving would trap the visitor. The mark is dropped
 // by the exit, by a real login and by leaving the demo; no guard of the treasury routes changes.
+//
+// Every route the demo serves, plus both demo actions, holds the session lock with ->block(). A
+// lock is the only way to serialize the requests of one session: the key is the session id of the
+// cookie and the lock is taken before the session is read, so a request that already has the mark
+// in memory cannot be written back after the exit discarded it (R1-001). The lock cannot be scoped
+// to demo visitors only, because deciding that needs the session the lock protects; the cost is
+// that two parallel requests of a real session queue up to ten seconds instead of racing. Routes
+// the demo does not serve stay unblocked, so the blast radius is the list below.
 Route::post('/demo/entrar', [DemoSessionController::class, 'store'])
     ->middleware(['guest', 'throttle:demo-entry'])
+    ->block(10, 10)
     ->name('demo.enter');
-Route::post('/demo/salir', [DemoSessionController::class, 'destroy'])->name('demo.exit');
+Route::post('/demo/salir', [DemoSessionController::class, 'destroy'])->block(10, 10)->name('demo.exit');
 Route::middleware('auth')->prefix('access/two-factor')->name('two-factor.')->group(function (): void {
     Route::get('/', [TwoFactorController::class, 'index'])->name('index');
     Route::post('/', [TwoFactorController::class, 'store'])->name('enable');
     Route::post('/confirm', [TwoFactorController::class, 'confirm'])->name('confirm');
     Route::post('/disable', [TwoFactorController::class, 'disable'])->name('disable');
 });
-Route::get('/dashboard', [DashboardController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('dashboard');
-Route::get('/saldos', [SummaryController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->name('summary.show');
+Route::get('/dashboard', [DashboardController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->block(10, 10)->name('dashboard');
+Route::get('/saldos', [SummaryController::class, 'show'])->middleware(['auth', 'can:view-treasury'])->block(10, 10)->name('summary.show');
 
 Route::middleware(['auth', 'can:view-treasury'])->prefix('caja')->name('cash.')->group(function (): void {
-    Route::get('/', [CashController::class, 'index'])->name('index');
+    Route::get('/', [CashController::class, 'index'])->block(10, 10)->name('index');
     // The base is fixed once: the request checks the role again and the action never overwrites it.
     Route::post('/saldo-inicial', [CashController::class, 'storeOpening'])->middleware('can:edit-treasury')->name('opening.store');
 
@@ -63,7 +72,7 @@ Route::middleware(['auth', 'can:view-treasury'])->prefix('caja')->name('cash.')-
 });
 
 Route::middleware(['auth', 'can:view-treasury'])->prefix('members')->name('members.')->group(function (): void {
-    Route::get('/', [MemberController::class, 'index'])->name('index');
+    Route::get('/', [MemberController::class, 'index'])->block(10, 10)->name('index');
 
     Route::middleware('can:edit-treasury')->group(function (): void {
         Route::get('/create', [MemberController::class, 'create'])->name('create');
@@ -76,7 +85,7 @@ Route::middleware(['auth', 'can:view-treasury'])->prefix('members')->name('membe
 });
 
 Route::middleware(['auth', 'can:view-treasury'])->group(function (): void {
-    Route::get('/fees', [FeeYearController::class, 'index'])->name('fees.index');
+    Route::get('/fees', [FeeYearController::class, 'index'])->block(10, 10)->name('fees.index');
 
     Route::middleware('can:edit-treasury')->group(function (): void {
         Route::get('/fees/create', [FeeYearController::class, 'create'])->name('fees.create');
@@ -89,13 +98,13 @@ Route::middleware(['auth', 'can:view-treasury'])->group(function (): void {
         Route::post('/exemptions/{exemption}/revoke', [ExemptionController::class, 'revoke'])->name('exemptions.revoke');
     });
 
-    Route::get('/fees/{feeYear}', [FeeYearController::class, 'show'])->name('fees.show');
+    Route::get('/fees/{feeYear}', [FeeYearController::class, 'show'])->block(10, 10)->name('fees.show');
 });
 
 Route::middleware(['auth', 'can:view-treasury'])->prefix('bank')->name('bank.')->group(function (): void {
-    Route::get('/', [BankImportController::class, 'index'])->name('index');
+    Route::get('/', [BankImportController::class, 'index'])->block(10, 10)->name('index');
     Route::post('/imports', [BankImportController::class, 'store'])->middleware('can:edit-treasury')->name('imports.store');
-    Route::post('/movements/{movement}/reconcile', [ReconcileController::class, 'store'])->middleware('can:edit-treasury')->name('movements.reconcile');
+    Route::post('/movements/{movement}/reconcile', [ReconcileController::class, 'store'])->middleware('can:edit-treasury')->block(10, 10)->name('movements.reconcile');
     Route::post('/movements/{movement}/expenses', [BankExpenseController::class, 'store'])->middleware('can:edit-treasury')->name('movements.expenses.store');
     Route::post('/movements/{movement}/transfers', [TransferController::class, 'store'])->middleware('can:edit-treasury')->name('movements.transfers.store');
     Route::post('/transfers/{transfer}/void', [TransferController::class, 'void'])->middleware('can:edit-treasury')->name('transfers.void');
