@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\AuthTestCase;
@@ -117,17 +118,56 @@ class PracticeEntryTest extends AuthTestCase
         $this->get('/demo')->assertOk()->assertSee('Demostración guiada');
     }
 
-    /** H4: leaving the demo has its own named limiter, separate from the entry and from /demo. */
-    public function test_the_demo_exit_is_rate_limited_without_spending_the_entry_budget(): void
+    /** R3-001: leaving the demo is never throttled, so a valid exit cannot trap the visitor. */
+    public function test_the_demo_exit_always_works_and_clears_the_mark(): void
     {
-        for ($attempt = 0; $attempt < 10; $attempt++) {
+        for ($attempt = 0; $attempt < 20; $attempt++) {
             $this->post('/demo/salir')->assertRedirect('/');
         }
 
-        $this->post('/demo/salir')->assertStatus(429);
-
-        // The entry keeps its own budget, so a throttled exit never traps the next visit.
         $this->post('/demo/entrar')->assertRedirect('/dashboard');
-        $this->get('/demo')->assertOk()->assertSee('Demostración guiada');
+        $this->assertTrue(session('demo.session'));
+
+        $this->post('/demo/salir')->assertRedirect('/');
+
+        $this->assertFalse(session()->has('demo.session'), 'la marca demo se borra en la salida');
+        $this->get('/bank')->assertRedirect('/login');
+    }
+
+    /** R1-001: a stale in-flight write on the discarded id cannot bring the demo back. */
+    public function test_a_stale_write_on_the_old_session_id_cannot_restore_the_demo(): void
+    {
+        config(['session.driver' => 'database']);
+
+        $old = str_repeat('S', 40);
+        $this->browser($old);
+
+        $this->post('/demo/entrar')->assertRedirect('/dashboard');
+        $this->browser($old);
+        $this->post('/demo/salir')->assertRedirect('/');
+
+        $fresh = session()->getId();
+
+        $this->assertNotSame($old, $fresh, 'la salida entrega un identificador de sesión nuevo');
+
+        // A request still in flight in another tab saves its older snapshot on the old id.
+        DB::table('sessions')->insert([
+            'id' => $old,
+            'payload' => base64_encode(json_encode(['demo' => ['session' => true]], JSON_THROW_ON_ERROR)),
+            'last_activity' => now()->getTimestamp(),
+        ]);
+
+        // The browser carries the fresh id, so the stale mark is never read again.
+        $this->browser($fresh);
+        $this->get('/dashboard')->assertRedirect('/login');
+        $this->assertFalse(session()->has('demo.session'), 'la marca vieja no vuelve');
+    }
+
+    private function browser(string $id): void
+    {
+        app('session')->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+        Auth::forgetGuards();
+        $this->withCookie(config('session.cookie'), $id);
     }
 }

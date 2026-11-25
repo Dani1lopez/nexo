@@ -26,9 +26,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->resolving(RateLimiter::class, function (RateLimiter $limiter): void {
             $limiter->for('demo-entry', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
             $limiter->for('demo-request', fn (Request $request): Limit => Limit::perMinute(60)->by((string) $request->ip()));
-            // Leaving the demo is a plain POST of the shared layout: it has its own budget so a
-            // throttled exit never spends the budget of the next entry and vice versa.
-            $limiter->for('demo-exit', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
         });
     }
 

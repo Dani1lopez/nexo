@@ -5,6 +5,7 @@ namespace App\Modules\Demo\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Demo\Support\DemoSession;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 /**
  * Issue #74: the explicit, credential-free entry and exit of the demo session.
@@ -26,9 +27,12 @@ final class DemoSessionController extends Controller
         return redirect('/dashboard');
     }
 
-    public function destroy(DemoSession $session): RedirectResponse
+    public function destroy(Request $request): RedirectResponse
     {
-        $session->stop();
+        // Sessions are not blocking: a demo request in flight in another tab would save its older
+        // snapshot after the exit. Invalidating discards that id and hands the browser a fresh one.
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/');
     }
