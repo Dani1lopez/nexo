@@ -35,13 +35,19 @@ final class DemoSession
             return false;
         }
 
-        if (Cache::get($this->retiredKey()) !== null) {
+        if ($this->retired()) {
             $this->stop();
 
             return false;
         }
 
         return true;
+    }
+
+    /** Whether the id of this request was retired by an exit: the entry never marks a retired one. */
+    public function retired(): bool
+    {
+        return Cache::get($this->retiredKey()) !== null;
     }
 
     /** Opening the demo always starts from the beginning, whatever a previous visit stored. */

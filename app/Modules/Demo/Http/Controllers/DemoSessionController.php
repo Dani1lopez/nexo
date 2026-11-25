@@ -21,8 +21,14 @@ use Illuminate\Support\Facades\Auth;
  */
 final class DemoSessionController extends Controller
 {
-    public function store(DemoSession $session): RedirectResponse
+    public function store(Request $request, DemoSession $session): RedirectResponse
     {
+        // A browser can still hold an id a previous exit retired; marking that one would bounce it
+        // back to /login until the retirement record expires (R1-001 / R4-001).
+        if ($session->retired()) {
+            $request->session()->regenerate();
+        }
+
         $session->start();
 
         // The demo starts on the first real screen, at its real URL: no interstitial, no detour.

@@ -25,9 +25,10 @@ Route::post('/login/segundo-factor', [TwoFactorController::class, 'challengeStor
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
 // Issue #73: the public, guided demo. It needs no account and no session data, and the
-// throttle bounds the cost of creating a throwaway database on every request.
-Route::get('/demo', [DemoController::class, 'show'])->middleware('throttle:10,1')->name('demo.show');
-Route::post('/demo/conciliar', [DemoController::class, 'reconcile'])->middleware('throttle:10,1')->name('demo.reconcile');
+// throttle bounds the cost of creating a throwaway database. Both routes also hold the session
+// lock, so a concurrent /demo request cannot put an older split over a fresh one (R4-002).
+Route::get('/demo', [DemoController::class, 'show'])->middleware('throttle:10,1')->block(10, 10)->name('demo.show');
+Route::post('/demo/conciliar', [DemoController::class, 'reconcile'])->middleware('throttle:10,1')->block(10, 10)->name('demo.reconcile');
 
 // Issue #74: the demo without credentials is a session over the real screens. The entry and the
 // exit are explicit POSTs with the session token. The entry has its own named limiter, separate

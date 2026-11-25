@@ -71,12 +71,13 @@ class DemoExitTest extends AuthTestCase
         return json_decode(base64_decode($stored), true, 512, JSON_THROW_ON_ERROR);
     }
 
-    /** Walks the demo on a pinned session and reconciles both instalments, as a visitor does. */
-    private function walkTheDemo(string $id): void
+    /** Walks the demo on a pinned session; returns the identifier the visitor ends up holding. */
+    private function walkTheDemo(string $id): string
     {
         $this->browser($id);
         $this->post('/demo/entrar')->assertRedirect('/dashboard');
 
+        $id = session()->getId();
         $this->browser($id);
         $bank = (string) $this->get('/bank')->assertOk()->getContent();
 
@@ -91,6 +92,8 @@ class DemoExitTest extends AuthTestCase
             'submission_key' => $key[1],
             'allocations' => array_fill_keys($dues[1], '40,00'),
         ])->assertRedirect('/bank');
+
+        return $id;
     }
 
     /** REG-001: a valid exit POST from a real account never signs the person out. */
@@ -147,9 +150,7 @@ class DemoExitTest extends AuthTestCase
     /** The exit of an active demo drops the mark, the split and the row it lived in. */
     public function test_an_active_demo_exit_discards_the_mark_and_the_split(): void
     {
-        $id = str_repeat('C', 40);
-
-        $this->walkTheDemo($id);
+        $id = $this->walkTheDemo(str_repeat('C', 40));
 
         $stored = $this->payload($id);
         $this->assertTrue($stored['demo']['session'] ?? false, 'la marca demo está guardada');
@@ -176,9 +177,7 @@ class DemoExitTest extends AuthTestCase
      */
     public function test_a_stale_demo_snapshot_cannot_resurrect_the_demo_with_either_cookie(): void
     {
-        $id = str_repeat('S', 40);
-
-        $this->walkTheDemo($id);
+        $id = $this->walkTheDemo(str_repeat('S', 40));
 
         $snapshot = DB::table('sessions')->where('id', $id)->value('payload');
         $this->assertIsString($snapshot);
@@ -208,6 +207,33 @@ class DemoExitTest extends AuthTestCase
         $this->assertFalse(session()->has('demo.session'));
     }
 
+    /** R1-001 / R4-001: a browser that still holds a retired identifier re-enters the demo. */
+    public function test_a_browser_holding_a_retired_id_can_enter_the_demo_again(): void
+    {
+        $retired = $this->walkTheDemo(str_repeat('R', 40));
+
+        $snapshot = DB::table('sessions')->where('id', $retired)->value('payload');
+        $this->assertIsString($snapshot);
+
+        $this->post('/demo/salir')->assertRedirect('/');
+
+        // The late response of the demo puts the mark back on the identifier the exit retired.
+        DB::table('sessions')->insert([
+            'id' => $retired,
+            'payload' => $snapshot,
+            'last_activity' => now()->getTimestamp(),
+        ]);
+
+        $this->browser($retired);
+        $this->post('/demo/entrar')->assertRedirect('/dashboard');
+
+        $entered = session()->getId();
+        $this->browser($entered);
+        $this->get('/dashboard')->assertOk();
+        $this->assertSame(true, session('demo.session'), 'la entrada vuelve a marcar la sesión demo');
+        $this->assertNotSame($retired, $entered, 'la entrada entrega un identificador nuevo');
+    }
+
     /** R1-001: the demo-served routes and both demo actions hold the session lock. */
     public function test_the_demo_routes_and_the_demo_exit_hold_the_session_lock(): void
     {
@@ -222,6 +248,9 @@ class DemoExitTest extends AuthTestCase
             'cash.index',
             'demo.enter',
             'demo.exit',
+            // R4-002: the routes of #73 save the same session, so they queue with the rest.
+            'demo.show',
+            'demo.reconcile',
         ];
 
         foreach ($blocked as $name) {
