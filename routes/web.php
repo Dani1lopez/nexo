@@ -11,6 +11,7 @@ use App\Modules\Cash\Http\Controllers\TransferController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Dashboard\Http\Controllers\SummaryController;
 use App\Modules\Demo\Http\Controllers\DemoController;
+use App\Modules\Demo\Http\Controllers\DemoSessionController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
 use App\Modules\Fees\Http\Controllers\FeeYearController;
 use App\Modules\Fees\Http\Controllers\PaymentController;
@@ -23,10 +24,19 @@ Route::get('/login/segundo-factor', [TwoFactorController::class, 'challenge'])->
 Route::post('/login/segundo-factor', [TwoFactorController::class, 'challengeStore']);
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-// Issue #73: the public, guided demo needs no account, and the throttle bounds its throwaway database.
+// Issue #73: the public, guided demo. It needs no account and no session data, and the
+// throttle bounds the cost of creating a throwaway database on every request.
 Route::get('/demo', [DemoController::class, 'show'])->middleware('throttle:10,1')->name('demo.show');
 Route::post('/demo/conciliar', [DemoController::class, 'reconcile'])->middleware('throttle:10,1')->name('demo.reconcile');
 
+// Issue #74: the demo without credentials is a session over the real screens. The entry is an
+// explicit POST with the session token and its own limiter, separate from the one of /demo, so a
+// visitor of one mode never spends the budget of the other. The mark is dropped by the exit, by a
+// real login and by leaving the demo; no guard of the treasury routes changes.
+Route::post('/demo/entrar', [DemoSessionController::class, 'store'])
+    ->middleware(['guest', 'throttle:demo-entry'])
+    ->name('demo.enter');
+Route::post('/demo/salir', [DemoSessionController::class, 'destroy'])->name('demo.exit');
 Route::middleware('auth')->prefix('access/two-factor')->name('two-factor.')->group(function (): void {
     Route::get('/', [TwoFactorController::class, 'index'])->name('index');
     Route::post('/', [TwoFactorController::class, 'store'])->name('enable');

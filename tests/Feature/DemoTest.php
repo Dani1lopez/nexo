@@ -262,8 +262,8 @@ class DemoTest extends AuthTestCase
     }
 
     /**
-     * #73: the landing keeps «Entrar a la demo» → `/login` as its only entry, and it carries no
-     * walkthrough link: the public demo of this issue is reached through the access screen.
+     * #74 D1 (S15, S21): the landing keeps one entry, «Entrar a la demo», and the walkthrough
+     * link is gone; the demo of #73 stays reachable in the same way as before.
      */
     public function test_the_landing_keeps_a_single_entry_and_no_walkthrough_link(): void
     {
@@ -273,5 +273,13 @@ class DemoTest extends AuthTestCase
         $this->assertSame(0, substr_count($html, 'href="/practica"'));
         $this->assertSame(2, substr_count($html, 'Entrar a la demo'));
         $this->assertSame(2, substr_count($html, 'href="/login"'));
+
+        // The access screen is where both entries live now: the account and the demo session.
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('Probar sin cuenta')
+            ->assertSee('action="/demo/entrar"', false)
+            ->assertDontSee('Probar Nexo')
+            ->assertDontSee('href="/practica"', false);
     }
 }
