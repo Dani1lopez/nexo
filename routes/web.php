@@ -10,6 +10,7 @@ use App\Modules\Cash\Http\Controllers\CashController;
 use App\Modules\Cash\Http\Controllers\TransferController;
 use App\Modules\Dashboard\Http\Controllers\DashboardController;
 use App\Modules\Dashboard\Http\Controllers\SummaryController;
+use App\Modules\Demo\Http\Controllers\DemoController;
 use App\Modules\Fees\Http\Controllers\ExemptionController;
 use App\Modules\Fees\Http\Controllers\FeeYearController;
 use App\Modules\Fees\Http\Controllers\PaymentController;
@@ -21,6 +22,11 @@ Route::post('/login', [SessionController::class, 'store']);
 Route::get('/login/segundo-factor', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
 Route::post('/login/segundo-factor', [TwoFactorController::class, 'challengeStore']);
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+// Issue #73: the public, guided demo needs no account, and the throttle bounds its throwaway database.
+Route::get('/demo', [DemoController::class, 'show'])->middleware('throttle:10,1')->name('demo.show');
+Route::post('/demo/conciliar', [DemoController::class, 'reconcile'])->middleware('throttle:10,1')->name('demo.reconcile');
+
 Route::middleware('auth')->prefix('access/two-factor')->name('two-factor.')->group(function (): void {
     Route::get('/', [TwoFactorController::class, 'index'])->name('index');
     Route::post('/', [TwoFactorController::class, 'store'])->name('enable');
